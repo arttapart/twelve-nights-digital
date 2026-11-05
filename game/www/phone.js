@@ -95,7 +95,7 @@ function game() {
   if (G.phase === 'end') body = finalP();
   else if (mine && mine.kind === 'cell') body = startCell(mine);
   else if (mine) body = promptP(mine);
-  else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)} است که خانهٔ شروع را انتخاب کند</div><div class="lbl">ترتیب بازی تصادفی است و روی مانیتور دیده می‌شود</div></div>`;
+  else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)} است</div><div class="lbl">ترتیب بازی تصادفی است و روی مانیتور دیده می‌شود</div></div>`;
   else if (G.battle) body = battleP();
   else if (G.phase === 'night') body = `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="font-size:40px">پایان شب ${fa(G.night)}</div><div class="lbl" style="text-align:center;font-size:15px">اهریمن‌ها پیش می‌روند و رویداد شب اجرا می‌شود.<br>مانیتور را ببین.</div>${waitFor()}</div>${navH()}`;
   else if (G.fight && G.fight.pid === G.me) body = fightP();
@@ -110,11 +110,11 @@ function waitFor() { const q = S.G.prompts[0]; return q && q.to !== S.G.me ? `<d
 // ---- tabs ----
 function tabP() {
   const G = S.G, p = me(), mt = myTurn(), T = G.turn;
-  const top = mt ? poolH() : `<div class="pmsg tn">نوبت <b style="color:${T ? G.players[T.pid].color : '#fff'}">${T ? esc(G.players[T.pid].name) : ''}</b> است – دستت را ببین و برنامه بریز</div>`;
+  const top = mt ? poolH() : `<div class="pmsg tn">نوبت <b style="color:${T ? G.players[T.pid].color : '#fff'}">${T ? esc(G.players[T.pid].name) : ''}</b> است</div>`;
   let o = '';
   if (tab === 'hand') {
     const h = p.hand; const i = clamp('hand', h.length);
-    o += mt ? presH(p, true) + poolH(false) : top + presH(p, true);
+    o += mt ? presH(p) + poolH(false) : top + presH(p);
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
     if (h.length) {
       const c = card(h[i].c);
@@ -269,15 +269,16 @@ function fightP() {
 
 // ---- prompts ----
 function promptP(q) {
-  let o = `<div class="pmsg gold">${esc(q.title || '')}</div>${q.text ? `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text)}</div>` : ''}`;
-  const pics = q.opts.filter(x => x.card || x.wiz || x.acad || x.tile != null);
+  const pics = q.opts.filter(x => x.card || x.wiz || x.acad || x.tile != null), big = !pics.length && !q.many;
+  // the player keeps seeing what they have while answering: stored row + this turn's temporary row
+  let o = (S.G.turn && S.G.turn.pid === S.G.me ? presH(me()) + poolH(false) : '') + `<div class="pmsg gold">${esc(q.title || '')}</div>${q.text && !big ? `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text)}</div>` : ''}`;
   const plain = q.opts.filter(x => !(x.card || x.wiz || x.acad || x.tile != null));
   if (q.many) {
     o += `<div class="pgrid">${pics.map(x => `<div class="pg ${sel.includes(x.v) ? 'on' : ''}" data-sel="${encodeURIComponent(JSON.stringify(x.v))}">${optFace(x)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(sel.length)} از ${fa(q.many)} انتخاب شد</div><div class="btn" data-do="many" data-q="${q.id}">تأیید</div>`;
   } else if (pics.length) {
     const i = clamp('pr', pics.length), x = pics[i];
     o += `<div class="zoom ${x.wiz ? 'xl2' : ''}" data-car="pr">${optFace(x)}${pics.length > 1 ? arrs : ''}</div>${dotsH(pics.length, i)}${x.grp ? `<div class="lbl" style="text-align:center">از ${esc(x.grp)}</div>` : ''}<div class="btn" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label || 'انتخاب این')}</div>`;
-  } else o += '<div style="flex:1"></div>';
+  } else o += q.text ? `<div class="ctr" style="flex:1"><div class="qbig">${esc(q.text)}</div></div>` : '<div style="flex:1"></div>';
   o += plain.map((x, k) => `<div class="btn ${pics.length || k > 0 ? 'ghost' : ''}" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label)}</div>`).join('');
   return o + (pics.length && !q.many ? '' : '<div style="height:20px"></div>');
 }

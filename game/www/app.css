@@ -117,3 +117,5 @@ input.inp:focus{border-color:#f3cf72}
 .ac .ef,.ac .nmc{overflow:hidden}
 @media (prefers-reduced-motion:reduce){.pool .tmp{animation:none}}
 .side .cur .curc{min-height:0;width:100%}.side .cur .curc .ac{height:100%;max-height:300px;width:auto;aspect-ratio:2/3}
+
+.qbig{font-size:22px;font-weight:800;line-height:1.7;text-align:center;color:#f3ecff;padding:0 14px}
