@@ -272,11 +272,16 @@ VIEWS.items = m => {
     onChange: () => { R.treasures = trows.flatMap(r => Array(Math.max(0, r.n | 0)).fill(r.key)); for (const r of trows) if (!r.isItem) R.treasureNames[r.key] = r.name; },
     cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 80 }, { k: 'name', l: 'نام', w: 180, ro: false }, { k: 'n', l: 'تعداد در کیسه', ty: 'num' }] });
 };
+const CHAL_METRICS = [['removed', 'کارت حذف‌شده از بازی'], ['coin', 'سکهٔ ذخیره‌شده'], ['scroll', 'طومار ذخیره‌شده'], ['ess', 'جوهرهٔ تاریک ذخیره‌شده'], ['ups', 'ارتقای تختهٔ شخصی'], ['torchpick', 'مشعل و کلنگ ذخیره‌شده'], ['items', 'وسیلهٔ جادویی'], ['hunt', 'توکن شکار اهریمن'], ['wounds', 'کارت زخم'], ['chests', 'صندوقچهٔ بازشده'], ['wiz3', 'جادوگر سطح ۳'], ['magic4', 'کارت جادوی قدرت ۴ یا بیشتر'], ['wiz', 'تعداد جادوگر'], ['wand', 'سطح چوب‌دستی'], ['res', 'مجموع سکه + طومار + جوهره'], ['red', 'اهریمن قرمز شکست‌داده']];
 VIEWS.challenges = m => {
   const R = W.rules; const rows = asRows(R.challenges, 'key');
-  m.innerHTML = `<h2>توکن‌های چالش</h2><p class="help">«زود» و «دیر» تعیین می‌کند هر توکن در کدام شب‌ها به تصادف قرار بگیرد. شب‌ها در بخش «قانون‌ها و عددها» تنظیم می‌شوند. اینکه هر چالش چه چیزی را می‌شمارد در برنامه نوشته شده است.</p>`;
-  table(m, { rows: () => rows, canAdd: false, canDel: false, onChange: () => { for (const r of rows) R.challenges[r.key] = { name: r.name, pts: r.pts, kind: r.kind }; },
-    cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 90 }, { k: 'name', l: 'نام', w: 280 }, { k: 'pts', l: 'امتیاز', ty: 'num' }, { k: 'kind', l: 'زمان', ty: 'sel', opts: [['early', 'زود'], ['late', 'دیر'], ['fixed', 'ثابت']] }] });
+  m.innerHTML = `<h2>توکن‌های چالش</h2><p class="help">فقط توکن‌هایی که ستون «فعال» آن‌ها تیک دارد در بازی به تصادف رو می‌شوند. «زود» و «دیر» تعیین می‌کند هر توکن در کدام شب‌ها بیاید؛ شب‌ها در بخش «قانون‌ها و عددها» تنظیم می‌شوند. «چه چیزی شمرده شود» را از فهرست انتخاب کن و «برنده» را روی «بیشترین» یا «کمترین» بگذار. با همین دو ستون می‌توانی توکن تازه هم بسازی. در تساوی، امتیاز بین برنده‌ها تقسیم می‌شود.</p>`;
+  const sync = () => { const o = {}; for (const r of rows) { const { key, ...v } = r; o[key] = v; } R.challenges = o; };
+  table(m, { rows: () => rows, key: 'key', onChange: sync,
+    add: () => ({ key: 'c_' + Date.now().toString(36).slice(-4), name: 'چالش تازه', pts: 2, kind: 'early', metric: 'coin', dir: 'max', active: false }),
+    cols: [{ k: 'active', l: 'فعال', ty: 'chk', get: x => x.active !== false }, { k: 'key', l: 'شناسه', ty: 'code', w: 90 }, { k: 'name', l: 'نام', w: 300 }, { k: 'pts', l: 'امتیاز', ty: 'num' },
+      { k: 'kind', l: 'زمان', ty: 'sel', opts: [['early', 'زود (شب ۵ و ۷)'], ['late', 'دیر (شب ۹ و ۱۱)'], ['fixed', 'ثابت (شب آخر)']] },
+      { k: 'metric', l: 'چه چیزی شمرده شود', ty: 'sel', opts: CHAL_METRICS, w: 200 }, { k: 'dir', l: 'برنده', ty: 'sel', opts: [['max', 'بیشترین'], ['min', 'کمترین']], get: x => x.dir || 'max' }] });
 };
 VIEWS.upgrades = m => {
   const R = W.rules; const rows = asRows(R.upgrades, 'key');
@@ -284,10 +289,24 @@ VIEWS.upgrades = m => {
   table(m, { rows: () => rows, canAdd: false, canDel: false, onChange: () => { for (const r of rows) { const { key, ...v } = r; R.upgrades[key] = v; } },
     cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 80 }, { k: 'name', l: 'نام', w: 150 }, { k: 'before', l: 'پیش از', w: 110 }, { k: 'after', l: 'پس از', w: 140 }, ...resCols('cost', 'هزینه')] });
 };
+const START_KEYS = [['coin', 'سکه'], ['scroll', 'طومار'], ['ess', 'جوهره'], ['torch', 'مشعل'], ['pick', 'کلنگ']];
+const hpOpts = () => [['', '— بدون قدرت —']].concat(Object.entries(W.rules.housePowers || {}).map(([k, v]) => [k, v.name + ' (' + ((W.rules.houses.find(h => h.id === v.house) || {}).name || '؟') + ')']));
+const startTxt = st => Object.entries(st || {}).filter(([, v]) => v).map(([k, v]) => fa(v) + ' ' + (START_KEYS.find(x => x[0] === k) || [k, k])[1]).join(' + ') || '—';
 VIEWS.houses = m => {
-  m.innerHTML = `<h2>خاندان‌ها</h2><p class="help">نام و رنگ هر خاندان. بازیکن در صفحهٔ اول گوشی یکی را انتخاب می‌کند و رنگ فیگورش همین است. حداکثر ۵ بازیکن.</p>`;
-  table(m, { rows: () => W.rules.houses, key: 'id', add: () => ({ id: 'h' + Date.now().toString(36).slice(-3), name: 'تازه', color: '#888888' }),
-    cols: [{ k: 'id', l: 'شناسه', ty: 'code', w: 80 }, { k: 'name', l: 'نام', w: 140 }, { k: 'color', l: 'رنگ', ty: 'color' }] });
+  m.innerHTML = `<h2>خاندان‌ها و قدرت خاندان‌ها</h2><p class="help">نام و رنگ هر خاندان. بازیکن در صفحهٔ اول گوشی یکی را انتخاب می‌کند و رنگ فیگورش همین است. حداکثر ۵ بازیکن.<br>برای هر خاندان از ستون «قدرت فعال» یکی از قدرت‌ها را انتخاب کن، یا «بدون قدرت» بگذار. منابع شروع هر خاندان جدا تنظیم می‌شود و به منابع شروع همهٔ بازیکنان (بخش «قانون‌ها و عددها») اضافه می‌شود؛ پس هر ترکیب تازه‌ای از قدرت و منابع ممکن است. دکمهٔ «پیشنهاد» منابع پیشنهادی همان قدرت را می‌گذارد.</p>`;
+  const H = W.rules.houses, d1 = document.createElement('div'); m.appendChild(d1);
+  table(d1, { rows: () => H, key: 'id', add: () => ({ id: 'h' + Date.now().toString(36).slice(-3), name: 'تازه', color: '#888888', power: '', start: {} }),
+    cols: [{ k: 'id', l: 'شناسه', ty: 'code', w: 80 }, { k: 'name', l: 'نام', w: 120 }, { k: 'color', l: 'رنگ', ty: 'color' },
+      { k: 'power', l: 'قدرت فعال', ty: 'sel', opts: hpOpts, w: 220, get: x => x.power || '', redraw: true },
+      ...START_KEYS.map(([r, n]) => ({ k: 'st_' + r, l: n, h: 'منابع شروع خاندان', ty: 'num', get: x => (x.start || {})[r] || 0, set: (x, v) => { x.start = x.start || {}; if (v) x.start[r] = v; else delete x.start[r]; } })),
+      { k: 'sugg', l: 'منابع پیشنهادی قدرت', ty: 'html', w: 150, html: x => { const p = (W.rules.housePowers || {})[x.power]; return p ? `<span class="mut">${esc(startTxt(p.start))}</span> <button class="btn g" data-sugg="${esc(x.id)}" style="padding:2px 8px">پیشنهاد</button>` : '<span class="mut">—</span>'; } }] });
+  d1.addEventListener('click', e => { const id = e.target.dataset && e.target.dataset.sugg; if (!id) return; const h = H.find(x => x.id === id), p = W.rules.housePowers[h.power]; if (!p) return; h.start = Object.assign({}, p.start); dirty(); show(); });
+  m.insertAdjacentHTML('beforeend', '<h3 style="margin-top:20px">فهرست قدرت‌ها</h3><p class="help">نام، متن و منابع پیشنهادی هر قدرت. کار هر قدرت در برنامه نوشته شده است، برای همین قدرت تازه را نمی‌شود از اینجا اضافه کرد.</p>');
+  const HP = W.rules.housePowers = W.rules.housePowers || {}; const prow = asRows(HP, 'key');
+  const d2 = document.createElement('div'); m.appendChild(d2);
+  table(d2, { rows: () => prow, canAdd: false, canDel: false, onChange: () => { for (const r of prow) { const { key, ...v } = r; HP[key] = v; } },
+    cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 80 }, { k: 'house', l: 'پیشنهاد برای', ty: 'sel', opts: () => H.map(h => [h.id, h.name]) }, { k: 'name', l: 'نام', w: 150 }, { k: 'txt', l: 'متن قدرت', ty: 'area', w: 320 },
+      ...START_KEYS.map(([r, n]) => ({ k: 'ps_' + r, l: n, h: 'منابع پیشنهادی', ty: 'num', get: x => (x.start || {})[r] || 0, set: (x, v) => { x.start = x.start || {}; if (v) x.start[r] = v; else delete x.start[r]; } }))] });
 };
 // ---- rules form ----
 function field(o, k, label, ty) { return { o, k, label, ty: ty || 'num' }; }
@@ -298,7 +317,7 @@ VIEWS.rules = m => {
   const box = (title, fields, extra) => { const d = document.createElement('div'); d.className = 'box'; d.innerHTML = `<h3>${title}</h3><div class="f">${fields.map((f, i) => `<label>${f.label}</label><input type="${f.ty === 'num' ? 'number' : 'text'}" data-i="${i}" value="${esc(f.get ? f.get() : f.o[f.k])}" ${f.ty !== 'num' ? 'style="width:160px"' : ''}>`).join('')}</div>${extra || ''}`;
     d.addEventListener('change', e => { const f = fields[+e.target.dataset.i]; if (!f) return; try { const v = f.ty === 'num' ? +e.target.value : e.target.value; if (f.set) f.set(v); else f.o[f.k] = v; e.target.style.outline = ''; dirty(); } catch (er) { e.target.style.outline = '2px solid var(--bad)'; status(er.message, true); } });
     host.appendChild(d); return d; };
-  box('دست و ذخیره', [field(R, 'handSize', 'کارت در شروع نوبت'), field(R, 'acadRow', 'کارت‌های ردیف آکادمی'), field(R, 'hallSize', 'جادوگران تالار'), field(R, 'storeBase', 'جای ذخیرهٔ هر منبع'), field(R, 'storeUp', 'جای ذخیره پس از ارتقا'), field(R, 'tokenMax', 'حداکثر مشعل + کلنگ')]);
+  box('دست و ذخیره', [field(R, 'handSize', 'کارت در شروع نوبت'), field(R, 'acadRow', 'کارت‌های ردیف آکادمی'), field(R, 'hallSize', 'جادوگران تالار'), field(R, 'storeBase', 'جای ذخیرهٔ هر منبع'), field(R, 'storeUp', 'جای ذخیره پس از ارتقا'), field(R, 'tokenMax', 'حداکثر مشعل + کلنگ'), field(R, 'huntTokens', 'تعداد کل توکن‌های شکار اهریمن')]);
   box('شروع بازی', [field(R, 'startWand', 'سطح چوب‌دستی'), field(R, 'startTorch', 'مشعل'), field(R, 'startPick', 'کلنگ'), ...['coin', 'scroll', 'ess'].map(r => ({ label: ['سکه', 'طومار', 'جوهره'][['coin', 'scroll', 'ess'].indexOf(r)] + ' در ذخیره', ty: 'num', get: () => R.startStore[r] || 0, set: v => { R.startStore[r] = v; } }))]);
   const costF = (o, k, n) => ['coin', 'scroll', 'ess'].map((r, j) => ({ label: n + ' (' + ['سکه', 'طومار', 'جوهره'][j] + ')', ty: 'num', get: () => (o[k] || {})[r] || 0, set: v => { o[k] = o[k] || {}; if (v) o[k][r] = v; else delete o[k][r]; } }));
   box('تاس و آکادمی', [...costF(R, 'rerollCost', 'هزینهٔ بازانداختن'), field(R, 'rerollMax', 'بازانداختن پولی در نوبت'), ...costF(R, 'swapCost', 'هزینهٔ تعویض کارت آکادمی'), field(R, 'duelDice', 'تاس‌های دوئل کریستال')]);
@@ -494,6 +513,8 @@ function check() {
   for (const t of R.treasures) if (!R.items[t] && !R.treasureNames[t]) E.push('گنجینهٔ ناشناخته: ' + t);
   if (R.treasures.includes('m6') && !C.m6) E.push('گنجینهٔ «کارت جادوی قدرت ۶» کارت m6 را لازم دارد');
   for (const n in R.byPlayers) { const B = R.byPlayers[n]; for (const b of B.battle) if (b > B.nights) E.push(fa(n) + ' بازیکن: شب نبرد ' + fa(b) + ' بعد از پایان بازی است'); for (const k in B.chal) if (+k > B.nights) E.push(fa(n) + ' بازیکن: شب چالش ' + fa(k) + ' بعد از پایان بازی است'); }
+  for (const n in R.byPlayers) { const B = R.byPlayers[n]; for (const kind of ['early', 'late']) { const need = Object.values(B.chal).filter(x => x === kind).length, have = Object.values(R.challenges).filter(c => c.kind === kind && c.active !== false).length; if (have < need) E.push(fa(n) + ' بازیکن: ' + fa(need) + ' توکن چالش «' + (kind === 'early' ? 'زود' : 'دیر') + '» لازم است ولی فقط ' + fa(have) + ' توکن فعال است'); } for (const k in B.chal) { const v = B.chal[k]; if (v !== 'early' && v !== 'late' && !R.challenges[v]) E.push('توکن چالش ناشناخته: ' + v); } }
+  for (const h of R.houses) if (h.power && !(R.housePowers || {})[h.power]) E.push('قدرت ناشناخته برای خاندان ' + h.name);
   if (R.houses.length < 5) E.push('برای ۵ بازیکن دست‌کم ۵ خاندان لازم است');
   if (new Set(R.houses.map(h => h.id)).size !== R.houses.length) E.push('شناسهٔ خاندان‌ها تکراری است');
   for (const p of artRefs()) if (!FILES[p]) E.push('فایل گرافیک «' + p + '» در این مرورگر نیست (دوباره بگذارش یا از گیت‌هاب بار کن)');
@@ -612,7 +633,14 @@ VIEWS.build = m => {
   $('b-reset').onclick = async () => { if (!confirm('همهٔ تغییرهای این مرورگر پاک شود و داده‌های اصلی برگردد؟ (فایل‌های گرافیک هم پاک می‌شوند)')) return; W = clone(DEFAULT); for (const p of Object.keys(FILES)) await delFile(p); await saveNow(); show(); };
 };
 
-function norm() { W.art = W.art || {}; W.texts = W.texts || {}; W.colors = W.colors || {}; W.meta = W.meta || { version: '1.0.0' }; if (!W.tileNotes) W.tileNotes = []; }
+function norm() {
+  // data saved before 2026-11-05: bring in the full challenge list, house powers and hunt-token supply
+  const DR = DEFAULT.rules, R = W.rules;
+  for (const k in DR.challenges) { if (!R.challenges[k]) R.challenges[k] = clone(DR.challenges[k]); else { const c = R.challenges[k]; for (const f of ['metric', 'dir', 'active']) if (c[f] === undefined) c[f] = DR.challenges[k][f]; } }
+  if (!R.housePowers) R.housePowers = clone(DR.housePowers);
+  if (R.huntTokens == null) R.huntTokens = DR.huntTokens;
+  for (const h of R.houses) { if (h.power === undefined) h.power = ''; if (!h.start) h.start = {}; }
+  W.art = W.art || {}; W.texts = W.texts || {}; W.colors = W.colors || {}; W.meta = W.meta || { version: '1.0.0' }; if (!W.tileNotes) W.tileNotes = []; }
 (async () => {
   await idbOpen();
   const s = await idbGet('kv', 'game'); if (s) { try { W = JSON.parse(s); } catch (e) {} }

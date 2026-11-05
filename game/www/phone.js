@@ -36,6 +36,15 @@ function render() {
 
 // ---------- lobby ----------
 const HOUSES = DATA.rules.houses;
+const HPW = DATA.rules.housePowers || {};
+// house power (chosen per house in the editor) and the client-side copy of its discounts
+const hpBox = k => HPW[k] ? `<div class="pbox" style="padding:8px 12px"><h5>قدرت خاندان: ${esc(HPW[k].name)}</h5><div style="font-size:13px;line-height:1.7">${esc(HPW[k].txt)}</div></div>` : '';
+function hpCost(c, p, T) {
+  const cost = Object.assign({}, c.cost);
+  if (c.ty === 'spell' && p.hp === 'hp_shadow' && !T.flags.hpShadow && (cost.pow || 0) > 1) { cost.pow--; return cost; }
+  if (p.hp === 'hp_lib' && !T.flags.hpLib && (cost.coin || 0) > 0) { cost.coin--; if (!cost.coin) delete cost.coin; return cost; }
+  return c.cost;
+}
 let pickHouse = null, typedName = null;
 function lobby() {
   const L = S.lobby, mine = L.players[S.you];
@@ -46,12 +55,12 @@ function lobby() {
   const c = HOUSES.find(h => h.id === hs).color;
   let o = `<div class="ph"><div class="hs" style="background:${c}">${esc((name || '؟')[0])}</div><b>${mine ? esc(mine.name) : 'بازیکن تازه'}</b>${S.host ? '<span class="tag" style="margin-inline-start:auto">میزبان</span>' : ''}</div>
 <div><div class="lbl">نام تو</div><input id="nm" class="inp" maxlength="14" value="${esc(name)}" placeholder="نامت را بنویس"></div>
-<div><div class="lbl">رنگ خاندان</div><div class="cols" style="padding:6px 0 14px">${HOUSES.map(h => `<i data-house="${h.id}" style="background:${h.color}" class="${h.id === hs ? 'sel' : used.includes(h.id) ? 'tk' : ''}"></i>`).join('')}</div></div>
+<div><div class="lbl">رنگ خاندان</div><div class="cols" style="padding:6px 0 14px">${HOUSES.map(h => `<i data-house="${h.id}" style="background:${h.color}" class="${h.id === hs ? 'sel' : used.includes(h.id) ? 'tk' : ''}"></i>`).join('')}</div>${hpBox(HOUSES.find(h => h.id === hs).power)}</div>
 <div class="btn ${mine ? 'ghost' : ''}" data-do="join">${mine ? 'ذخیرهٔ نام و رنگ' : 'ورود به بازی'}</div>`;
   if (mine) {
     o += `<div class="pmsg gold">${fa(L.players.length)} بازیکن وصل شده‌اند${L.players.length < 2 ? ' – دست‌کم ۲ نفر لازم است' : ''}</div>`;
     if (S.host) {
-      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div><div class="tg" style="border:0;opacity:.55"><span>قدرت خاندان‌ها<small> هنوز تعیین نشده</small></span><span class="sw2 offs"></span></div></div><div style="flex:1"></div>
+      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div></div><div style="flex:1"></div>
 ${L.hasSave ? '<div class="btn ghost" data-do="resume">ادامهٔ بازی ذخیره‌شده</div>' : ''}<div class="btn ${L.players.length < 2 ? 'off' : ''}" data-do="start">شروع بازی تازه</div>`;
     } else o += `<div style="flex:1"></div><div class="pmsg">منتظر «شروع بازی» از گوشی میزبان…</div><div class="btn ghost" data-do="leave">خروج از لابی</div>`;
   }
@@ -128,7 +137,8 @@ function tabP() {
       const c = card(it.id), seal = it.src === 'row' && G.acad.seal[it.i];
       o += `<div class="lbl" style="text-align:center">${it.src === 'fixed' ? 'ردیف ثابت – ' + fa(G.acad.fixed[it.id]) + ' کارت مانده' : it.src === 'discard' ? 'سوخته‌های آکادمی' : 'آکادمی – کارت ' + fa(it.i + 1) + ' از ' + fa(G.acad.row.length)}${seal ? ' – مهر ' + esc(G.players[seal.pid].name) : ''}</div><div class="zoom" data-car="acad">${acard(it.id)}${arrs}</div>${dotsH(L.length, i)}`;
       if (mt && c.ty !== 'crystal') {
-        o += `<div class="btn ${canPayC(c.cost) ? '' : 'off'}" data-do="buy">خرید ${costInline(c.cost)}</div>`;
+        const bc = hpCost(c, p, T);
+        o += `<div class="btn ${canPayC(bc) ? '' : 'off'}" data-do="buy">خرید ${costInline(bc)}${bc !== c.cost ? ' (تخفیف خاندان)' : ''}</div>`;
         if (it.src === 'row' && !T.swap) o += `<div class="btn ghost" data-do="swap">تعویض این کارت – ۱ ${sv('coin')}</div>`;
       }
     }
@@ -137,11 +147,12 @@ function tabP() {
     const i = clamp('hall', L.length), it = L[i];
     o += mt ? poolH() : top;
     if (it) {
-      const cost = Math.max(1, wiz(it.w.id).d - (it.w.tok || 0) - (Game_hasItem(p, 'dagger') ? 1 : 0));
+      const cost = Math.max(1, wiz(it.w.id).d - (it.w.tok || 0) - (Game_hasItem(p, 'dagger') ? 1 : 0) - (p.hp === 'hp_lord' ? 1 : 0));
       o += `<div class="lbl" style="text-align:center">${it.src === 'res' ? 'کنار گذاشته برای تو' : 'تالار – جادوگر ' + fa(it.i + 1) + ' از ' + fa(G.hall.row.length)} – هزینهٔ استخدام = دفاع فعلی</div><div class="zoom" data-car="hall">${wcard(it.w.id, it.w.tok, { dagger: Game_hasItem(p, 'dagger') })}${arrs}</div>${dotsH(L.length, i)}`;
       if (mt) o += `<div class="btn ${T.pool.power >= cost ? '' : 'off'}" data-do="hire" data-src="${it.src}" data-i="${it.i}">به خدمت گرفتن – ${sv('pow')} ${fa(cost)}</div>`;
     }
     if (mt) o += `<div class="pbox" style="padding:10px 12px"><h5>گوبلین – هر نوبت ۱ بار${T.flags.gob2 ? ' – ۲ برابر' : ''}</h5><div class="brow"><div class="btn ghost ${T.gob ? 'off' : ''}" data-gob="coin" style="padding:9px">${sv('pow')}۱ ← ${sv('coin')}${T.flags.gob2 ? '۲' : '۱'}</div><div class="btn ghost ${T.gob ? 'off' : ''}" data-gob="scroll" style="padding:9px">${sv('pow')}۱ ← ${sv('scr')}${T.flags.gob2 ? '۲' : '۱'}</div></div></div>`;
+    if (mt && p.hp === 'hp_alch') o += `<div class="btn ghost ${T.flags.hpAlch || !canPayC({ coin: 2 }) ? 'off' : ''}" data-do="hpalch">کیمیاگر: ${sv('coin')}۲ ← ${sv('scr')}۱ (هر نوبت ۱ بار)</div>`;
   } else if (tab === 'board') o += boardP();
   return o + navH();
 }
@@ -159,7 +170,7 @@ function boardP() {
 <div class="pbox"><h5>مشعل و کلنگ – ۳ جا</h5><div class="tslots">${Array.from({ length: 3 }, (_, k) => k < p.torch ? `<i>${sv('torch')}</i>` : k < p.torch + p.pick ? `<i>${sv('pick')}</i>` : '<i class="e"></i>').join('')}</div></div>
 <div class="pbox"><h5>چوب‌دستی</h5>سطح ${fa(p.wand)} – تاس ${DIEN[p.wand]}<div class="dfaces">${DIEF[p.wand].map(v => `<b>${fa(v)}</b>`).join('')}</div></div>
 <div class="pbox"><h5>وسایل جادویی</h5><div class="octs">${[0, 1].map(k => k === 1 && !p.ups.slot2 ? `<div class="oct lk">${sv('lock')}</div>` : `<div class="oct">${p.items[k] ? `<span>${ITEMN[p.items[k]]}</span>` : ''}</div>`).join('')}</div>${p.items.length ? `<div class="lbl" style="margin-top:6px">${p.items.map(k => `<div>${act2.includes(k) ? '✓' : '·'} <b>${ITEMN[k]}</b>: ${ITEMT[k]}</div>`).join('')}</div>` : ''}${mt && p.items.length > 1 && !G.turn.played.length ? '<div class="btn ghost" data-do="items" style="margin-top:8px">جابه‌جا کردن وسایل</div>' : ''}</div>
-<div class="pbox grp3"><div><h5>کارت‌های اقدام</h5><span>دک ${fa(p.deckN)}</span><span>سوخته ${fa(p.discardN)}</span><span>حذف‌شده ${fa(p.removedN)}</span></div><div><h5>جادوگران</h5><span>${fa(p.wiz.length)} کارت</span></div><div><h5>زخم و شکار</h5><span>زخم ${fa(p.wounds)}</span><span>شکار ${fa(p.hunt)}</span><span>صندوقچه ${fa(p.chests)}</span></div></div>`;
+<div class="pbox grp3"><div><h5>کارت‌های اقدام</h5><span>دک ${fa(p.deckN)}</span><span>سوخته ${fa(p.discardN)}</span><span>حذف‌شده ${fa(p.removedN)}</span></div><div><h5>جادوگران</h5><span>${fa(p.wiz.length)} کارت</span></div><div><h5>زخم و شکار</h5><span>زخم ${fa(p.wounds)}</span><span>شکار ${fa(p.hunt)}</span><span>صندوقچه ${fa(p.chests)}</span></div></div>${hpBox(p.hp)}`;
   } else if (sub === 1) {
     const T = G.turn, have = r => (mt ? T.pool[r] || 0 : 0) + p.store[r];
     o += `<div class="pmsg gold" style="display:flex;gap:10px;justify-content:center;align-items:center">موجود: ${sv('coin')}${fa(have('coin'))} ${sv('scr')}${fa(have('scroll'))} ${sv('ess')}${fa(have('ess'))}</div><div class="upl">${Object.entries(UPN).map(([k, [n, b, a, c]]) => {
@@ -179,8 +190,9 @@ function diceP() {
   if (!T.die) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div><div class="face">؟</div></div><div class="btn" data-do="roll">انداختن تاس</div>`;
   else {
     o += `<div class="face">${T.die.vals.map(fa).join('+')}</div><div class="lbl">${fa(T.die.total)} قدرت به استخر اضافه شد</div></div>`;
-    const free = Game_hasItem(p, 'fate') && !T.freeReroll;
+    const free = Game_hasItem(p, 'fate') && !T.freeReroll, hpFree = p.hp === 'hp_luck' && !T.flags.hpLuck;
     if (free) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (طومار تقدیر)</div>`;
+    else if (hpFree) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (قدرت خاندان)</div>`;
     else if (T.reroll < 1) o += `<div class="btn ${canPayC({ scroll: 1 }) ? '' : 'off'}" data-do="reroll">بازانداختن – ۱ ${sv('scr')}</div>`;
   }
   return o + `<div class="btn ghost" data-do="back">${T.die ? 'قبول عدد ' + fa(T.die.total) : 'برگشت'}</div>` + navH();
@@ -360,6 +372,7 @@ function doIt(k, e) {
     case 'dun': sendUI({ dun: !(S.ui && S.ui.dun) }); view = null; return;
     case 'roll': act({ t: 'roll' }); return;
     case 'reroll': act({ t: 'reroll' }); return;
+    case 'hpalch': act({ t: 'hpalch' }); return;
     case 'buy': { const it = acadItems()[ix.acad]; if (it) act({ t: 'buy', src: it.src, i: it.i }); return; }
     case 'swap': { const it = acadItems()[ix.acad]; if (it) act({ t: 'swap', i: it.i }); return; }
     case 'hire': act({ t: 'hire', src: e.dataset.src, i: +e.dataset.i }); return;

@@ -71,7 +71,7 @@ function chalLine(G) {
 }
 function topH(G, extra) {
   const T = G.turn;
-  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}</span></div></div>`;
+  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}${G.huntLeft != null && G.huntLeft < 999 ? ' – توکن شکار مانده ' + fa(G.huntLeft) : ''}</span></div></div>`;
 }
 function pbarH(G) {
   const T = G.turn;
@@ -228,7 +228,7 @@ function overlays() {
   if (G.chalResult && G.chalResult.n > seen.chal) { seen.chal = G.chalResult.n; show('chal', 9000); }
   if (live('chal') && G.chalResult) {
     const C = G.chalResult, [name, pts] = CHN[C.k], mx = Math.max(1, ...C.vals.map(v => v.v));
-    o += `<div class="ovl"><div class="zone ctr" style="gap:26px;padding:34px 50px;width:1300px"><h2>توکن چالش شب ${fa(C.night)}</h2><div style="font-size:34px;font-weight:800">${name} – ${fa(pts)} ${sv('fame')}</div><div class="bars">${C.vals.slice().sort((a, b) => b.v - a.v).map(v => `<div class="bar"><span class="nm">${NM(v.id)}</span><span class="tr"><b style="width:${v.v / mx * 100}%;background:${H(v.id)}"></b></span><span class="v">${fa(v.v)}</span></div>`).join('')}</div><div class="banner" style="background:rgba(243,207,114,.14);border-color:#f3cf72;color:#ffe7a6">${C.winners.length ? C.winners.map(NM).join(' و ') + ' ← ' + fa(C.pts) + ' ' + sv('fame') + (C.winners.length > 1 ? ' (تقسیم و گرد به پایین)' : '') : 'کسی امتیاز نگرفت'}</div></div></div>`;
+    o += `<div class="ovl"><div class="zone ctr" style="gap:26px;padding:34px 50px;width:1300px"><h2>توکن چالش شب ${fa(C.night)}</h2><div style="font-size:34px;font-weight:800">${name} – ${fa(pts)} ${sv('fame')}</div><div class="bars">${C.vals.slice().sort((a, b) => (RU.challenges[C.k] && RU.challenges[C.k].dir === 'min' ? a.v - b.v : b.v - a.v)).map(v => `<div class="bar"><span class="nm">${NM(v.id)}</span><span class="tr"><b style="width:${v.v / mx * 100}%;background:${H(v.id)}"></b></span><span class="v">${fa(v.v)}</span></div>`).join('')}</div><div class="banner" style="background:rgba(243,207,114,.14);border-color:#f3cf72;color:#ffe7a6">${C.winners.length ? C.winners.map(NM).join(' و ') + ' ← ' + fa(C.pts) + ' ' + sv('fame') + (C.winners.length > 1 ? ' (تقسیم و گرد به پایین)' : '') : 'کسی امتیاز نگرفت'}</div></div></div>`;
   }
   if (G.lastBreach && G.lastBreach.n > seen.breach) { seen.breach = G.lastBreach.n; timers.breachAt = Date.now(); }
   return o;

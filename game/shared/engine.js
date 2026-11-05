@@ -17,6 +17,10 @@ const TREASURES = R.treasures.slice();
 const TREASURE_NAME = Object.assign({}, R.treasureNames);
 for (const k in ITEMS) TREASURE_NAME[k] = ITEMS[k].name;
 const CHALLENGES = R.challenges;
+const HP = R.housePowers || {};
+// house power of a player (Farshad 2026-11-05: chosen per house in the editor; '' = none)
+const housePower = p => { const h = HOUSES.find(x => x.id === p.house); return h && h.power && HP[h.power] ? h.power : ''; };
+const hasHP = (p, k) => housePower(p) === k;
 const byP = n => R.byPlayers[n] || R.byPlayers[Object.keys(R.byPlayers).pop()];
 const DEMON_LV = { Y: 1, O: 2, R: 3 };
 const LV_NAME = { 1: 'زرد', 2: 'نارنجی', 3: 'قرمز' };
@@ -36,6 +40,7 @@ function newGame(opts) {
   const BP = byP(nP);
   G.cfg.nights = BP.nights;
   opts.players.forEach((p, i) => G.players.push(newPlayer(G, p, i)));
+  G.players.forEach(p => applyHouse(G, p));
   G.order = shuffle(G, G.players.map(p => p.id));   // random player order (Farshad 2026-11-05)
   // academy
   const deck = [];
@@ -51,11 +56,12 @@ function newGame(opts) {
   G.treasures = shuffle(G, TREASURES.slice());
   G.bfDeck = G.cfg.bf ? shuffle(G, D.battlefield.map(b => b.id)) : [];
   // challenge tokens
-  const early = shuffle(G, Object.keys(CHALLENGES).filter(k => CHALLENGES[k].kind === 'early'));
-  const late = shuffle(G, Object.keys(CHALLENGES).filter(k => CHALLENGES[k].kind === 'late'));
+  const early = shuffle(G, Object.keys(CHALLENGES).filter(k => CHALLENGES[k].kind === 'early' && CHALLENGES[k].active !== false));
+  const late = shuffle(G, Object.keys(CHALLENGES).filter(k => CHALLENGES[k].kind === 'late' && CHALLENGES[k].active !== false));
   G.chal = {}; const pick = { early: early.slice(), late: late.slice() };
   for (const n in BP.chal) { const k = BP.chal[n]; G.chal[n] = pick[k] ? pick[k].shift() : k; }
   G.battleNights = BP.battle.slice();
+  G.huntLeft = R.huntTokens != null ? R.huntTokens : 999;   // demon-hunt token supply (Farshad 2026-11-05: 30)
   Dun.init(G);
   fillAcademy(G, true);
   G.phase = 'start';   // players pick a starting portal around the gate, in turn order
@@ -71,7 +77,14 @@ function newPlayer(G, p, i) {
   return { id: i, name: p.name || ('بازیکن ' + fa(i + 1)), house: h.id, color: h.color,
     deck: shuffle(G, deck), hand: [], discard: [], removed: [], played: [], keep: [],
     wiz: R.startWizards.slice(), store: Object.assign({ coin: 0, scroll: 0, ess: 0 }, R.startStore), ups: {}, wand: R.startWand, torch: R.startTorch, pick: R.startPick,
-    items: [], fame: 0, hunt: 0, chests: 0, curse: 0, pos: null, pendingFight: null, shield: false };
+    items: [], fame: 0, hunt: 0, chests: 0, curse: 0, red: 0, pos: null, pendingFight: null, shield: false, hp: '' };
+}
+// house start resources (on top of the common start) and power
+function applyHouse(G, p) {
+  const h = HOUSES.find(x => x.id === p.house) || {}, st = h.start || {};
+  for (const r of ['coin', 'scroll', 'ess']) if (st[r]) p.store[r] = Math.min(cap(p, r), p.store[r] + st[r]);
+  for (const k of ['torch', 'pick']) for (let i = 0; i < (st[k] || 0); i++) if (p.torch + p.pick < R.tokenMax) p[k]++;
+  p.hp = housePower(p);
 }
 const P = (G, id) => G.players[id];
 const curP = G => G.players[G.order[G.cur]];
@@ -193,6 +206,7 @@ function playCard(G, p, u, mode) {
 function runStrip(G, p, c) {
   const s = c.strip; if (!s) return;
   const T = G.turn;
+  if (hasHP(p, 'hp_path') && !T.flags.hpPath) { T.flags.hpPath = true; T.pool.step += 1; T.steps = true; log(G, p.name + ' (راه‌یاب) ۱ گام رایگان گرفت.'); }
   if (s.step) { T.pool.step += s.step; T.steps = true; }
   if (s.run) { T.run = 3; T.runFrom = p.pos; }
   if (s.tele) T.pool.tele += 1;
@@ -222,13 +236,18 @@ function runMain(G, p, c) {
     case 'k_pick3': { const got = []; for (let k = 0; k < 3; k++) { if (drawCards(G, p, 1)) got.push(p.hand.pop()); } if (got.length) { T.pick3 = got; askPick3(G, p); } break; }
   }
 }
+// curse breaker: every removal also clears one wound card for free
+function curseBreak(G, p) {
+  if (!hasHP(p, 'hp_curse')) return;
+  for (const pile of ['hand', 'discard', 'deck']) { const i = p[pile].findIndex(x => x.c === 'W'); if (i >= 0) { p.removed.push(p[pile].splice(i, 1)[0]); log(G, p.name + ' (نفرین‌شکن) یک کارت زخم را هم پاک کرد.'); return; } }
+}
 function askRemove(G, p, k, title, text, opt) {
   const opts = p.hand.map(x => ({ v: x.u, card: x.c, grp: 'دست' })).concat(p.discard.map(x => ({ v: x.u, card: x.c, grp: 'سوخته' })));
   if (!opts.length) { if (k === 'rmDraw') drawCards(G, p, 1); return; }
   ask(G, p.id, k, { title, text, kind: 'cards', opts: opts.concat([{ v: 0, label: opt || 'حذف نمی‌کنم' }]) });
 }
 function removeCard(G, p, u) {
-  for (const pile of ['hand', 'discard']) { const i = p[pile].findIndex(x => x.u === u); if (i >= 0) { const x = p[pile].splice(i, 1)[0]; p.removed.push(x); log(G, p.name + ' کارت «' + card(x.c).name + '» را برای همیشه حذف کرد.'); return true; } }
+  for (const pile of ['hand', 'discard']) { const i = p[pile].findIndex(x => x.u === u); if (i >= 0) { const x = p[pile].splice(i, 1)[0]; p.removed.push(x); log(G, p.name + ' کارت «' + card(x.c).name + '» را برای همیشه حذف کرد.'); curseBreak(G, p); return true; } }
   return false;
 }
 H.any3 = (G, pid, v) => { if (![0, 1, 2, 3].includes(v)) return false; G.turn.pool.coin += v; G.turn.pool.scroll += 3 - v; return true; };
@@ -286,10 +305,11 @@ function rollPower(G, p) {
 }
 function reroll(G, p) {
   const T = G.turn; if (!T.die) return 'هنوز تاس نینداخته‌ای';
-  const free = hasItem(p, 'fate') && !T.freeReroll;
+  const hpFree = hasHP(p, 'hp_luck') && !T.flags.hpLuck;
+  const free = (hasItem(p, 'fate') && !T.freeReroll) || hpFree;
   if (!free) { if (T.reroll >= R.rerollMax) return 'بازانداختن بیشتر ممکن نیست'; if (!canPay(G, p, R.rerollCost)) return 'منابع بازانداختن کافی نیست'; }
   if (T.pool.power < T.die.total) return 'قدرت این تاس خرج شده و بازانداختن ممکن نیست';
-  if (free) T.freeReroll = true; else { pay(G, p, R.rerollCost); T.reroll++; }
+  if (free) { if (hasItem(p, 'fate') && !T.freeReroll) T.freeReroll = true; else T.flags.hpLuck = true; } else { pay(G, p, R.rerollCost); T.reroll++; }
   T.pool.power -= T.die.total;
   const faces = T.die.faces.map(() => rollFace(G, T.die.lv)); const vals = faces.map(f => dieValue(G, p, f));
   T.die = Object.assign({}, T.die, { faces, vals, total: vals.reduce((a, b) => a + b, 0), n: ++G.ev, rer: true });
@@ -314,8 +334,10 @@ function buy(G, p, src, i) {
   else if (src === 'discard') { if (!T.buyDiscard) return 'اجازهٔ خرید از سوخته‌های آکادمی نداری'; id = G.acad.discard[i]; if (!id) return 'کارت نیست'; }
   const c = D.cards[id];
   if (c.ty === 'crystal') return 'چالش کریستال خریدنی نیست';
-  if (!canPay(G, p, c.cost)) return 'منابع کافی نیست';
-  pay(G, p, c.cost);
+  const cost = buyCost(G, p, c);
+  if (!canPay(G, p, cost)) return 'منابع کافی نیست';
+  pay(G, p, cost);
+  if (cost._hp) T.flags[cost._hp] = true;
   if (src === 'fixed') G.acad.fixed[id]--;
   else if (src === 'row') { removeFromRow(G, i); }
   else G.acad.discard.splice(i, 1);
@@ -327,6 +349,13 @@ function buy(G, p, src, i) {
   }
   if (src === 'row') fillAcademy(G);
   return null;
+}
+// house discounts: shadow (spells 1 power cheaper, min 1) and librarian (1 coin cheaper), once per turn each
+function buyCost(G, p, c) {
+  const T = G.turn, cost = Object.assign({}, c.cost);
+  if (c.ty === 'spell' && hasHP(p, 'hp_shadow') && !T.flags.hpShadow && (cost.pow || 0) > 1) { cost.pow--; Object.defineProperty(cost, '_hp', { value: 'hpShadow' }); }
+  else if (hasHP(p, 'hp_lib') && !T.flags.hpLib && (cost.coin || 0) > 0) { cost.coin--; if (!cost.coin) delete cost.coin; Object.defineProperty(cost, '_hp', { value: 'hpLib' }); }
+  return cost;
 }
 function swapAcademy(G, p, i) {
   const T = G.turn; if (T.swap) return 'تعویض فقط یک بار در هر نوبت';
@@ -367,7 +396,7 @@ H.seal = (G, pid, v) => { if (!G.acad.row[v]) return false; G.acad.seal[v] = { p
 function addFame(G, p, n, why) { p.fame += n; log(G, p.name + ' ' + fa(n) + ' امتیاز شهرت گرفت' + (why ? ' (' + why + ')' : '') + '.'); }
 
 // ---------- hall ----------
-function hireCost(G, p, w) { let d = D.wizards[w.id].d - (w.tok || 0); if (hasItem(p, 'dagger')) d -= 1; return Math.max(1, d); }
+function hireCost(G, p, w) { let d = D.wizards[w.id].d - (w.tok || 0); if (hasItem(p, 'dagger')) d -= 1; if (hasHP(p, 'hp_lord')) d -= 1; return Math.max(1, d); }
 function hire(G, p, src, i) {
   const T = G.turn; const list = src === 'res' ? (G.hall.reserved[p.id] || []) : G.hall.row; const w = list[i];
   if (!w) return 'جادوگر نیست';
@@ -387,6 +416,12 @@ function goblin(G, p, what) {
   toast(G, p.name + ' به گوبلین حمله کرد و ' + fa(n) + ' ' + RES[what] + ' گرفت.', 'gob');
   return null;
 }
+function hpAlch(G, p) {
+  const T = G.turn; if (!hasHP(p, 'hp_alch')) return 'این قدرت خاندان تو نیست'; if (T.flags.hpAlch) return 'یک بار در هر نوبت';
+  if (!canPay(G, p, { coin: 2 })) return '۲ سکه لازم است';
+  pay(G, p, { coin: 2 }); T.pool.scroll += 1; T.flags.hpAlch = true;
+  toast(G, p.name + ' (کیمیاگر) ۲ سکه را به ۱ طومار تبدیل کرد.', 'buy'); return null;
+}
 function upgrade(G, p, k, free) {
   const u = UPGRADES[k]; if (!u) return 'ارتقا نیست';
   if (k === 'wand2' ? p.wand >= 2 : p.ups[k]) return 'این ارتقا انجام شده';
@@ -402,6 +437,11 @@ function endTurn(G, p) {
   if (busy(G)) return 'اول کار نیمه‌تمام را تمام کن';
   if (T.forced != null) return 'باید با اهریمن خانه‌ات بجنگی';
   const err = Dun.canEndHere(G, p); if (err) return err;
+  if (hasHP(p, 'hp_purge') && p.discard.length && !T.purged) {
+    T.purged = true;
+    ask(G, p.id, 'hpPurge', { title: 'پالایشگر', text: '۱ کارت از دستهٔ سوخته را برای همیشه حذف کن (اختیاری).', kind: 'cards', opts: p.discard.map(x => ({ v: x.u, card: x.c })).concat([{ v: 0, label: 'حذف نمی‌کنم' }]) });
+    return null;
+  }
   const keepN = (p.ups.keep ? 1 : 0) + (hasItem(p, 'crystal') ? 1 : 0);
   if (keepN && p.hand.filter(x => x.c !== 'W').length && !T.kept) {
     T.kept = true;
@@ -411,12 +451,13 @@ function endTurn(G, p) {
   finishTurn(G, p);
   return null;
 }
+H.hpPurge = (G, pid, v) => { const p = P(G, pid); if (v && !removeCard(G, p, v)) return false; return endTurn(G, p) == null; };
 H.keep = (G, pid, v, q) => { const p = P(G, pid); v = Array.isArray(v) ? v : []; if (v.length > q.data.n) return false; for (const u of v) { const i = p.hand.findIndex(x => x.u === u); if (i >= 0) p.keep.push(p.hand.splice(i, 1)[0]); } finishTurn(G, p); return true; };
 function finishTurn(G, p) {
   const T = G.turn, lost = [];
   for (const r of ['coin', 'scroll', 'ess']) { const tot = p.store[r] + T.pool[r]; p.store[r] = Math.min(cap(p, r), tot); if (tot > p.store[r]) lost.push(fa(tot - p.store[r]) + ' ' + RES[r]); }
   p.discard.push(...T.played.map(x => ({ u: x.u, c: x.c })), ...p.hand); p.hand = [];
-  if (Dun.isCursed(G, p.pos)) { p.curse = 1; log(G, p.name + ' نوبتش را در خانهٔ نفرین‌شده تمام کرد و توکن نفرین گرفت.'); }
+  if (Dun.isCursed(G, p.pos) && !hasHP(p, 'hp_curse')) { p.curse = 1; log(G, p.name + ' نوبتش را در خانهٔ نفرین‌شده تمام کرد و توکن نفرین گرفت.'); }
   // seals placed earlier expire at the end of the owner's next turn
   for (const k in G.acad.seal) { const s = G.acad.seal[k]; if (s.pid === p.id) { s.cnt++; if (s.cnt >= 2) delete G.acad.seal[k]; } }
   log(G, p.name + ' نوبتش را تمام کرد.' + (lost.length ? ' از بین رفت: ' + lost.join('، ') : ''));
@@ -462,26 +503,25 @@ function continueNight(G) {
     startTurn(G);
   }
 }
+const CHAL_METRIC = {
+  removed: p => p.removed.length, coin: p => p.store.coin, scroll: p => p.store.scroll, ess: p => p.store.ess,
+  ups: p => Object.keys(p.ups).length, torchpick: p => p.torch + p.pick, items: p => p.items.length, hunt: p => p.hunt,
+  wounds: p => allCards(p).filter(x => x.c === 'W').length, chests: p => p.chests,
+  wiz3: p => p.wiz.filter(id => D.wizards[id].L === 3).length,
+  magic4: p => allCards(p).filter(x => card(x.c).ty === 'magic' && card(x.c).power >= 4).length,
+  wiz: p => p.wiz.length, wand: p => p.wand, res: p => p.store.coin + p.store.scroll + p.store.ess, red: p => p.red || 0 };
+// legacy keys without a metric field
+const CHAL_OLD = { e_removed: 'removed', e_coin: 'coin', e_scroll: 'scroll', e_ess: 'ess', e_ups: 'ups', l_chest: 'chests', l_wiz3: 'wiz3', l_magic4: 'magic4', l_wiz: 'wiz', f_hunt: 'hunt' };
 function chalValue(G, p, k) {
-  switch (k) {
-    case 'e_removed': return p.removed.length;
-    case 'e_coin': return p.store.coin;
-    case 'e_scroll': return p.store.scroll;
-    case 'e_ess': return p.store.ess;
-    case 'e_ups': return Object.keys(p.ups).length;
-    case 'l_chest': return p.chests;
-    case 'l_wiz3': return p.wiz.filter(id => D.wizards[id].L === 3).length;
-    case 'l_magic4': return allCards(p).filter(x => card(x.c).ty === 'magic' && card(x.c).power >= 4).length;
-    case 'l_wiz': return p.wiz.length;
-    case 'f_hunt': return p.hunt;
-  }
-  return 0;
+  const m = (CHALLENGES[k] && CHALLENGES[k].metric) || CHAL_OLD[k];
+  return CHAL_METRIC[m] ? CHAL_METRIC[m](p) : 0;
 }
 const allCards = p => p.deck.concat(p.hand, p.discard, p.keep, p.played || []);
 function scoreChallenge(G, k) {
   const ch = CHALLENGES[k], vals = G.players.map(p => ({ id: p.id, v: chalValue(G, p, k) }));
-  const best = Math.max(...vals.map(x => x.v));
-  const W = best > 0 ? vals.filter(x => x.v === best) : [];
+  const low = ch.dir === 'min';   // 'min' tokens (fewest wounds): the lowest count wins
+  const best = low ? Math.min(...vals.map(x => x.v)) : Math.max(...vals.map(x => x.v));
+  const W = low || best > 0 ? vals.filter(x => x.v === best) : [];
   const pts = W.length ? Math.floor(ch.pts / W.length) : 0;
   for (const w of W) P(G, w.id).fame += pts;
   G.chalResult = { n: ++G.ev, k, night: G.night, vals, winners: W.map(w => w.id), pts };
@@ -521,6 +561,7 @@ function act(G, pid, a) {
       case 'swap': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return swapAcademy(G, p, a.i);
       case 'hire': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return hire(G, p, a.src || 'row', a.i);
       case 'goblin': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return goblin(G, p, a.what);
+      case 'hpalch': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return hpAlch(G, p);
       case 'upgrade': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return upgrade(G, p, a.k);
       case 'phoenix': return phoenix(G, p, a.u);
       case 'end': return endTurn(G, p);
@@ -547,9 +588,9 @@ function phoenix(G, p, u) {
   p.discard.push(p.hand.splice(i, 1)[0]); drawCards(G, p, 1); G.turn.phoenix = true; return null;
 }
 
-const Game = { newGame, act, answer, fa, HOUSES, UPGRADES, ITEMS, TREASURE_NAME, CHALLENGES, DIE, DIE_NAME, RES, LV_NAME, LV_KEY, REWARD_NAME, card, cap, activeItems, hasItem, hireCost, canPay, curP, isTurn, busy, continueNight };
+const Game = { CHAL_METRIC, HP, housePower, hasHP, newGame, act, answer, fa, HOUSES, UPGRADES, ITEMS, TREASURE_NAME, CHALLENGES, DIE, DIE_NAME, RES, LV_NAME, LV_KEY, REWARD_NAME, card, cap, activeItems, hasItem, hireCost, canPay, curP, isTurn, busy, continueNight };
 // internals shared with the dungeon and battle modules
-Game._ = { H, ask, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
+Game._ = { hasHP, H, ask, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
 let Dun, Battle;
 Game.use = (d, b) => { Dun = d; Battle = b; };
 root.Game = Game;

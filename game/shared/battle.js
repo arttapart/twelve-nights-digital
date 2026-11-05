@@ -63,7 +63,7 @@ function setup(G) {
     if (gone.length) _.log(G, p.name + ' ' + fa(gone.length) + ' جادوگر را حذف کرد.');
     B.deck[p.id] = _.shuffle(G, p.wiz.slice()); B.hand[p.id] = []; B.played[p.id] = [];
   }
-  B.eng = new Engine(G.players.map(p => ({ id: p.id, name: p.name, color: p.color, teacher: Game.hasItem(p, 'teacher') })), { bf: B.bf });
+  B.eng = new Engine(G.players.map(p => ({ id: p.id, name: p.name, color: p.color, teacher: Game.hasItem(p, 'teacher'), cmd: Game.hasHP(p, 'hp_field') })), { bf: B.bf });
   B.round = 1;
   // seer's eye: see the top 2 cards and arrange them
   for (const p of G.players) if (Game.hasItem(p, 'seer') && B.deck[p.id].length >= 2) {

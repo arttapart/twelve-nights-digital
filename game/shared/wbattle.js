@@ -17,7 +17,7 @@
     for (const p of players) {
       this.order.push(p.id);
       this.P[p.id] = {
-        id: p.id, name: p.name, color: p.color, teacher: !!p.teacher,
+        id: p.id, name: p.name, color: p.color, teacher: !!p.teacher, cmd: !!p.cmd, cmdUsed: false,
         tokens: 0, pts: 0, played: [], next: null, until: [], burned: 0,
         pick: undefined, noDraw: false, lastPower: null
       };
@@ -298,6 +298,8 @@
       }
     } else {
       const live = ids.filter(i => cur[i]);
+      // house power «field commander» (12 Nights): once per battle +1 to the own card after the reveal, used when it turns the round into a win
+      for (const i of live) { const P = this.P[i]; if (!P.cmd || P.cmdUsed) continue; const om = Math.max(-Infinity, ...live.filter(j => j !== i).map(j => score[j])); if (live.length > 1 && score[i] <= om && score[i] + 1 > om) { score[i]++; pow[i]++; parts[i].push([1, 'فرماندهٔ میدان', { k: 'artifact', name: 'فرماندهٔ میدان' }]); P.cmdUsed = true; } }
       if (live.length) {
         const m = Math.max(...live.map(i => score[i]));
         let W = live.filter(i => score[i] === m);

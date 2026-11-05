@@ -290,10 +290,12 @@ function winFight(G, p) {
   if (!paid.length) return 'هنوز هیچ کارتی را شکست نداده‌ای';
   const tot = {};
   for (const c of paid) for (const k in c.rew) tot[k] = (tot[k] || 0) + c.rew[k];
-  p.hunt += F.lv;
+  const got = Math.min(F.lv, G.huntLeft != null ? G.huntLeft : F.lv);   // limited supply of hunt tokens (30)
+  p.hunt += got; if (G.huntLeft != null) G.huntLeft -= got;
+  if (F.lv === 3) p.red = (p.red || 0) + 1;
   G.dun.demons = G.dun.demons.filter(d => d.id !== F.did);
   F.result = { win: true, rew: tot };
-  _.toast(G, p.name + ' اهریمن ' + _.LV_NAME[F.lv] + ' را شکست داد و ' + fa(F.lv) + ' توکن شکار گرفت.', 'win');
+  _.toast(G, p.name + ' اهریمن ' + _.LV_NAME[F.lv] + ' را شکست داد و ' + (got ? fa(got) + ' توکن شکار گرفت.' : 'توکن شکاری نماند.'), 'win');
   endFight(G);
   giveRewards(G, p, tot);
   nextFightHere(G, p);
@@ -379,7 +381,7 @@ _.H.demonHere = (G, pid, v, q) => {
   if (v === 'fight') {
     if (G.turn && G.turn.pid === pid && G.phase === 'turn') { if (!G.fight) startFight(G, p, d.id, false); else G.turn.forced = d.id; }
     else p.pendingFight = d.id;
-  } else { wound(G, p, 'انصراف از نبرد'); demonStep(G, d.id); }
+  } else { if (_.hasHP(p, 'hp_gate')) _.log(G, p.name + ' (نگهبان دروازه) بدون زخم انصراف داد.'); else wound(G, p, 'انصراف از نبرد'); demonStep(G, d.id); }
   return true;
 };
 function breach(G, d) {

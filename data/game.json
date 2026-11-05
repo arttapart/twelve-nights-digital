@@ -6110,27 +6110,37 @@
    {
     "id": "purple",
     "name": "بنفش",
-    "color": "#8e5bd6"
+    "color": "#8e5bd6",
+    "power": "",
+    "start": {}
    },
    {
     "id": "sky",
     "name": "آبی آسمانی",
-    "color": "#5cb8e8"
+    "color": "#5cb8e8",
+    "power": "",
+    "start": {}
    },
    {
     "id": "orange",
     "name": "نارنجی",
-    "color": "#f08a3c"
+    "color": "#f08a3c",
+    "power": "",
+    "start": {}
    },
    {
     "id": "green",
     "name": "سبز",
-    "color": "#5bbd5f"
+    "color": "#5bbd5f",
+    "power": "",
+    "start": {}
    },
    {
     "id": "yellow",
     "name": "زرد",
-    "color": "#e9c63b"
+    "color": "#e9c63b",
+    "power": "",
+    "start": {}
    }
   ],
   "byPlayers": {
@@ -6459,54 +6469,237 @@
   },
   "challenges": {
    "e_removed": {
-    "name": "بیشترین کارت حذف‌شده",
+    "name": "بیشترین کارت حذف‌شده از بازی",
     "pts": 2,
-    "kind": "early"
+    "kind": "early",
+    "metric": "removed",
+    "dir": "max",
+    "active": true
    },
    "e_coin": {
     "name": "بیشترین سکهٔ ذخیره‌شده",
     "pts": 2,
-    "kind": "early"
+    "kind": "early",
+    "metric": "coin",
+    "dir": "max",
+    "active": true
    },
    "e_scroll": {
     "name": "بیشترین طومار ذخیره‌شده",
     "pts": 2,
-    "kind": "early"
+    "kind": "early",
+    "metric": "scroll",
+    "dir": "max",
+    "active": true
    },
    "e_ess": {
     "name": "بیشترین جوهرهٔ تاریک ذخیره‌شده",
     "pts": 2,
-    "kind": "early"
+    "kind": "early",
+    "metric": "ess",
+    "dir": "max",
+    "active": true
    },
    "e_ups": {
     "name": "بیشترین ارتقای تختهٔ شخصی",
     "pts": 3,
-    "kind": "early"
+    "kind": "early",
+    "metric": "ups",
+    "dir": "max",
+    "active": true
+   },
+   "e_tokens": {
+    "name": "بیشترین توکن مشعل و کلنگ ذخیره‌شده",
+    "pts": 2,
+    "kind": "early",
+    "metric": "torchpick",
+    "dir": "max",
+    "active": false
+   },
+   "e_items": {
+    "name": "بیشترین وسیلهٔ جادویی",
+    "pts": 2,
+    "kind": "early",
+    "metric": "items",
+    "dir": "max",
+    "active": false
+   },
+   "e_hunt": {
+    "name": "بیشترین توکن شکار",
+    "pts": 2,
+    "kind": "early",
+    "metric": "hunt",
+    "dir": "max",
+    "active": false
+   },
+   "e_wounds": {
+    "name": "کمترین کارت زخم",
+    "pts": 2,
+    "kind": "early",
+    "metric": "wounds",
+    "dir": "min",
+    "active": false
    },
    "l_chest": {
     "name": "بیشترین صندوقچهٔ بازشده",
     "pts": 3,
-    "kind": "late"
+    "kind": "late",
+    "metric": "chests",
+    "dir": "max",
+    "active": true
    },
    "l_wiz3": {
     "name": "بیشترین جادوگر سطح ۳",
     "pts": 4,
-    "kind": "late"
+    "kind": "late",
+    "metric": "wiz3",
+    "dir": "max",
+    "active": true
    },
    "l_magic4": {
     "name": "بیشترین کارت جادوی قدرت ۴ یا بیشتر",
     "pts": 4,
-    "kind": "late"
+    "kind": "late",
+    "metric": "magic4",
+    "dir": "max",
+    "active": true
    },
    "l_wiz": {
     "name": "بیشترین تعداد جادوگر",
     "pts": 3,
-    "kind": "late"
+    "kind": "late",
+    "metric": "wiz",
+    "dir": "max",
+    "active": true
+   },
+   "l_wand": {
+    "name": "بالاترین سطح چوب‌دستی",
+    "pts": 3,
+    "kind": "late",
+    "metric": "wand",
+    "dir": "max",
+    "active": false
+   },
+   "l_items": {
+    "name": "بیشترین وسیلهٔ جادویی",
+    "pts": 3,
+    "kind": "late",
+    "metric": "items",
+    "dir": "max",
+    "active": false
+   },
+   "l_res": {
+    "name": "بیشترین مجموع منابع ذخیره‌شده (سکه + طومار + جوهره)",
+    "pts": 3,
+    "kind": "late",
+    "metric": "res",
+    "dir": "max",
+    "active": false
+   },
+   "l_red": {
+    "name": "بیشترین اهریمن قرمز شکست‌داده",
+    "pts": 4,
+    "kind": "late",
+    "metric": "red",
+    "dir": "max",
+    "active": false
+   },
+   "l_wounds": {
+    "name": "کمترین کارت زخم",
+    "pts": 3,
+    "kind": "late",
+    "metric": "wounds",
+    "dir": "min",
+    "active": false
    },
    "f_hunt": {
     "name": "بیشترین توکن شکار اهریمن",
     "pts": 4,
-    "kind": "fixed"
+    "kind": "fixed",
+    "metric": "hunt",
+    "dir": "max",
+    "active": true
+   }
+  },
+  "huntTokens": 30,
+  "housePowers": {
+   "hp_shadow": {
+    "house": "purple",
+    "name": "خاندان سایه‌گرد",
+    "txt": "یک بار در هر نوبت، طلسم را ۱ قدرت ارزان‌تر بخرید (حداقل ۱ قدرت).",
+    "start": {
+     "ess": 1
+    }
+   },
+   "hp_curse": {
+    "house": "purple",
+    "name": "نفرین‌شکن",
+    "txt": "خانهٔ نفرین‌شده روی شما اثر ندارد و هر بار که کارتی را حذف می‌کنید، یک کارت زخم را هم بدون هزینه پاک می‌کنید.",
+    "start": {
+     "coin": 1
+    }
+   },
+   "hp_path": {
+    "house": "sky",
+    "name": "خاندان راه‌یاب",
+    "txt": "یک بار در هر نوبت ۱ گام رایگان در سیاه‌چال (فقط وقتی کارتی برای سیاه‌چال بازی کرده‌اید).",
+    "start": {
+     "pick": 1
+    }
+   },
+   "hp_gate": {
+    "house": "sky",
+    "name": "نگهبان دروازه",
+    "txt": "وقتی اهریمن به خانهٔ شما می‌رسد، انصراف برایتان زخم ندارد.",
+    "start": {
+     "scroll": 1
+    }
+   },
+   "hp_lord": {
+    "house": "orange",
+    "name": "خاندان سردار",
+    "txt": "استخدام هر جادوگر برای شما ۱ دفاع کمتر است (کمتر از ۱ نمی‌شود)، جدا از توکن‌های «۱- دفاع».",
+    "start": {
+     "coin": 1
+    }
+   },
+   "hp_field": {
+    "house": "orange",
+    "name": "فرماندهٔ میدان",
+    "txt": "در هر نبرد جادوگران، یک بار پس از رو شدن کارت‌ها، قدرت کارت خود را ۱+ کنید.",
+    "start": {}
+   },
+   "hp_lib": {
+    "house": "green",
+    "name": "خاندان کتابدار",
+    "txt": "یک بار در هر نوبت، خرید از آکادمی برای شما ۱ سکه ارزان‌تر است.",
+    "start": {
+     "scroll": 1
+    }
+   },
+   "hp_purge": {
+    "house": "green",
+    "name": "پالایشگر",
+    "txt": "یک بار در هر شب، در پایان نوبتتان می‌توانید ۱ کارت از دستهٔ سوخته را حذف کنید.",
+    "start": {
+     "coin": 1
+    }
+   },
+   "hp_luck": {
+    "house": "yellow",
+    "name": "خاندان بخت‌یار",
+    "txt": "یک بار در هر نوبت، تاس چوب‌دستی را بدون خرج طومار دوباره بیندازید.",
+    "start": {
+     "coin": 1
+    }
+   },
+   "hp_alch": {
+    "house": "yellow",
+    "name": "کیمیاگر",
+    "txt": "یک بار در هر نوبت، ۲ سکه را به ۱ طومار تبدیل کنید.",
+    "start": {
+     "coin": 1
+    }
    }
   }
  },
