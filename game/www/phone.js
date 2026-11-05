@@ -81,7 +81,8 @@ function poolH(perm = true) { const T = S.G.turn, p = me(), q = T.pool; const it
   if (q.coin) it.push(`<span class="tmp">${sv('coin')} ${fa(q.coin)}</span>`); if (q.scroll) it.push(`<span class="tmp">${sv('scr')} ${fa(q.scroll)}</span>`); if (q.ess) it.push(`<span class="tmp">${sv('ess')} ${fa(q.ess)}</span>`);
   if (q.power) it.push(`<span class="tmp">${sv('pow')} ${fa(q.power)}</span>`); if (T.run > 0 || q.step) it.push(`<span class="tmp">${sv('step')} ${T.run > 0 ? 'دویدن' : fa(q.step)}</span>`);
   if (perm) { it.push(`<span>${sv('torch')} ${fa(p.torch)}</span>`); if (p.pick) it.push(`<span>${sv('pick')} ${fa(p.pick)}</span>`); }
-  return it.length ? `<div class="pool">${it.join('')}</div>` : ''; }
+  // the stored row is always shown, fixed, above the temporary row
+  return presH(p) + (it.length ? `<div class="pool">${it.join('')}</div>` : ''); }
 const NAV = [['hand', 'دست'], ['mywiz', 'جادوگران'], ['acad', 'آکادمی'], ['hall', 'تالار'], ['board', 'تخته']];
 const navH = () => `<div class="nav">${NAV.map(([k, t]) => `<div class="tb ${tab === k && !view ? 'on' : ''}" data-tab="${k}">${sv(k)}${t}</div>`).join('')}</div>`;
 const dotsH = (n, i) => n > 1 ? `<div class="dots">${Array.from({ length: Math.min(n, 14) }, (_, k) => `<i class="${k === Math.min(i, 13) ? 'on' : ''}"></i>`).join('')}</div>` : '<div class="dots"></div>';
@@ -116,7 +117,7 @@ function tabP() {
   let o = '';
   if (tab === 'hand') {
     const h = p.hand; const i = clamp('hand', h.length);
-    o += mt ? presH(p) + poolH(false) : top + presH(p);
+    o += mt ? poolH(false) : top + presH(p);
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
     if (h.length) {
       const c = card(h[i].c);
@@ -273,7 +274,7 @@ function fightP() {
 function promptP(q) {
   const pics = q.opts.filter(x => x.card || x.wiz || x.acad || x.tile != null), big = !pics.length && !q.many;
   // the player keeps seeing what they have while answering: stored row + this turn's temporary row
-  let o = (S.G.turn && S.G.turn.pid === S.G.me ? presH(me()) + poolH(false) : '') + `<div class="pmsg gold">${esc(q.title || '')}</div>${q.text && !big ? `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text)}</div>` : ''}`;
+  let o = (S.G.turn && S.G.turn.pid === S.G.me ? poolH(false) : '') + `<div class="pmsg gold">${esc(q.title || '')}</div>${q.text && !big ? `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text)}</div>` : ''}`;
   const plain = q.opts.filter(x => !(x.card || x.wiz || x.acad || x.tile != null));
   if (q.many) {
     o += `<div class="pgrid">${pics.map(x => `<div class="pg ${sel.includes(x.v) ? 'on' : ''}" data-sel="${encodeURIComponent(JSON.stringify(x.v))}">${optFace(x)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(sel.length)} از ${fa(q.many)} انتخاب شد</div><div class="btn" data-do="many" data-q="${q.id}">تأیید</div>`;
