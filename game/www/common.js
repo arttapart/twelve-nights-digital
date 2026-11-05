@@ -89,7 +89,7 @@ function mapSvg(G, o = {}) {
   // new-tile slots reachable from the current cell
   for (const e of o.exits || []) {
     const [R, C] = e.pos, x = C * TS, y = R * TS;
-    if (!s.includes(`data-slot="${R},${C}"`)) s += `<rect data-slot="${R},${C}" x="${x + 8}" y="${y + 8}" width="${TS - 16}" height="${TS - 16}" rx="14" fill="rgba(243,207,114,.06)" stroke="${e.no ? '#6f6a92' : '#f3cf72'}" stroke-width="3" stroke-dasharray="14 10"/><text x="${x + TS / 2}" y="${y + TS - 44}" font-size="34" font-weight="900" text-anchor="middle" fill="${e.no ? '#8f8ab5' : '#ffe7a6'}" font-family="Vazirmatn,sans-serif">تایل جدید</text>`;
+    if (!s.includes(`data-slot="${R},${C}"`)) s += `<rect data-slot="${R},${C}" x="${x + 8}" y="${y + 8}" width="${TS - 16}" height="${TS - 16}" rx="14" fill="rgba(243,207,114,.06)" stroke="${e.no ? '#6f6a92' : '#f3cf72'}" stroke-width="3" stroke-dasharray="14 10"/><path d="M${x + TS / 2 - 46} ${y + TS / 2}h92M${x + TS / 2} ${y + TS / 2 - 46}v92" stroke="${e.no ? '#8f8ab5' : '#ffe7a6'}" stroke-width="16" stroke-linecap="round"/>`;
     if (o.hit && !e.no) hit += `<rect class="hit" data-ex="${e.exit}" x="${x}" y="${y}" width="${TS}" height="${TS}" fill="transparent"/>`;
   }
   // loot tokens
@@ -110,7 +110,7 @@ function mapSvg(G, o = {}) {
   // view box
   let vb;
   if (o.focus) {
-    const e = .36 * TS, fx = o.focus[1] * TS - e, fy = o.focus[0] * TS - e, w = TS + 2 * e, cx0 = o.focus[1] * TS, cy0 = o.focus[0] * TS;
+    const e = (o.pad != null ? o.pad : .36) * TS, fx = o.focus[1] * TS - e, fy = o.focus[0] * TS - e, w = TS + 2 * e, cx0 = o.focus[1] * TS, cy0 = o.focus[0] * TS;
     vb = `${fx} ${fy} ${w} ${w}`;
     const X = fx - 4 * TS, Y = fy - 4 * TS, W = w + 8 * TS;
     d = `<path fill-rule="evenodd" d="M${X} ${Y}h${W}v${W}h${-W}z M${cx0} ${cy0}v${TS}h${TS}v${-TS}z" fill="#0b0c1d" opacity=".45" pointer-events="none"/>` + d + `<rect x="${cx0}" y="${cy0}" width="${TS}" height="${TS}" fill="none" stroke="#f3cf72" stroke-width="3" pointer-events="none"/>`;

@@ -19,6 +19,7 @@ const api = connect('phone', (m, u) => {
   render();
 });
 const act = a => api.send({ t: 'act', a });
+let dunAway = false;   // in dungeon mode the player opened a tab from the bottom menu
 const me = () => S.G.players[S.G.me];
 const myTurn = () => { const G = S.G; return G && G.phase === 'turn' && G.turn && G.turn.pid === G.me; };
 const P = x => `<div class="P" data-s="a">${x}</div>`;
@@ -105,7 +106,7 @@ function game() {
   else if (G.fight && G.fight.pid === G.me) body = fightP();
   else if (view === 'dice' && myTurn()) body = diceP();
   else if (view === 'end' && myTurn()) body = endP();
-  else if (myTurn() && S.ui && S.ui.dun) body = dunP();
+  else if (myTurn() && S.ui && S.ui.dun && (!dunAway || G.dun.place || G.dun.portal)) body = dunP();
   else body = tabP();
   return header() + body;
 }
@@ -256,17 +257,12 @@ function dunP() {
     return o + navH();
   }
   const f = focusTile(S);
-  o += `<div class="pmsg dun">مد سیاه‌چال – کارت‌ها با نوار سیاه‌چال بازی می‌شوند</div>${poolH()}`;
-  o += `<div class="pmap">${mapSvg(G, { focus: f, moves: G.moves, exits: G.exits, hit: true, me: p.id })}</div>`;
+  // only the dungeon resources: steps, torch, pickaxe (shown even at 0)
+  o += `<div class="pool dres"><span>${sv('step')} ${T.run > 0 ? 'دویدن' : fa(T.pool.step || 0)}</span><span>${sv('torch')} ${fa(p.torch || 0)}</span><span>${sv('pick')} ${fa(p.pick || 0)}</span></div>`;
+  // the map fills the screen; the view arrows sit on its four sides
+  o += `<div class="pmap big">${mapSvg(G, { focus: f, moves: G.moves, exits: G.exits, hit: true, me: p.id, pad: .2 })}${[['u', '▲', -1, 0], ['l', '◀', 0, 1], ['r', '▶', 0, -1], ['d', '▼', 1, 0]].map(([c, t, a, b]) => `<i class="mvo ${c}" data-off="${a},${b}">${t}</i>`).join('')}<b class="mvo me" data-off="0,0">کاشی من</b></div>`;
   if (T.run > 0) o += `<div class="btn ghost" data-do="d_runend">پایان دویدن (${fa(T.run)} راهرو مانده)</div>`;
   if (T.forced != null) o += `<div class="btn red" data-do="d_fight">شروع نبرد با اهریمن</div>`;
-  const h = p.hand, i = clamp('hand', h.length);
-  o += `<div class="dunrow"><div class="pad">${[['u', '▲', -1, 0], ['l', '◀', 0, 1], ['r', '▶', 0, -1], ['d', '▼', 1, 0]].map(([c, t, a, b]) => `<i class="${c}" data-off="${a},${b}">${t}</i>`).join('')}<b data-off="0,0">کاشی من</b></div>`;
-  if (h.length) {
-    const c = card(h[i].c), md = c.ty === 'magic' ? 'main' : 'strip';
-    o += `<div class="minicar" data-car="hand"><div class="zoom dunon sm">${acard(h[i].c)}</div><div class="mcb"><span class="arr2" data-sw="-1">›</span><b>${fa(i + 1)}/${fa(h.length)}</b><span class="arr2" data-sw="1">‹</span></div>${c.ty !== 'wound' && (c.strip || c.ty === 'magic') ? `<div class="btn grn sm" data-play="${md}" data-u="${h[i].u}">${md === 'strip' ? 'نوار سیاه‌چال' : 'بازی'}</div>` : ''}</div>`;
-  }
-  o += '</div>';
   return o + navH();
 }
 
@@ -351,7 +347,7 @@ function swipe(k, d) {
 }
 function bind() {
   const R = root;
-  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; tab = e.dataset.tab; view = null; render(); sendUI({ tab, i: ix[tab] || 0 }); });
+  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; if (S.ui && S.ui.dun) dunAway = true; tab = e.dataset.tab; view = null; render(); sendUI({ tab, i: ix[tab] || 0 }); });
   R.querySelectorAll('[data-sub]').forEach(e => e.onclick = () => { sub = +e.dataset.sub; render(); });
   R.querySelectorAll('[data-sw]').forEach(e => e.onclick = ev => { ev.stopPropagation(); const car = e.closest('[data-car]'); if (car) swipe(car.dataset.car, +e.dataset.sw); });
   R.querySelectorAll('[data-house]').forEach(e => e.onclick = () => { if (e.classList.contains('tk')) return; pickHouse = e.dataset.house; typedName = R.querySelector('#nm').value; render(); });
@@ -405,7 +401,7 @@ function doIt(k, e) {
     case 'back': view = null; render(); return;
     case 'endv': view = 'end'; render(); return;
     case 'end': view = null; act({ t: 'end' }); return;
-    case 'dun': sendUI({ dun: !(S.ui && S.ui.dun) }); view = null; return;
+    case 'dun': if (S.ui && S.ui.dun && dunAway) { dunAway = false; view = null; render(); return; } dunAway = false; sendUI({ dun: !(S.ui && S.ui.dun) }); view = null; return;
     case 'roll': act({ t: 'roll' }); return;
     case 'reroll': act({ t: 'reroll' }); return;
     case 'dieok': { const d = S.G.turn.die, last = d && d.acc + 1 >= Math.max(d.need, S.G.turn.flags.twice ? 2 : 1); act({ t: 'dieok' }); if (last) view = null; return; }
