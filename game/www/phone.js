@@ -75,8 +75,13 @@ function header() {
   const fabs = mt ? `<div class="phfab"><div class="fab dice ${T.dieUsed ? 'used' : ''}" data-do="dice" title="تاس">${sv('die')}</div><div class="fab ${S.ui && S.ui.dun ? 'dunon' : ''}" data-do="dun" title="مد سیاه‌چال">${sv('dun')}</div></div>` : '';
   return `<div class="ph"><div class="hs" style="background:${p.color}">${esc(p.name[0])}</div><b>${esc(p.name)}</b>${fabs}<div class="fs">${sv('fame')} ${fa(p.fame)}</div></div>`;
 }
-function presH(p) { return `<div class="pres">${['coin', 'scroll', 'ess'].map(r => `<div>${sv(RI[r])} ${fa(p.store[r])}<small>/${fa(p.ups[{ coin: 'capCoin', scroll: 'capScroll', ess: 'capEss' }[r]] ? 4 : 2)}</small></div>`).join('')}</div>`; }
-function poolH() { const T = S.G.turn, p = me(), q = T.pool; return `<div class="pool"><span>${sv('coin')} ${fa(q.coin)}</span><span>${sv('scr')} ${fa(q.scroll)}</span>${q.ess ? `<span>${sv('ess')} ${fa(q.ess)}</span>` : ''}<span>${sv('pow')} ${fa(q.power)}</span><span>${sv('step')} ${T.run > 0 ? 'دویدن' : fa(q.step)}</span><span>${sv('torch')} ${fa(p.torch)}</span>${p.pick ? `<span>${sv('pick')} ${fa(p.pick)}</span>` : ''}</div>`; }
+function presH(p, perm) { return `<div class="pres${perm ? ' pres5' : ''}">${['coin', 'scroll', 'ess'].map(r => `<div>${sv(RI[r])} ${fa(p.store[r])}<small>/${fa(p.ups[{ coin: 'capCoin', scroll: 'capScroll', ess: 'capEss' }[r]] ? 4 : 2)}</small></div>`).join('')}${perm ? `<div>${sv('torch')} ${fa(p.torch)}</div>${p.pick ? `<div>${sv('pick')} ${fa(p.pick)}</div>` : ''}` : ''}</div>`; }
+// resources gained from cards this turn (temporary): only the ones above 0, slowly blinking; perm = also torch/pickaxe
+function poolH(perm = true) { const T = S.G.turn, p = me(), q = T.pool; const it = [];
+  if (q.coin) it.push(`<span class="tmp">${sv('coin')} ${fa(q.coin)}</span>`); if (q.scroll) it.push(`<span class="tmp">${sv('scr')} ${fa(q.scroll)}</span>`); if (q.ess) it.push(`<span class="tmp">${sv('ess')} ${fa(q.ess)}</span>`);
+  if (q.power) it.push(`<span class="tmp">${sv('pow')} ${fa(q.power)}</span>`); if (T.run > 0 || q.step) it.push(`<span class="tmp">${sv('step')} ${T.run > 0 ? 'دویدن' : fa(q.step)}</span>`);
+  if (perm) { it.push(`<span>${sv('torch')} ${fa(p.torch)}</span>`); if (p.pick) it.push(`<span>${sv('pick')} ${fa(p.pick)}</span>`); }
+  return it.length ? `<div class="pool">${it.join('')}</div>` : ''; }
 const NAV = [['hand', 'دست'], ['mywiz', 'جادوگران'], ['acad', 'آکادمی'], ['hall', 'تالار'], ['board', 'تخته']];
 const navH = () => `<div class="nav">${NAV.map(([k, t]) => `<div class="tb ${tab === k && !view ? 'on' : ''}" data-tab="${k}">${sv(k)}${t}</div>`).join('')}</div>`;
 const dotsH = (n, i) => n > 1 ? `<div class="dots">${Array.from({ length: Math.min(n, 14) }, (_, k) => `<i class="${k === Math.min(i, 13) ? 'on' : ''}"></i>`).join('')}</div>` : '<div class="dots"></div>';
@@ -109,7 +114,7 @@ function tabP() {
   let o = '';
   if (tab === 'hand') {
     const h = p.hand; const i = clamp('hand', h.length);
-    o += top + presH(p);
+    o += mt ? presH(p, true) + poolH(false) : top + presH(p, true);
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
     if (h.length) {
       const c = card(h[i].c);
@@ -332,7 +337,7 @@ function bind() {
   R.querySelectorAll('[data-sw]').forEach(e => e.onclick = ev => { ev.stopPropagation(); const car = e.closest('[data-car]'); if (car) swipe(car.dataset.car, +e.dataset.sw); });
   R.querySelectorAll('[data-house]').forEach(e => e.onclick = () => { if (e.classList.contains('tk')) return; pickHouse = e.dataset.house; typedName = R.querySelector('#nm').value; render(); });
   const nm = R.querySelector('#nm'); if (nm) nm.oninput = () => { typedName = nm.value; };
-  R.querySelectorAll('[data-play]').forEach(e => e.onclick = ev => { ev.stopPropagation(); act({ t: 'play', u: +e.dataset.u, mode: e.dataset.play }); });
+  R.querySelectorAll('[data-play]').forEach(e => e.onclick = ev => { ev.stopPropagation(); flyUp(() => act({ t: 'play', u: +e.dataset.u, mode: e.dataset.play })); });
   R.querySelectorAll('[data-gob]').forEach(e => e.onclick = () => act({ t: 'goblin', what: e.dataset.gob }));
   R.querySelectorAll('[data-up]').forEach(e => e.onclick = () => act({ t: 'upgrade', k: e.dataset.up }));
   R.querySelectorAll('[data-ans]').forEach(e => e.onclick = () => { if (e.classList.contains('off')) return; const v = JSON.parse(decodeURIComponent(e.dataset.ans)); sel = []; ix.pr = 0; act({ t: 'answer', id: +e.dataset.q, v }); });
@@ -349,14 +354,23 @@ function bind() {
     if (el._sw) return; el._sw = 1;   // the screen is patched, not rebuilt: bind each carousel once
     let x0, y0;
     const st = (x, y) => { x0 = x; y0 = y; };
-    const en = (x, y) => { if (x0 == null) return; const dx = x - x0, dy = y - y0; x0 = null; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) swipe(el.dataset.car, dx < 0 ? 1 : -1); else if (dy < -70 && Math.abs(dy) > Math.abs(dx)) swipeUp(el.dataset.car); };
+    const en = (x, y) => { if (x0 == null) return; const dx = x - x0, dy = y - y0; x0 = null; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) swipe(el.dataset.car, dx > 0 ? 1 : -1); else if (dy < -70 && Math.abs(dy) > Math.abs(dx)) swipeUp(el.dataset.car); };
     el.addEventListener('touchstart', e => st(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
     el.addEventListener('touchend', e => en(e.changedTouches[0].clientX, e.changedTouches[0].clientY));
     el.addEventListener('mousedown', e => st(e.clientX, e.clientY)); el.addEventListener('mouseup', e => en(e.clientX, e.clientY));
   });
 }
+// the played card flies up and fades, then the move is sent (the monitor then shows it arriving)
+function flyUp(go) {
+  const el = root.querySelector('[data-car="hand"] > .ac');
+  if (!ANIM.on || !el || !el.animate || flyUp.busy) { go(); return; }
+  flyUp.busy = true;
+  const t0 = getComputedStyle(el).transform, b = t0 === 'none' ? '' : t0 + ' ';
+  const a = el.animate([{ transform: b + 'translateY(0)', opacity: 1 }, { transform: b + 'translateY(-260px)', opacity: 0 }], { duration: 380, easing: 'cubic-bezier(.5,0,.8,.4)', fill: 'forwards' });
+  let done = false; const fin = () => { if (done) return; done = true; flyUp.busy = false; go(); }; a.onfinish = fin; setTimeout(fin, 600);
+}
 function swipeUp(k) {
-  if (k === 'hand' && myTurn()) { const h = me().hand, i = ix.hand; if (!h[i]) return; const c = card(h[i].c); const dun = S.ui && S.ui.dun; act({ t: 'play', u: h[i].u, mode: c.ty === 'magic' ? 'main' : dun && c.strip ? 'strip' : 'main' }); }
+  if (k === 'hand' && myTurn()) { const h = me().hand, i = ix.hand; if (!h[i]) return; const c = card(h[i].c); const dun = S.ui && S.ui.dun; const m = c.ty === 'magic' ? 'main' : dun && c.strip ? 'strip' : 'main', u = h[i].u; flyUp(() => act({ t: 'play', u, mode: m })); }
   if (k === 'bhand') doIt('b_pick');
 }
 function doIt(k, e) {

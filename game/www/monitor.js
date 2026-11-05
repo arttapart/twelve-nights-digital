@@ -85,13 +85,19 @@ function waitLine(G) {
   const q = G.prompts[0]; if (!q) return '';
   return `<div class="waitq">منتظر ${NM(q.to)}: ${esc(q.title || '')}</div>`;
 }
+// what the active player can spend now: stored + gained this turn
+function spendH(G) {
+  const T = G.turn; if (!T) return ''; const p = G.players[T.pid], q = T.pool, st = p.store;
+  const it = [['coin', st.coin + (q.coin || 0)], ['scr', st.scroll + (q.scroll || 0)], ['ess', st.ess + (q.ess || 0)], ['pow', q.power || 0]];
+  return `<div class="spend"><span class="sl">قابل خرج</span>${it.map(([k, v]) => `<span>${sv(k)}<b>${fa(v)}</b></span>`).join('')}</div>`;
+}
 function curCard(G) {
   const T = G.turn; if (!T) return '';
   const ui = S.ui || {};
   if (ui.tab === 'acad') { const L = acadList(G); const it = L[ui.i]; if (it) return acard(it.id); }
   if (ui.tab === 'hall') { const w = G.hall.row[ui.i]; if (w) return wcard(w.id, w.tok); }
   const x = T.played[T.played.length - 1];
-  return x ? acard(x.c) : '<div class="sub">هنوز کارتی بازی نشده</div>';
+  return x ? acard(x.c, { k: '-p' + T.played.length }) : '<div class="sub">هنوز کارتی بازی نشده</div>';
 }
 const acadList = G => G.acad.row.map((id, i) => ({ src: 'row', i, id })).concat(Object.keys(G.acad.fixed).map(id => ({ src: 'fixed', i: id, id })));
 
@@ -104,7 +110,7 @@ function mainScr() {
   const fixed = Object.keys(G.acad.fixed).map((id, k) => `<div class="stk"><span class="cl">${fa(G.acad.fixed[id])} کارت</span>${acard(id, { cls: G.acad.row.length + k === acadI ? 'view' : '' })}</div>`).join('');
   const hall = G.hall.row.map((w, i) => wcard(w.id, w.tok, { cls: i === hallI ? 'view' : '' })).join('');
   return `<div class="M" data-s="a">${topH(G)}
-<div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone"><h4>${ui.tab === 'acad' || ui.tab === 'hall' ? 'کارت در حال دیدن' : 'کارت در حال اجرا'}</h4><div class="curc">${curCard(G)}</div></div></div>
+<div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone">${spendH(G)}<h4>${ui.tab === 'acad' || ui.tab === 'hall' ? 'کارت در حال دیدن' : 'کارت در حال اجرا'}</h4><div class="curc">${curCard(G)}</div></div></div>
 <div class="zone zA"><div class="zt"><h3>آکادمی سحرستان</h3><span>دک: ${fa(G.acad.deckN)} کارت – سوخته: ${fa(G.acad.discard.length)}</span></div><div class="rowc"><div class="deck">دک آکادمی</div>${row}<div class="sep"></div>${fixed}</div></div>
 <div class="zone zH"><div class="zt"><h3>تالار جادوگران</h3><span>دک جادوگران شهر: ${fa(G.hall.deckN)}</span></div><div class="rowc"><div class="deck">دک جادوگران</div>${hall}</div></div>
 <div class="zone zG"><h3>گوبلین</h3><div class="gh"></div><p><span>۱ ${sv('pow')} بده</span><span>۱ ${sv('coin')} یا ۱ ${sv('scr')} بگیر</span>هر نوبت ۱ بار</p></div>

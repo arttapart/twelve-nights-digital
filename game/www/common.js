@@ -192,7 +192,8 @@ const hasCssAnim = el => { try { const s = getComputedStyle(el); return s.animat
 function aEnter(el, ctx) {
   if (!ANIM.on || ctx.n++ > 40 || !el.animate || hasCssAnim(el)) return;
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
-  const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? 70 : -70) : 0;
+  const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? -70 : 70) : 0;
+  if (!sx && el.parentElement && el.parentElement.classList.contains('curc')) { el.animate([{ opacity: 0, transform: 'translateY(-160px) scale(.55) rotate(-6deg)' }, { opacity: 1, transform: 'translateY(8px) scale(1.06)', offset: .7 }, { opacity: 1, transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)' }); return; }
   el.animate([{ opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(10px) scale(.95)' }, { opacity: 1, transform: 'none' }], { duration: sx ? 280 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
 function aLeave(el, ctx) {
@@ -202,7 +203,7 @@ function aLeave(el, ctx) {
   Object.assign(el.style, { position: 'absolute', left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: w + 'px', height: h + 'px', margin: '0', pointerEvents: 'none', zIndex: 5 });
   el._ghost = true;
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
-  const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? -70 : 70) : 0;
+  const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? 70 : -70) : 0;
   const a = el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: 260, easing: 'ease-in' });
   a.onfinish = () => el.remove(); setTimeout(() => el.remove(), 600);
 }
@@ -236,7 +237,19 @@ function patchKids(oP, nP, ctx) {
     if (isNew && node.nodeType === 1) ctx.enter.push(node);
   }
 }
-function morph(root, html, screenKey) {
+// shrink card texts that would overflow their card
+function fitCards(root) {
+  for (const ac of root.querySelectorAll('.ac')) {
+    if (!ac.clientHeight) continue;
+    const parts = [...ac.querySelectorAll('.ef, .nmc')];
+    for (const e of parts) e.style.fontSize = '';
+    let g = 0;
+    const over = () => ac.scrollHeight > ac.clientHeight + 1 || parts.some(e => e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 2);
+    while (over() && g++ < 14) for (const e of parts) { const f = parseFloat(getComputedStyle(e).fontSize); if (f > 8) e.style.fontSize = (f * .92).toFixed(1) + 'px'; }
+  }
+}
+function morph(root, html, screenKey) { morph0(root, html, screenKey); try { fitCards(root); } catch (e) {} }
+function morph0(root, html, screenKey) {
   if (!ANIM.on || !root.firstChild || root._sk !== screenKey) {
     const changed = root._sk !== undefined && root._sk !== screenKey; root._sk = screenKey; root.innerHTML = html;
     if (changed && ANIM.on) { const top = root.firstElementChild; if (top) [...top.children].forEach((el, i) => { if (el.classList.contains('nav') || el.classList.contains('ph') || !el.animate || hasCssAnim(el)) return; el.animate([{ opacity: 0, transform: `translate(${ANIM.dir * 40}px, ${ANIM.dir ? 0 : 16}px)` }, { opacity: 1, transform: 'none' }], { duration: 380, delay: Math.min(i, 8) * 35, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }); }); }
