@@ -65,12 +65,12 @@ table.t td.code input{direction:ltr;font-family:monospace;font-size:12px}
 #pv-mon{width:960px;height:540px;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;background:#000;flex:none}
 #pv-mon iframe{width:1920px;height:1080px;border:0;transform:scale(.5);transform-origin:top right;position:absolute;top:0;right:0}
 #pv-ph{display:flex;gap:10px;flex-wrap:wrap}.pvcap{display:flex;gap:8px;align-items:center;margin-bottom:4px;max-width:960px}.pvl{font-size:12px;color:var(--mut,#888);line-height:1.5}.pvcol .pvcap{max-width:293px;min-height:34px}body.emode #pv-mon,body.emode .phf{outline:2px dashed #ff3b6b;cursor:crosshair}.phf{position:relative}
-.pvpin{position:absolute;z-index:6;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:#ff3b6b;color:#fff;font:700 13px/24px Vazirmatn,sans-serif;text-align:center;box-shadow:0 2px 8px #0008;cursor:pointer;animation:pinIn .35s cubic-bezier(.3,1.6,.5,1)}
+.pvpin{position:absolute;z-index:2147483000;width:24px;height:24px;margin:-12px 0 0 -12px;border-radius:50%;background:#ff3b6b;color:#fff;font:700 13px/24px Vazirmatn,sans-serif;text-align:center;box-shadow:0 2px 8px #0008;cursor:pointer;animation:pinIn .35s cubic-bezier(.3,1.6,.5,1)}
 @keyframes pinIn{from{transform:scale(0)}to{transform:none}}
-#pe-pop{position:absolute;z-index:7;width:260px;background:#1d1b33;color:#eee;border:1px solid #ff3b6b;border-radius:10px;padding:10px;box-shadow:0 8px 30px #000a;direction:rtl}
+#pe-pop{position:fixed;z-index:2147483647;width:260px;background:#1d1b33;color:#eee;border:1px solid #ff3b6b;border-radius:10px;padding:10px;box-shadow:0 8px 30px #000a;direction:rtl}
 #pe-pop textarea{width:100%;box-sizing:border-box;font:14px Vazirmatn,sans-serif;margin:6px 0;border-radius:6px;padding:6px}
 .pe-where{font-size:12px;line-height:1.5}.pe-where small{opacity:.7}.pe-row{display:flex;gap:6px}
-#pe-bar{position:fixed;left:14px;bottom:14px;z-index:50;width:300px;max-height:60vh;overflow:auto;background:#1d1b33;color:#eee;border:1px solid #444;border-radius:12px;padding:10px;box-shadow:0 8px 30px #000a;direction:rtl;font-size:13px}
+#pe-bar{position:fixed;left:14px;bottom:14px;z-index:2147483646;width:300px;max-height:60vh;overflow:auto;background:#1d1b33;color:#eee;border:1px solid #444;border-radius:12px;padding:10px;box-shadow:0 8px 30px #000a;direction:rtl;font-size:13px}
 .pe-top{display:flex;gap:8px;align-items:center}.pe-top #pe-n{flex:1;opacity:.8}
 body.emode #pe-tg{background:#ff3b6b;color:#fff}
 .pe-it{display:grid;grid-template-columns:auto 1fr auto;gap:2px 6px;padding:6px 0;border-top:1px solid #333}.pe-it small{grid-column:2;opacity:.6}.pe-it button{grid-row:1/3;grid-column:3;background:none;border:0;color:#ff7b95;font-size:18px;cursor:pointer}
@@ -506,8 +506,12 @@ function openNote(draft, idx) {
   const n = idx != null ? NOTES[idx] : draft, b = boxOf(n.k); if (!b) return;
   const pop = document.createElement('div'); pop.id = 'pe-pop';
   pop.innerHTML = `<div class="pe-where">${esc(n.scr)}<br><small>جای کلیک: «${esc(n.spot.slice(0, 80))}»</small></div><textarea id="pe-tx" rows="3" placeholder="چه تغییری می‌خواهی؟">${idx != null ? esc(n.text) : ''}</textarea><div class="pe-row"><button class="btn" id="pe-ok">${idx != null ? 'ثبت' : 'افزودن'}</button>${idx != null ? '<button class="btn g" id="pe-rm">حذف</button>' : ''}<button class="btn g" id="pe-no">لغو</button></div>`;
-  pop.style.left = Math.min(Math.max(n.fx * 100, 2), 70) + '%'; pop.style.top = Math.min(n.fy * 100 + 3, 75) + '%';
-  b.appendChild(pop); const tx = $('pe-tx'); tx.focus();
+  document.body.appendChild(pop);
+  const place = () => { if (!pop.isConnected) { removeEventListener('scroll', place); return; } const r = b.getBoundingClientRect(), pw = pop.offsetWidth, phh = pop.offsetHeight;
+    let x = r.left + n.fx * r.width - pw / 2, y = r.top + n.fy * r.height + 18;
+    if (y + phh > innerHeight - 8) y = r.top + n.fy * r.height - phh - 18;
+    pop.style.left = Math.max(8, Math.min(x, innerWidth - pw - 8)) + 'px'; pop.style.top = Math.max(8, Math.min(y, innerHeight - phh - 8)) + 'px'; };
+  place(); addEventListener('scroll', place, { passive: true }); const tx = $('pe-tx'); tx.focus();
   const close = () => { pop.remove(); if (n.el) n.el.style.outline = n.ol || ''; };
   $('pe-no').onclick = close;
   $('pe-ok').onclick = () => { const t = tx.value.trim(); if (!t) { tx.focus(); return; } if (idx != null) NOTES[idx].text = t; else { const { el, ol, ...keep } = n; NOTES.push({ ...keep, text: t }); } saveNotes(); close(); drawPins(); };
