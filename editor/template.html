@@ -64,7 +64,7 @@ table.t td.code input{direction:ltr;font-family:monospace;font-size:12px}
 #pv-wrap{display:flex;flex-direction:column;gap:12px}
 #pv-mon{width:960px;height:540px;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;background:#000;flex:none}
 #pv-mon iframe{width:1920px;height:1080px;border:0;transform:scale(.5);transform-origin:top right;position:absolute;top:0;right:0}
-#pv-ph{display:flex;gap:10px;flex-wrap:wrap}.pvcap{display:flex;gap:8px;align-items:center;margin-bottom:4px;max-width:960px}.pvl{font-size:12px;color:var(--mut,#888);line-height:1.5}.pvcol .pvcap{max-width:293px;min-height:34px}.pvc.on{background:#ff3b6b;color:#fff}
+#pv-ph{display:flex;gap:10px;flex-wrap:wrap}.pvcap{display:flex;gap:8px;align-items:center;margin-bottom:4px;max-width:960px}.pvl{font-size:12px;color:var(--mut,#888);line-height:1.5}.pvcol .pvcap{max-width:293px;min-height:34px}body.cmode #pv-mon,body.cmode .phf{outline:2px dashed #ff3b6b}
 .phf{width:215px;height:465px;border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;background:#000;flex:none}
 .phf iframe{width:390px;height:844px;border:0;transform:scale(.55);transform-origin:top right;position:absolute;top:0;right:0}
 .phf .nm{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;background:rgba(0,0,0,.6);color:#fff;padding:2px;z-index:2}
@@ -469,17 +469,54 @@ var D = DATA;
 ${bot.replace(/<\/script/g, '<\\/script')}
 window.botStep=botStep;<\/script>`;
 }
-function stopPreview() { if (PV && PV.timer) clearInterval(PV.timer); PV = null; window.__ROOM__ = null; }
+function stopPreview() { if (PV && PV.timer) clearInterval(PV.timer); if (PV && PV.saveT) clearInterval(PV.saveT); PV = null; window.__ROOM__ = null; }
 // monitor iframe (1920x1080) scaled to the width of its box
-let CMT = null; (async () => { try { if (window.claude && claude.use) { CMT = await claude.use('comments'); if (CMT) document.querySelectorAll('.pvc').forEach(b => b.hidden = false); } } catch (e) {} })();
+// comments: in the viewer's comment mode a click inside a phone or the monitor opens the composer at that exact spot;
+// the caption above the frame (a real element of this page) is the anchor, and label/detail say which screen and which text
+let CA = null, CMODE = false, CTH = [];
+const capEls = () => [...document.querySelectorAll('.pvl')];
+function placePins() { if (!CA) return; const map = {}; try { const paths = new Map(capEls().map(el => [CA.domAnchor(el)[0], el])); for (const t of CTH) { const el = paths.get(t.anchor); if (el) { const r = el.getBoundingClientRect(); map[t.id] = { x: r.left + scrollX + 8, y: r.top + scrollY + 8 }; } } } catch (e) {} CA.placed(map); }
+(async () => { try { if (!(window.claude && claude.use)) return; const c = await claude.use('comments'); if (!c || !c.customAnchors) return;
+  CA = await c.customAnchors({ mode: on => { CMODE = on; document.body.classList.toggle('cmode', on); }, threads: list => { CTH = list || []; placePins(); }, reveal: () => {} });
+  placePins(); addEventListener('scroll', placePins, { passive: true }); addEventListener('resize', placePins);
+} catch (e) {} })();
+const noInv = t => String(t || '').replace(/[​-‏‪-‮⁠-⁤︀-️﻿]/g, ' ').replace(/\s+/g, ' ').trim();
+function screenOf(k) {
+  const fr = k === 'm' ? $('pv-mon').firstChild : document.querySelector('iframe[data-tok="pv' + k + '"]'), d = fr && fr.contentDocument; if (!d) return '';
+  if (k === 'm') { const h = d.querySelector('h2'); return 'مانیتور' + (h ? ' – صفحهٔ ' + h.textContent.trim() : ''); }
+  const tb = d.querySelector('.nav .tb.on'); return 'گوشی بازیکن ' + fa(+k + 1) + (tb ? ' – تب ' + tb.textContent.trim() : '');
+}
+function hookFrame(fr, k) {
+  const d = fr.contentDocument; if (!d) return;
+  d.addEventListener('click', ev => {
+    if (!CMODE || !CA) return;
+    ev.preventDefault(); ev.stopPropagation();
+    let t = ev.target; while (t && t !== d.body && !(t.innerText || '').trim()) t = t.parentElement;
+    const spot = t ? noInv(t.innerText).slice(0, 120) : '';
+    if (t && t.style) { const o = t.style.outline; t.style.outline = '3px solid #ff3b6b'; setTimeout(() => { t.style.outline = o; }, 4000); }
+    const cap = $('pvl' + k), scr = screenOf(k), where = PV && PV.R.G ? $('pv-st').textContent : '';
+    cap.textContent = scr + ' – ' + where;
+    const r = fr.getBoundingClientRect(), sc = r.width / fr.offsetWidth;
+    const at = { x: r.left + ev.clientX * sc + scrollX, y: r.top + ev.clientY * sc + scrollY };
+    CA.compose(CA.domAnchor(cap)[0], at, { label: noInv(scr + ' – «' + spot + '»').slice(0, 300), detail: noInv(scr + ' – ' + where + ' – جای کلیک: «' + spot + '»') }).catch(() => {});
+  }, true);
+}
+// the preview keeps its game: after a reload (a new version) it comes back to the same night, turn and phone tabs
+const PVKEY = 'pv-save';
+function pvLoad() { try { return JSON.parse(localStorage.getItem(PVKEY) || 'null'); } catch (e) { return null; } }
+function pvStore() { if (!PV || !PV.R.G) return; try { const tabs = [...document.querySelectorAll('#pv-ph iframe')].map(f => { try { return JSON.parse(f.contentWindow.eval('JSON.stringify({tab, ix})')); } catch (e) { return null; } }); localStorage.setItem(PVKEY, JSON.stringify({ n: PV.n, bf: $('pv-bf').checked, hp: PVHP, G: PV.R.G, lobby: PV.R.lobby, tabs })); } catch (e) {} }
+
 function fitMon() { const mon = $('pv-mon'); if (!mon || !mon.firstChild) return; const k = mon.clientWidth / 1920; mon.firstChild.style.transform = 'scale(' + k + ')'; mon.style.height = Math.round(1080 * k) + 'px'; }
 addEventListener('resize', fitMon);
 VIEWS.preview = m => {
   m.innerHTML = `<h2>پیش‌نمایش زنده</h2><p class="help">کل بازی با همهٔ تغییرهایت، همین‌جا و بدون شبکه اجرا می‌شود: مانیتور بالا و گوشی‌ها پایین. روی گوشی‌ها مثل بازی واقعی کلیک کن، یا «ربات» را بزن تا خودش بازی کند و به صفحه‌های بعدی برسی. هر بار که چیزی را عوض کردی، «شروع دوباره» را بزن.</p>
   <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
-  <div id="pv-wrap"><div class="pvcap"><button class="btn g pvc" data-pvc="m" ${CMT ? '' : 'hidden'}>💬 نظر روی مانیتور</button><span class="pvl" id="pvlm">مانیتور</span></div><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
-  const start = () => {
+  <div id="pv-wrap"><div class="pvcap"><span class="pvl" id="pvlm">مانیتور</span></div><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
+  const saved0 = pvLoad();
+  if (saved0) { $('pv-n').value = saved0.n; $('pv-bf').checked = !!saved0.bf; PVHP = saved0.hp || ''; $('pv-hp').value = PVHP; }
+  const start = fresh => {
     stopPreview(); const n = +$('pv-n').value;
+    const saved = fresh ? null : pvLoad(); if (fresh) try { localStorage.removeItem(PVKEY); } catch (e) {}
     const hf = $('pv-host'); hf.srcdoc = hostHtml();
     hf.onload = () => {
       const R = hf.contentWindow.ROOM; if (!R) { $('pv-st').textContent = 'موتور بازی بار نشد؛ پیام خطا را در کنسول ببین'; return; }
@@ -488,38 +525,20 @@ VIEWS.preview = m => {
       for (let i = 0; i < n; i++) R.message(fake('pv' + i), { t: 'join', name: 'بازیکن ' + fa(i + 1), house: H[i % H.length].id });
       if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
       R.message(fake('pv0'), { t: 'start', seed: 7 });
-      const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.srcdoc = pageHtml('monitor'); fitMon();
+      if (saved && saved.n === n && saved.G) { try { R.G = saved.G; R.save(); } catch (e) {} }
+      PV.saveT = setInterval(pvStore, 1500);
+      const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.onload = () => hookFrame(mon.firstChild, 'm'); mon.firstChild.srcdoc = pageHtml('monitor'); fitMon();
       const ph = $('pv-ph'); ph.innerHTML = '';
-      for (let i = 0; i < n; i++) { const c = document.createElement('div'); c.className = 'pvcol'; c.innerHTML = `<div class="pvcap"><button class="btn g pvc" data-pvc="${i}" ${CMT ? '' : 'hidden'}>💬 نظر</button><span class="pvl" id="pvl${i}">گوشی بازیکن ${fa(i + 1)}</span></div><div class="phf"><div class="nm">بازیکن ${fa(i + 1)}</div><iframe data-tok="pv${i}"></iframe></div>`; ph.appendChild(c); c.querySelector('iframe').srcdoc = pageHtml('phone'); }
+      for (let i = 0; i < n; i++) { const c = document.createElement('div'); c.className = 'pvcol'; c.innerHTML = `<div class="pvcap"><span class="pvl" id="pvl${i}">گوشی بازیکن ${fa(i + 1)}</span></div><div class="phf"><div class="nm">بازیکن ${fa(i + 1)}</div><iframe data-tok="pv${i}"></iframe></div>`; ph.appendChild(c); const fr = c.querySelector('iframe'); fr.onload = () => { hookFrame(fr, String(i)); const t = saved && saved.tabs && saved.tabs[i]; if (t) setTimeout(() => { try { fr.contentWindow.eval('tab=' + JSON.stringify(t.tab) + ';Object.assign(ix,' + JSON.stringify(t.ix) + ');render()'); } catch (e) {} }, 400); }; fr.srcdoc = pageHtml('phone'); }
       info();
     };
   };
   const info = () => { if (!PV) return; const G = PV.R.G; $('pv-st').textContent = G ? 'شب ' + fa(G.night) + ' – ' + ({ start: 'جای شروع', turn: 'نوبت ' + (G.turn ? G.players[G.turn.pid].name : ''), night: 'پایان شب', battle: 'نبرد جادوگران', end: 'پایان بازی' }[G.phase] || G.phase) : ''; };
   let rs = 11; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
   const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) PV.hw.botStep(PV.R.G, rnd); } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
-  // comments: the caption next to the frame is filled with what the screen shows right now, then the comment is anchored to it
-  m.addEventListener('click', async e => {
-    const b = e.target.closest('[data-pvc]'); if (!b || !CMT || !PV) return;
-    // step 1: the 💬 button arms the frame; step 2: the next click inside that screen picks the exact spot
-    const k = b.dataset.pvc, fr = k === 'm' ? $('pv-mon').firstChild : document.querySelector('iframe[data-tok="pv' + k + '"]'), d = fr && fr.contentDocument;
-    if (!d) return;
-    const old = b.textContent; b.textContent = 'حالا روی همان جای صفحه کلیک کن…'; b.classList.add('on');
-    const pick = async ev => {
-      ev.preventDefault(); ev.stopPropagation(); d.removeEventListener('click', pick, true); b.textContent = old; b.classList.remove('on');
-      let t = ev.target; while (t && t !== d.body && !(t.innerText || '').trim()) t = t.parentElement;
-      const spot = t ? (t.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 90) : '';
-      if (t && t.style) { const o = t.style.outline; t.style.outline = '3px solid #ff3b6b'; setTimeout(() => { t.style.outline = o; }, 2500); }
-      const G = PV.R.G, where = G ? $('pv-st').textContent : '';
-      let scr;
-      if (k === 'm') { const h = d.querySelector('h2'); scr = 'مانیتور' + (h ? ' – صفحهٔ ' + h.textContent.trim() : ''); }
-      else { const tb = d.querySelector('.nav .tb.on'); scr = 'گوشی بازیکن ' + fa(+k + 1) + (tb ? ' – تب ' + tb.textContent.trim() : ''); }
-      const el = $('pvl' + k); el.textContent = scr + ' – ' + where + ' – جای کلیک: «' + spot + '»';
-      try { await CMT.openComposer({ element: el }); } catch (er) { status('باز کردن کامنت ممکن نشد', true); }
-    };
-    d.addEventListener('click', pick, true);
-  });
-  $('pv-hp').onchange = e => { PVHP = e.target.value; start(); };
-  $('pv-go').onclick = start; $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
+  $('pv-hp').onchange = e => { PVHP = e.target.value; start(true); };
+  $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true);
+  $('pv-go').onclick = () => start(true); $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
   $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) PV.hw.botStep(PV.R.G, rnd); PV.R.broadcast(); info(); };
   $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };
   start();
