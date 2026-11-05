@@ -139,7 +139,7 @@ function gain(G, p, g) {
 function askStart(G) {
   if (G.cur >= G.order.length) { G.phase = 'turn'; G.cur = 0; startTurn(G); return; }
   const p = curP(G);
-  ask(G, p.id, 'startCell', { title: 'جای شروع', text: 'فیگورت را روی یکی از ۸ پورتال دور خانهٔ دروازه بگذار.', kind: 'cell', opts: Dun.startCells(G).map(n => ({ v: n, label: Dun.cellName(G, n) })) });
+  ask(G, p.id, 'startCell', { title: 'جای شروع', text: 'فیگورت را روی یکی از ۸ پورتال دور دروازهٔ شهر بگذار.', kind: 'cell', opts: Dun.startCells(G).map(n => ({ v: n, label: Dun.cellName(G, n) })) });
 }
 H.startCell = (G, pid, v) => { if (!Dun.startCells(G).includes(v)) return false; P(G, pid).pos = v; log(G, P(G, pid).name + ' سر جایش در دروازهٔ شهر ایستاد.'); G.cur++; askStart(G); return true; };
 

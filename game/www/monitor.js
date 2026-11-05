@@ -150,7 +150,7 @@ function fightScr() {
 function setupScr() {
   const G = S.G, cells = ['0,0', '0,1', '0,2', '1,0', '1,1', '1,2', '2,0', '2,1', '2,2'];
   const curId = G.order[G.cur];
-  const gate = cells.map(c => { if (c === '1,1') return '<i class="c">خانهٔ<br>دروازه</i>'; const p = G.players.find(x => x.pos === '0,0|' + c); return `<i>${p ? `<b style="background:${p.color};color:${p.color}"></b>` : 'پورتال'}</i>`; }).join('');
+  const gate = cells.map(c => { if (c === '1,1') return '<i class="c">دروازهٔ<br>شهر</i>'; const p = G.players.find(x => x.pos === '0,0|' + c); return `<i>${p ? `<b style="background:${p.color};color:${p.color}"></b>` : 'پورتال'}</i>`; }).join('');
   return `<div class="M MX" data-s="a"><div class="zt" style="padding:0 10px"><h2>چیدمان</h2><span class="sub">همهٔ بُر زدن‌ها و چیدن‌ها خودکار انجام شد</span></div>
 ${chalStrip(G)}
 <div class="body" style="align-items:center;justify-content:center;gap:70px"><div class="ctr" style="gap:16px"><div class="sub">دروازهٔ شهر – هر بازیکن یکی از ۸ پورتال را در گوشی انتخاب می‌کند</div><div class="gate">${gate}</div></div>
@@ -172,7 +172,7 @@ function nightScr() {
   const br = G.lastBreach && G.lastBreach.n > (G.nightSteps ? 0 : 0) ? G.lastBreach : null;
   return `<div class="M MX" data-s="a">${topH(G, `<span class="tag" style="font-size:22px;padding:6px 18px">پایان شب ${fa(G.night)}</span>`)}<div class="body">
 <div class="steps">${steps.map(([k, t], i) => `<div class="${i === idx ? 'on' : ''}">${t}</div>`).join('')}</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br && seen.breach === br.n && Date.now() - (timers.breachAt || 0) < 15000 ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به خانهٔ دروازه رسید – کمترین توکن شکار: <b>${br.hit.map(NM).join('، ')}</b></div>` : ''}<div class="dmap">${mapSvg(G, { arrows: G.nightMoves })}</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br && seen.breach === br.n && Date.now() - (timers.breachAt || 0) < 15000 ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – کمترین توکن شکار: <b>${br.hit.map(NM).join('، ')}</b></div>` : ''}<div class="dmap">${mapSvg(G, { arrows: G.nightMoves })}</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
 }
 
 // ---------- wizard battle ----------

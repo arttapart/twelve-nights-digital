@@ -286,7 +286,7 @@ function optFace(x) {
 function startCell(q) {
   const G = S.G, cells = ['0,0', '0,1', '0,2', '1,0', '1,1', '1,2', '2,0', '2,1', '2,2'];
   const pick = sel[0];
-  const g = cells.map(c => { const n = '0,0|' + c; if (c === '1,1') return '<i class="c">دروازه</i>'; const p = G.players.find(x => x.pos === n); return p ? `<i style="background:${p.color};border-color:${p.color}"></i>` : `<i class="${pick === n ? 'sel' : ''}" data-cell="${n}" style="${pick === n ? 'background:' + me().color : ''}">${pick === n ? '' : 'پورتال'}</i>`; }).join('');
+  const g = cells.map(c => { const n = '0,0|' + c; if (c === '1,1') return '<i class="c">دروازهٔ<br>شهر</i>'; const p = G.players.find(x => x.pos === n); return p ? `<i style="background:${p.color};border-color:${p.color}"></i>` : `<i class="${pick === n ? 'sel' : ''}" data-cell="${n}" style="${pick === n ? 'background:' + me().color : ''}">${pick === n ? '' : 'پورتال'}</i>`; }).join('');
   return `<div class="pmsg gold">خانهٔ شروع را انتخاب کن</div><div class="pgate">${g}</div><div class="pbox"><h5>دارایی آغازین</h5>۱۰ کارت اقدام – ۶ نوآموز – چوب‌دستی سطح ۱ (تاس سبز) – ۱ ${sv('torch')}</div><div style="flex:1"></div><div class="btn ${pick ? '' : 'off'}" data-ans="${encodeURIComponent(JSON.stringify(pick || ''))}" data-q="${q.id}">تأیید خانهٔ شروع</div>`;
 }
 

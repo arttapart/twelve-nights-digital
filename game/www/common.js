@@ -74,7 +74,7 @@ const parseN = n => { const [a, b] = n.split('|'); return [a.split(',').map(Numb
 function nodeXY(n) { const [pos, c] = parseN(n), k = TS / TL.S, q = TL.ctr(c); return [pos[1] * TS + q[0] * k, pos[0] * TS + q[1] * k]; }
 const tileOf = n => n.split('|')[0];
 function demTok(x, y, c, r) { return `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#1a0a0a" stroke-width="2.5"/>${TL.icon('daemon-skull', x, y + .5, r * 1.45, '#1a0a0a')}`; }
-function figure(x, y, c, me) { return `<circle cx="${x}" cy="${y}" r="17" fill="${c}" stroke="#000" stroke-width="4"/><circle cx="${x}" cy="${y}" r="17" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/>${me ? `<circle cx="${x}" cy="${y}" r="24" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>` : ''}`; }
+function figure(x, y, c, me, id) { return `<g class="fig"${id != null ? ` data-fig="${id}"` : ''} style="transform:translate(${x}px,${y}px)"><g class="figin"><circle r="17" fill="${c}" stroke="#000" stroke-width="4"/><circle r="17" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/>${me ? `<circle r="24" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>` : ''}</g><circle class="figring" r="17" fill="none" stroke="${c}" stroke-width="3"/></g>`; }
 // o: {focus:[R,C], moves:[...], exits:[...], portal:{cells}, place, arrows, me, hit (phone: add tap targets)}
 function mapSvg(G, o = {}) {
   const dn = G.dun, k = TS / TL.S;
@@ -106,7 +106,7 @@ function mapSvg(G, o = {}) {
   // figures (spread when sharing a cell)
   const at = {};
   for (const p of G.players) if (p.pos) (at[p.pos] = at[p.pos] || []).push(p);
-  for (const n in at) { const [x, y] = nodeXY(n), L = at[n]; L.forEach((p, i) => { const dx = (i - (L.length - 1) / 2) * 22; d += figure(x + dx, y + (L.length > 1 ? 10 : 0), p.color, p.id === o.me); }); }
+  for (const n in at) { const [x, y] = nodeXY(n), L = at[n]; L.forEach((p, i) => { const dx = (i - (L.length - 1) / 2) * 22; d += figure(x + dx, y + (L.length > 1 ? 10 : 0), p.color, p.id === o.me, p.id); }); }
   // view box
   let vb;
   if (o.focus) {
@@ -183,7 +183,7 @@ function fitStage(el, w, h) {
 // morph(root, html, screenKey): a new screenKey swaps the whole screen with a transition; otherwise the DOM is patched in place:
 // new elements fade/slide in, removed ones fade out where they were, keyed elements (data-k) glide to their new place, changed numbers pop.
 const ANIM = { on: !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), swipe: 0, dir: 0 };
-const AKEYS = ['data-k', 'data-car', 'data-tab', 'data-do', 'data-s', 'id', 'data-i', 'data-src', 'data-sw', 'data-gob', 'data-up', 'data-house'];
+const AKEYS = ['data-k', 'data-fig', 'data-car', 'data-tab', 'data-do', 'data-s', 'id', 'data-i', 'data-src', 'data-sw', 'data-gob', 'data-up', 'data-house'];
 function akey(n) {
   if (n.nodeType !== 1) return '#' + n.nodeType;
   let k = n.tagName; for (const a of AKEYS) { const v = n.getAttribute(a); if (v != null) k += '|' + a + '=' + v; } return k;

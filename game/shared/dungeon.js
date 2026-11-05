@@ -6,7 +6,7 @@ const Game = root.Game || (typeof require !== 'undefined' ? require('./engine.js
 const _ = Game._, fa = Game.fa;
 const GATE = '0,0|1,1';
 const DIRS = { N: [-1, 0], E: [0, 1], S: [1, 0], W: [0, -1] }, OPP = { N: 'S', S: 'N', E: 'W', W: 'E' }, ORDER = ['N', 'E', 'S', 'W'];
-const CELLNAME = { '': 'خانهٔ خالی', Y: 'اهریمن زرد', O: 'اهریمن نارنجی', R: 'اهریمن قرمز', Q: 'اهریمن نامعلوم', T: 'صندوقچه', C: '۲ سکه', S: '۲ طومار', E: 'جوهرهٔ تاریک', P: 'پورتال', F: 'چشمهٔ پالایش', K: 'نفرین‌شده', A: 'خانهٔ دروازه' };
+const CELLNAME = { '': 'خانهٔ خالی', Y: 'اهریمن زرد', O: 'اهریمن نارنجی', R: 'اهریمن قرمز', Q: 'اهریمن نامعلوم', T: 'صندوقچه', C: '۲ سکه', S: '۲ طومار', E: 'جوهرهٔ تاریک', P: 'پورتال', F: 'چشمهٔ پالایش', K: 'نفرین‌شده', A: 'دروازهٔ شهر' };
 const isExit = p => typeof p[0] === 'string';
 const slot = (side, i) => ({ N: i, E: i, S: 2 - i, W: 2 - i })[side];
 function rotExit(e, r) { const s = slot(e[0], e[1]); const side2 = ORDER[(ORDER.indexOf(e[0]) + r) % 4]; return [side2, { N: s, E: s, S: 2 - s, W: 2 - s }[side2]]; }
@@ -391,7 +391,7 @@ function breach(G, d) {
   const got = [];
   for (const p of hit) { if (p.shield) continue; wound(G, p, 'رخنه'); got.push(p.name); }
   G.lastBreach = { n: ++G.ev, lv: d.lv, hit: hit.map(p => p.id), shielded: hit.filter(p => p.shield).map(p => p.id) };
-  _.toast(G, 'رخنه! اهریمن ' + _.LV_NAME[d.lv] + ' به خانهٔ دروازه رسید' + (got.length ? ' · زخم: ' + got.join('، ') : ''), 'breach');
+  _.toast(G, 'رخنه! اهریمن ' + _.LV_NAME[d.lv] + ' به دروازهٔ شهر رسید' + (got.length ? ' · زخم: ' + got.join('، ') : ''), 'breach');
 }
 function nightMove(G) {
   G.nightMoves = [];
