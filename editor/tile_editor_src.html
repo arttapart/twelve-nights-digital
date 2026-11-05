@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ویرایشگر تایل‌های سیاه‌چال</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*__FONTFACE__*/
+/* Layout: a drafting desk. The tile sits as a print sheet; tools and checks run in a side column. Settings and print open as overlays. */
+:root{
+  --bg:#e9e7e2; --panel:#f6f5f2; --ink:#1d1c1a; --muted:#6b675f; --line:#cfcbc2;
+  --accent:#7a3b1e; --accent-soft:#ead9cd; --bad:#b3261e; --bad-soft:#f6dcda; --ok:#2f6b3a; --ok-soft:#dbeadc; --warn:#9a6a00; --warn-soft:#f5e9c8;
+  --paper:#ffffff;
+  --f-body:"V","Vazirmatn",Tahoma,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#1c1b19; --panel:#262522; --ink:#ecebe7; --muted:#a19d94; --line:#3d3b37;
+  --accent:#e0a37f; --accent-soft:#4a3326; --bad:#ff8a80; --bad-soft:#4a2421; --ok:#8fd19a; --ok-soft:#24382a; --warn:#e6c26a; --warn-soft:#3d331a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#1c1b19; --panel:#262522; --ink:#ecebe7; --muted:#a19d94; --line:#3d3b37;
+  --accent:#e0a37f; --accent-soft:#4a3326; --bad:#ff8a80; --bad-soft:#4a2421; --ok:#8fd19a; --ok-soft:#24382a; --warn:#e6c26a; --warn-soft:#3d331a; color-scheme:dark}
+*{box-sizing:border-box} [hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;direction:rtl;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+header h1{font-size:18px;font-weight:800;margin:0;flex:1;min-width:12em}
+.save{font-size:12px;color:var(--muted)}
+.save.err{color:var(--bad)}
+.nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,.seg button:focus-visible,.thumb:focus-visible,.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);color:var(--panel);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:default}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:10px;min-width:0}
+.tilebar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tilebar .num{font-size:30px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.tilebar input,.tilebar select{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:5px 8px}
+.tilebar input{width:12em;max-width:100%}
+.sheet{background:var(--paper);border-radius:4px;box-shadow:0 1px 0 var(--line),0 8px 24px rgba(0,0,0,.12);padding:10px;max-width:640px;width:100%}
+.sheet svg{display:block;width:100%;height:auto;direction:ltr}
+svg text{font-family:var(--f-body)}
+.modes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:6px 12px;cursor:pointer;border-inline-start:1px solid var(--line)}
+.seg button:first-child{border-inline-start:0}
+.seg button.on{background:var(--accent);color:var(--panel)}
+.hint{font-size:12px;color:var(--muted)}
+aside{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h2{font-size:13px;font-weight:800;margin:0}
+.card h3{font-size:12.5px;font-weight:800;margin:6px 0 0}
+.grid-items{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.item{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:4px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px}
+.item svg,.item img{width:26px;height:26px;object-fit:contain}
+.item svg *{fill:var(--ink)}
+.item.on{border-color:var(--accent);background:var(--accent-soft)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row label{font-size:12px;color:var(--muted)}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.checks label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--bg);cursor:pointer;font-size:12.5px;color:var(--ink)}
+.checks label.on{border-color:var(--accent);background:var(--accent-soft)}
+input[type=range]{flex:1;min-width:120px;accent-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.issues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.issues li{background:var(--bad-soft);color:var(--ink);border-inline-start:3px solid var(--bad);padding:6px 8px;border-radius:4px;font-size:12.5px;cursor:pointer}
+.issues li.warn{background:var(--warn-soft);border-inline-start-color:var(--warn)}
+.okbox{background:var(--ok-soft);border-inline-start:3px solid var(--ok);padding:6px 8px;border-radius:4px;font-size:12.5px}
+textarea{width:100%;min-height:70px;border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:6px 8px;resize:vertical}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.thumb{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px;cursor:pointer;display:flex;flex-direction:column;gap:3px;align-items:center;font-size:11px;position:relative}
+.thumb.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.thumb svg{width:100%;height:auto;background:#fff;border-radius:2px;direction:ltr}
+.thumb .flag{position:absolute;top:2px;left:2px;background:var(--bad);color:var(--panel);border-radius:9px;min-width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.thumb .ed{position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+/* stats grid */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table.tot{border-collapse:collapse;font-size:12px;width:100%;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.tot td,table.tot th{border-bottom:1px solid var(--line);padding:4px 6px;text-align:center}
+table.tot thead th{position:sticky;top:0;background:var(--panel);font-weight:700;color:var(--muted);cursor:pointer;user-select:none;vertical-align:bottom}
+table.tot thead th.grp{cursor:default;color:var(--ink);border-bottom:1px solid var(--line)}
+table.tot thead th[aria-sort]::after{content:" ▾";color:var(--accent)}
+table.tot thead th[aria-sort="ascending"]::after{content:" ▴"}
+table.tot td:first-child,table.tot th:first-child{text-align:right}
+table.tot tbody tr{cursor:pointer}
+table.tot tbody tr:hover{background:var(--accent-soft)}
+table.tot tbody tr.cur{outline:2px solid var(--accent);outline-offset:-2px}
+table.tot tfoot td{font-weight:800;background:var(--bg)}
+table.tot tfoot tr.avg td{font-weight:500;color:var(--muted)}
+table.tot td.z{color:var(--line)}
+table.tot .sep{border-inline-start:2px solid var(--line)}
+.lv1{color:#9a6a00} .lv2{color:#7a3b1e}
+/* overlays */
+.ov{position:fixed;inset:0;background:rgba(20,18,15,.5);display:flex;align-items:flex-start;justify-content:center;padding:24px max(16px,env(safe-area-inset-left,0px));overflow:auto;z-index:20}
+.dlg{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:100%;max-width:880px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg>.hd{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.dlg>.hd h2{margin:0;font-size:16px;flex:1}
+.dlg>.bd{padding:14px;display:flex;flex-direction:column;gap:14px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:0 14px}
+.tabs button{border:0;background:none;padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--muted);font-weight:700}
+.tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.form{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 18px}
+.fld{display:flex;flex-direction:column;gap:4px}
+.fld>span{font-size:12px;color:var(--muted)}
+.fld .in{display:flex;gap:8px;align-items:center}
+.fld input[type=number],.fld input[type=text],.fld select{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 8px;width:100%}
+.fld input[type=number]{width:6em}
+.fld input[type=color]{width:42px;height:30px;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:2px}
+.chk{display:flex;gap:8px;align-items:center;font-size:13px}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.pi{width:96px;display:flex;flex-direction:column;gap:3px;font-size:11px}
+.pi .im{width:96px;height:96px;border:1px solid var(--line);border-radius:6px;background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/12px 12px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.pi .im img{width:100%;height:100%;object-fit:cover}
+.pi.round .im{border-radius:50%}
+.pi .x{position:absolute;top:3px;left:3px;background:var(--bad);color:#fff;border:0;border-radius:50%;width:20px;height:20px;cursor:pointer;line-height:20px;padding:0;font-size:12px}
+.pi select{border:1px solid var(--line);background:var(--bg);border-radius:4px;font-size:11px;padding:2px}
+.upl{width:96px;height:96px;border:1.5px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11.5px;color:var(--muted);cursor:pointer;padding:6px}
+.upl:hover{border-color:var(--accent);color:var(--accent)}
+.cat{border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.cat .ch{display:flex;gap:8px;align-items:center;font-weight:700;font-size:13px}
+.cat .ch .n{font-weight:500;color:var(--muted);font-size:12px}
+.icrow{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:6px 0}
+.icrow .pv{width:40px;height:40px;border:1px solid var(--line);border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center}
+.icrow .pv svg,.icrow .pv img{width:30px;height:30px;object-fit:contain}
+.icrow .pv svg *{fill:#000}
+.note{font-size:12px;color:var(--muted);line-height:1.8}
+.prog{font-size:13px;color:var(--accent);font-weight:700}
+.tsel{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.tsel label{display:flex;gap:6px;align-items:center;font-size:12.5px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--bg)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ویرایشگر تایل‌های سیاه‌چال</h1>
+    <span class="save" id="save">در حال آماده شدن…</span>
+    <div class="nav">
+      <button class="btn" id="b-settings" type="button">تنظیمات و گرافیک</button>
+      <button class="btn primary" id="b-print" type="button">PDF چاپی A4</button>
+      <button class="btn" id="b-export" type="button">ذخیرهٔ فایل پروژه</button>
+      <button class="btn" id="b-import" type="button">باز کردن فایل پروژه</button>
+      <input type="file" id="f-import" accept=".json,application/json" hidden>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="stage">
+      <div class="tilebar">
+        <span class="num" id="num">۰</span>
+        <input id="tname" aria-label="نام تایل">
+        <select id="tlevel" aria-label="سطح تایل">
+          <option value="0">تایل آغاز</option><option value="1">سطح ۱</option><option value="2">سطح ۲</option>
+        </select>
+        <button class="btn" id="prev" type="button">قبلی</button>
+        <button class="btn" id="next" type="button">بعدی</button>
+        <button class="btn" id="undo" type="button">برگرداندن</button>
+        <button class="btn danger" id="reset" type="button">بازگشت به نسخهٔ اصلی</button>
+      </div>
+      <div class="modes">
+        <div class="seg" role="group" aria-label="حالت">
+          <button type="button" id="m-select" class="on">انتخاب و ویرایش</button>
+          <button type="button" id="m-add">کشیدن راهروی تازه</button>
+        </div>
+        <span class="hint" id="hint"></span>
+      </div>
+      <div class="sheet"><div id="svgbox"></div></div>
+      <div id="confirm" class="card" hidden>
+        <span id="confirm-text"></span>
+        <div class="row"><button class="btn danger" id="confirm-yes" type="button">بله</button><button class="btn" id="confirm-no" type="button">نه</button></div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card" id="editor"></div>
+      <div class="card">
+        <h2>بررسی قانون‌ها</h2>
+        <div id="issues"></div>
+      </div>
+      <div class="card">
+        <h2>یادداشت برای Claude</h2>
+        <textarea id="notes" placeholder="هر توضیحی دربارهٔ این تایل که می‌خواهی Claude بداند"></textarea>
+      </div>
+    </aside>
+  </div>
+
+  <div class="card">
+    <h2>همهٔ تایل‌ها</h2>
+    <div class="thumbs" id="thumbs"></div>
+  </div>
+  <div class="card">
+    <div class="row"><h2 style="flex:1">اطلاعات آماری</h2><span class="hint">روی سرستون بزن تا مرتب شود؛ روی هر ردیف بزن تا آن تایل باز شود.</span></div>
+    <div class="tablewrap" id="totals"></div>
+  </div>
+</div>
+
+<!-- settings overlay -->
+<div class="ov" id="ov-set" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="set-title">
+    <div class="hd"><h2 id="set-title">تنظیمات و گرافیک (روی همهٔ تایل‌ها اعمال می‌شود)</h2><button class="btn" id="set-close" type="button">بستن</button></div>
+    <div class="tabs" id="set-tabs">
+      <button type="button" data-tab="dim" class="on">ابعاد و دایره‌ها</button>
+      <button type="button" data-tab="cor">راهروها</button>
+      <button type="button" data-tab="ico">آیکون‌ها</button>
+      <button type="button" data-tab="bg">پس‌زمینه و قاب</button>
+      <button type="button" data-tab="cell">گرافیک دایره‌ها</button>
+      <button type="button" data-tab="info">اطلاعات روی تایل</button>
+    </div>
+    <div class="bd" id="set-body"></div>
+  </div>
+</div>
+
+<!-- print overlay -->
+<div class="ov" id="ov-print" hidden>
+  <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="pr-title">
+    <div class="hd"><h2 id="pr-title">PDF چاپی روی A4 با ۳۰۰ dpi</h2><button class="btn" id="pr-close" type="button">بستن</button></div>
+    <div class="bd" id="pr-body"></div>
+  </div>
+</div>
+
+<script>
+const BASE=__TILES__;
+const BASE_NOTES=__NOTES__;
+const ICON=__ICONS__;
+const FONTCSS=__FONTCSS__;
+const FA='۰۱۲۳۴۵۶۷۸۹'; const fa=n=>String(n).replace(/\d/g,d=>FA[d]);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CELL={'':['','خالی'],Y:['daemon-skull','اهریمن زرد'],O:['daemon-skull','اهریمن نارنجی'],R:['daemon-skull','اهریمن قرمز'],
+  Q:['daemon-skull','اهریمن نامعلوم'],T:['locked-chest','صندوقچه'],C:['two-coins','۲ سکه'],S:['scroll-unfurled','۲ طومار'],
+  E:['death-skull','جوهرهٔ تاریک'],P:['magic-portal','پورتال'],F:['water-fountain','چشمهٔ پالایش'],K:['cursed-star','نفرین‌شده'],A:['castle','دروازهٔ شهر']};
+const SHORT={'':'خالی',Y:'زرد',O:'نارنجی',R:'قرمز',Q:'نامعلوم',T:'صندوقچه',C:'سکه',S:'طومار',E:'جوهره',P:'پورتال',F:'چشمه',K:'نفرین',A:'آغاز'};
+const LVL={Y:'۱',O:'۲',R:'۳',Q:'؟'};
+const ITEMS=['','Y','O','R','Q','T','C','S','E','P','F','K','A'];
+
+/* ---------- settings ---------- */
+const DEF={tileMM:112,marginMM:5,cellD:25,cellStroke:0.9,cellStrokeCol:'#000000',cellFill:'#ffffff',rings:true,
+  corW:6.6,corBorder:0.8,corStyle:'filled',corFillCol:'#ffffff',corBorderCol:'#000000',markCol:'#000000',corTex:true,
+  badgeScale:1,badgeFill:'#ffffff',badgeStroke:'#000000',iconCol:'#000000',iconOverArt:true,labels:true,labelCol:'#000000',lvlBadge:true,
+  tileBg:'#ffffff',edge:true,edgeCol:'#000000',edge2:true,
+  text:'',textPos:'bottom',textSize:3,textCol:'#000000',tileNo:false,
+  seed:1};
+const PDEF={margin:10,gap:4,bleed:0,cut:true,start:true,fmt:'jpeg',sel:null};
+let SET=Object.assign({},DEF), PSET=Object.assign({},PDEF);
+let S,M,P,RC,R,CW,CI,F,BF,BS;
+function geo(){S=+SET.tileMM;M=+SET.marginMM;P=(S-2*M)/3;RC=SET.cellD/2;R=RC-1;CW=+SET.corW;CI=Math.max(0,CW-2*SET.corBorder);F=RC/16;BF=P/((140-6)/3);BS=(RC/12.5)*SET.badgeScale}
+geo();
+
+/* ---------- images (backgrounds, frames, cell art, custom icons, corridor texture) ---------- */
+// each: {id, kind:'bg'|'frame'|'cell'|'icon'|'tex', cat, level:'1'|'2'|'b', name, data(dataURL), url(object URL for screen)}
+let IMGS=[];
+const CELLCATS=[['*','همهٔ خانه‌ها (وقتی دستهٔ خودش گرافیک ندارد)'],['','خانهٔ معمولی (خالی)'],['Y','اهریمن زرد'],['O','اهریمن نارنجی'],['R','اهریمن قرمز'],['Q','اهریمن نامعلوم'],
+  ['T','صندوقچه'],['C','سکه'],['S','طومار'],['E','جوهرهٔ تاریک'],['P','پورتال'],['F','چشمه'],['K','نفرین‌شده'],['A','دروازهٔ شهر']];
+const CORICONS=[['torch','مشعل (راهروی تاریک)'],['war-pick','کلنگ (راهروی ریزش‌کرده)'],['footprint','پا (راهروی طولانی، ۲ بار)'],['arrow','پیکان (راهروی یک‌طرفه)']];
+function dataToBlobUrl(d){try{const [h,b]=d.split(',');const mime=h.match(/data:([^;]+)/)[1];const bin=atob(b);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([u],{type:mime}))}catch(e){return d}}
+const imgOf=(kind,cat)=>IMGS.filter(x=>x.kind===kind&&(cat===undefined||x.cat===cat));
+const customIcon=name=>IMGS.find(x=>x.kind==='icon'&&x.cat===name);
+let PRINT=false; // true while building print SVGs: use data URLs (object URLs do not load inside an SVG drawn to a canvas)
+const href=im=>PRINT?im.data:im.url;
+
+// deterministic random assignment, spread so the same picture repeats as little as possible
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function perm(n,seed){const a=[...Array(n).keys()];let h=seed;for(let i=n-1;i>0;i--){h=Math.imul(h^(h>>>15),2246822507)>>>0;h=(h+0x9e3779b9)>>>0;const j=h%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
+let ASSIGN={bg:{},frame:{},cell:{}};
+function assign(){ASSIGN={bg:{},frame:{},cell:{}};
+  ['bg','frame'].forEach(kind=>{[0,1,2].forEach(l=>{const pool=imgOf(kind).filter(x=>x.level==='b'||x.level===String(l)||(l===0&&x.level==='1'));if(!pool.length)return;
+    const ts=tiles.map((t,i)=>[t,i]).filter(([t])=>t.level===l);const p=perm(pool.length,hash(SET.seed+kind+l));ts.forEach(([t,i],j)=>{ASSIGN[kind][i]=pool[p[j%pool.length]]})})});
+  const occ={};tiles.forEach((t,i)=>Object.keys(t.cells).sort().forEach(k=>{const v=t.cells[k];const c=imgOf('cell',v).length?v:'*';(occ[c]=occ[c]||[]).push(i+'|'+k)}));
+  Object.entries(occ).forEach(([c,list])=>{const pool=imgOf('cell',c);if(!pool.length)return;let p=perm(pool.length,hash(SET.seed+'c'+c));
+    list.forEach((id,j)=>{if(j&&j%pool.length===0)p=perm(pool.length,hash(SET.seed+'c'+c+j));ASSIGN.cell[id]=pool[p[j%pool.length]]})})}
+
+/* ---------- tiles ---------- */
+let tiles=BASE.map(clone), notes=BASE.map((_,i)=>BASE_NOTES[i]||''), edited=BASE.map(()=>false);
+let cur=0, mode='select', sel=null, pendingA=null, hl=null;
+const hist=BASE.map(()=>[]);
+let db=null;
+// embedded in the 12 Nights editor: tiles come from (and go back to) the parent page
+const HOST=(()=>{try{return window.parent!==window&&window.parent.__TILE_HOST__||null}catch(e){return null}})();
+if(HOST){const d=HOST.get();tiles=d.tiles.map(clone);notes=tiles.map((_,i)=>(d.notes&&d.notes[i])||'');edited=tiles.map(()=>true);while(hist.length<tiles.length)hist.push([])}
+
+/* ---------- corridor kind: [s|d|x|b][1|2][o|i]?  b = dark and collapsed together ---------- */
+const kD=k=>k[0]==='d'||k[0]==='b', kX=k=>k[0]==='x'||k[0]==='b', kL=k=>k[1]==='2';
+const mkK=(d,x,l,ow,suf)=>(d&&x?'b':d?'d':x?'x':'s')+(l?'2':'1')+(ow?suf:'');
+
+/* ---------- geometry ---------- */
+const isExit=p=>typeof p[0]==='string';
+const key=p=>p[0]+','+p[1];
+const unkey=k=>{const [a,b]=k.split(',');return isNaN(+a)?[a,+b]:[+a,+b]};
+function ctr(p){if(isExit(p)){const m=M+P*p[1]+P/2;return {N:[m,0],S:[m,S],E:[S,m],W:[0,m]}[p[0]]}return [M+P*p[1]+P/2,M+P*p[0]+P/2]}
+function ctrl(a,b,bend){const p=ctr(a),q=ctr(b),mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2,dx=q[0]-p[0],dy=q[1]-p[1],L=Math.hypot(dx,dy);return [mx-dy/L*bend*BF*2,my+dx/L*bend*BF*2]}
+const bez=(p,c,q,t)=>[(1-t)**2*p[0]+2*(1-t)*t*c[0]+t*t*q[0],(1-t)**2*p[1]+2*(1-t)*t*c[1]+t*t*q[1]];
+function tang(p,c,q,t){const dx=2*(1-t)*(c[0]-p[0])+2*t*(q[0]-c[0]),dy=2*(1-t)*(c[1]-p[1])+2*t*(q[1]-c[1]),L=Math.hypot(dx,dy)||1;return [dx/L,dy/L]}
+function pts(a,b,bend,n=60){const p=ctr(a),q=ctr(b),c=ctrl(a,b,bend),o=[];for(let i=0;i<=n;i++)o.push(bez(p,c,q,i/n));return o}
+const slotIdx=(t,sd,i)=>t.cors.findIndex(c=>[c[0],c[1]].some(p=>isExit(p)&&p[0]===sd&&p[1]===i));
+const fwd=k=>!k.endsWith('i'), bwd=k=>!k.endsWith('o'), ow1=k=>/[oi]$/.test(k);
+const slot=e=>({N:e[1],E:e[1],S:2-e[1],W:2-e[1]})[e[0]];
+const ROWN=['بالا','وسط','پایین'], COLN=['چپ','وسط','راست'];
+function cname(t,k){const [r,c]=unkey(k);const pos=(r===1&&c===1)?'وسط':(r===1?'وسط‌'+COLN[c]:(c===1?ROWN[r]+'‌وسط':ROWN[r]+'‌'+COLN[c]));return (SHORT[t.cells[k]]||'خالی')+' ('+pos+')'}
+
+/* ---------- validation (same rules as tiles2.py) ---------- */
+function validate(t){
+  const bad=[]; const cells=t.cells, cors=t.cors; const ck=Object.keys(cells);
+  const add=(msg,cs=[],cr=[],warn=false)=>bad.push({msg,cells:cs,cors:cr,warn});
+  const ex=[];cors.forEach((c,i)=>{[0,1].forEach(j=>{if(isExit(c[j]))ex.push({e:c[j],i,enter:j===1?bwd(c[2]):fwd(c[2]),cell:isExit(c[1-j])?null:key(c[1-j])})})});
+  const exIn=ex.filter(x=>x.enter);
+  if(t.level>0){const s=new Set(exIn.map(x=>slot(x.e)));const miss=[0,1,2].filter(x=>!s.has(x)).map(x=>['چپ یا راست لبه','وسط لبه','چپ یا راست لبه'][x]);
+    if(miss.length)add('خروجی‌ها کامل نیستند؛ نوع کم: '+[...new Set(miss)].join('، ')+'. (هر تایل باید خروجی سمت اول، وسط و سمت دوم لبه را داشته باشد؛ خروجی یک‌طرفهٔ رو به بیرون برای ورود حساب نمی‌شود.)')}
+  if(t.level===0&&ex.length!==12)add('تایل آغاز باید ۱۲ خروجی داشته باشد (الان '+fa(ex.length)+').');
+  const xs=[];cors.forEach((c,i)=>{if(kX(c[2]))xs.push(i)});
+  if(t.level===1&&xs.length)add('راهروی ریزش‌کرده در سطح ۱ نمی‌آید.',[],xs);
+  // (removed 2026-10-29, Farshad) chest on an entry cell, dead ends and forced backtracks are allowed
+  const reach=(s,adj)=>{const seen=new Set([s]),st=[s];while(st.length){const u=st.pop();for(const v of adj(u))if(!seen.has(v)){seen.add(v);st.push(v)}}return seen};
+  cors.forEach((c,i)=>{if(!c[2].endsWith('o')||isExit(c[1]))return;const a=key(c[0]),b=key(c[1]);
+    if(cells[a]==='K'&&!['T','E'].includes(cells[b]))add('یک‌طرفه از نفرین باید به صندوقچه یا جوهره برسد.',[a,b],[i]);
+    if(cells[b]==='K'&&!cors.some(d=>d[2].endsWith('o')&&!isExit(d[1])&&key(d[0])===b&&['T','E'].includes(cells[key(d[1])])))add('یک‌طرفه‌ای که وارد نفرین می‌شود باید بعدش به صندوقچه یا جوهره برسد.',[a,b],[i])});
+  const adjAll={};const push=(m,a,b)=>{(m[a]=m[a]||new Set()).add(b)};
+  cors.forEach(c=>{const a=key(c[0]),b=key(c[1]),k=c[2];if(fwd(k))push(adjAll,a,b);if(bwd(k))push(adjAll,b,a)});
+  const fromEx=new Set();ex.forEach(x=>reach(key(x.e),u=>adjAll[u]||[]).forEach(y=>fromEx.add(y)));
+  ck.forEach(k=>{if(!fromEx.has(k))add(cname(t,k)+' از هیچ خروجی در دسترس نیست.',[k]);
+    const r=reach(k,u=>adjAll[u]||[]);if(![...r].some(x=>isNaN(+x.split(',')[0])))add(cname(t,k)+' هیچ راه بیرونی به خروجی ندارد.',[k]);
+    if(!cors.some(c=>key(c[0])===k||key(c[1])===k))add(cname(t,k)+' هیچ راهرویی ندارد.',[k])});
+  // geometry (thresholds follow the current corridor width and cell size)
+  const PS=cors.map(c=>pts(c[0],c[1],c[3]));
+  cors.forEach((c,i)=>{const ends=[key(c[0]),key(c[1])];
+    ck.forEach(k=>{if(ends.includes(k))return;const q=ctr(unkey(k));if(Math.min(...PS[i].map(p=>Math.hypot(p[0]-q[0],p[1]-q[1])))<R+CW/2-.1)add('راهرو از روی '+cname(t,k)+' رد می‌شود.',[k],[i])});
+    if(PS[i].some(p=>p[0]<-.01||p[0]>S+.01||p[1]<-.01||p[1]>S+.01))add('راهرو از تایل بیرون زده است.',[],[i])});
+  for(let i=0;i<cors.length;i++)for(let j=i+1;j<cors.length;j++){
+    const ei=[cors[i][0],cors[i][1]].map(key),ej=[cors[j][0],cors[j][1]].map(key);const sh=ei.filter(x=>ej.includes(x));
+    if(sh.length===2){add('دو راهرو بین همان دو خانه.',[],[i,j]);continue}
+    const far=p=>sh.every(e=>{const q=ctr(unkey(e));return Math.hypot(p[0]-q[0],p[1]-q[1])>R+4});
+    const a=PS[i].filter(far),b=PS[j].filter(far);let m=1e9;
+    for(const p of a)for(const q of b){const d=Math.hypot(p[0]-q[0],p[1]-q[1]);if(d<m)m=d}
+    if(m<CW+.9)add('دو راهرو به هم خورده‌اند.',[],[i,j])}
+  const BX=cors.map(badgeBox);
+  BX.forEach((b,i)=>{if(!b)return;
+    if(b[0]<.5||b[1]<.5||b[2]>S-.5||b[3]>S-.5)add('نشان راهرو از تایل بیرون زده است.',[],[i]);
+    ck.forEach(k=>{const [cx,cy]=ctr(unkey(k)),nx=Math.min(Math.max(cx,b[0]),b[2]),ny=Math.min(Math.max(cy,b[1]),b[3]);
+      if(Math.hypot(nx-cx,ny-cy)<RC+1)add('نشان راهرو روی '+cname(t,k)+' افتاده است؛ خم راهرو را عوض کن.',[k],[i])});
+    BX.forEach((c,j)=>{if(j>i&&c&&b[0]<c[2]+.5&&c[0]<b[2]+.5&&b[1]<c[3]+.5&&c[1]<b[3]+.5)add('نشان دو راهرو روی هم افتاده‌اند.',[],[i,j])})});
+  return bad;
+}
+function globalIssues(){const n=tiles.reduce((s,t)=>s+(t.level>0?Object.values(t.cells).filter(v=>v==='P').length:0),0); // start-tile portals (row 79) not counted
+  return (n===1||n>6)?[{msg:'تعداد کل پورتال‌ها '+fa(n)+' است؛ باید بین ۲ و ۶ باشد.',cells:[],cors:[]}]:[]}
+
+/* ---------- drawing ---------- */
+let UID=0;
+function icon(name,x,y,s,col){const c=customIcon(name);if(c)return `<image href="${href(c)}" x="${x-s/2}" y="${y-s/2}" width="${s}" height="${s}" preserveAspectRatio="xMidYMid meet"/>`;
+  col=col||SET.iconCol;return `<g transform="translate(${x-s/2},${y-s/2}) scale(${s/512})" color="${col}" fill="${col}">${ICON[name]}</g>`}
+function arrowSvg(x,y,rot){const c=customIcon('arrow'),s=5*BS;
+  if(c)return `<g transform="translate(${x},${y}) rotate(${rot})"><image href="${href(c)}" x="${-s/2}" y="${-s/2}" width="${s}" height="${s}" preserveAspectRatio="xMidYMid meet"/></g>`;
+  return `<g transform="translate(${x},${y}) rotate(${rot}) scale(${BS})"><path d="M-2.3,-2.1 L2.5,0 L-2.3,2.1 Z" fill="${SET.iconCol}"/></g>`}
+function badge(x,y,items,horiz){const n=items.length,st=6*BS,L=n*st+BS,W=7*BS,w=horiz?L:W,h=horiz?W:L;
+  let o=`<rect x="${x-w/2}" y="${y-h/2}" width="${w}" height="${h}" rx="${3.5*BS}" fill="${SET.badgeFill}" stroke="${SET.badgeStroke}" stroke-width="${.5*BS}"/>`;
+  items.forEach(([k,v],i)=>{const d=(i-(n-1)/2)*st,ix=horiz?x+d:x,iy=horiz?y:y+d;o+=k==='icon'?icon(v,ix,iy,4.9*BS):arrowSvg(ix,iy,v)});return o}
+function badgeN(k){return (kD(k)?1:0)+(kX(k)?1:0)+(ow1(k)?1:0)+(kL(k)?2:0)}
+function badgeT(c){const [a,b,k,bend]=c,p=ctr(a),q=ctr(b),cc=ctrl(a,b,bend),ex=isExit(b)&&!isExit(a);let tm=.5;
+  if(ex){const ts=[];for(let j=0;j<=60;j++){const pt=bez(p,cc,q,j/60);if(Math.hypot(pt[0]-p[0],pt[1]-p[1])>RC+1)ts.push(j/60)}if(ts.length)tm=(ts[0]+1)/2}
+  return tm}
+function badgeBox(c){const n=badgeN(c[2]);if(!n)return null;const [a,b,,bend]=c,p=ctr(a),q=ctr(b),cc=ctrl(a,b,bend),tm=badgeT(c);
+  const [x,y]=bez(p,cc,q,tm),[tx,ty]=tang(p,cc,q,tm),L=n*6*BS+BS,h=Math.abs(ty)>Math.abs(tx),w=h?L:7*BS,hh=h?7*BS:L;
+  return [x-w/2,y-hh/2,x+w/2,y+hh/2]}
+function corGeom(c){const [a,b,,bend]=c,p=ctr(a),q=ctr(b),cc=ctrl(a,b,bend);return {p,q,cc,d:`M${p[0]},${p[1]} Q${cc[0]},${cc[1]} ${q[0]},${q[1]}`}}
+// returns [outer stroke, inner stroke, marks, badge]
+function corSvg(c,i,big,fillRef){const [a,b,k]=c,{p,q,cc,d}=corGeom(c);
+  const hollow=SET.corStyle==='hollow';
+  const outer=`<path d="${d}" stroke="${SET.corBorderCol}" stroke-width="${CW}" fill="none"/>`;
+  const inner=`<path d="${d}" stroke="${hollow?'#000':fillRef}" stroke-width="${CI}" fill="none"/>`;
+  let mk='',bg='';
+  const ex=isExit(b)&&!isExit(a), exx=isExit(a)&&isExit(b);
+  if(!ex||k!=='s1'){
+    if(kD(k))mk+=`<path d="${d}" stroke="${SET.markCol}" stroke-width="${.9*CI/5}" stroke-linecap="round" stroke-dasharray="0.01 ${1.5*CI/5}" fill="none"/>`;
+    if(kX(k)){const amp=CI*.46;for(let j=1;j<24;j++){const t=j/24,[x,y]=bez(p,cc,q,t),[tx,ty]=tang(p,cc,q,t),nx=-ty,ny=tx,s=j%2?1:-1;
+      mk+=`<path d="M${x-nx*amp},${y-ny*amp} L${x+tx*.8*s},${y+ty*.8*s} L${x+nx*amp},${y+ny*amp}" stroke="${SET.markCol}" stroke-width="0.45" fill="none"/>`}}
+    const items=[];if(kD(k))items.push(['icon','torch']);if(kX(k))items.push(['icon','war-pick']);
+    let tm=.5;if(ex&&!exx)tm=badgeT(c);
+    const [tx,ty]=tang(p,cc,q,tm);if(ow1(k))items.push(['arrow',Math.atan2(ty,tx)*180/Math.PI+(k.endsWith('i')?180:0)]);
+    if(kL(k))items.push(['icon','footprint'],['icon','footprint']);
+    const [x,y]=bez(p,cc,q,tm);bg=items.length?badge(x,y,items,Math.abs(ty)>Math.abs(tx)):'';
+    if(big&&bg)bg=`<g data-cor="${i}" style="cursor:pointer">${bg}</g>`;
+  }
+  const hit=big?`<path d="${d}" stroke="transparent" stroke-width="9" fill="none" data-cor="${i}" style="cursor:pointer"/>`:'';
+  return [outer,inner,mk+hit,bg,d];
+}
+function cellSvg(ti,k,v,big,u){const [r,c]=unkey(k),[x,y]=ctr([r,c]);
+  const art=ASSIGN.cell[ti+'|'+k];
+  let o=`<circle cx="${x}" cy="${y}" r="${RC}" fill="${SET.cellFill}"/>`;
+  if(art){const id=`cc${u}_${k.replace(',','_')}`;o+=`<clipPath id="${id}"><circle cx="${x}" cy="${y}" r="${RC}"/></clipPath><image href="${href(art)}" x="${x-RC}" y="${y-RC}" width="${2*RC}" height="${2*RC}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${id})"/>`}
+  if(+SET.cellStroke>0)o+=`<circle cx="${x}" cy="${y}" r="${RC}" fill="none" stroke="${SET.cellStrokeCol}" stroke-width="${SET.cellStroke}"/>`;
+  const showIcon=!art||SET.iconOverArt;
+  if(SET.rings&&showIcon){const sc=SET.cellStrokeCol;
+    if(v==='O'||v==='R')o+=`<circle cx="${x}" cy="${y}" r="${RC-1.4*F/.78}" fill="none" stroke="${sc}" stroke-width="0.45"/>`;
+    if(v==='R')o+=`<circle cx="${x}" cy="${y}" r="${RC-2.6*F/.78}" fill="none" stroke="${sc}" stroke-width="0.45"/>`;
+    if(v==='K')o+=`<circle cx="${x}" cy="${y}" r="${RC-1.4*F/.78}" fill="none" stroke="${sc}" stroke-width="0.5" stroke-dasharray="1.2 1"/>`}
+  if(v&&CELL[v]&&showIcon){const nm=customIcon('cell:'+v)?'cell:'+v:CELL[v][0];
+    o+=v in LVL?icon(nm,x,y-1.2*F,11.5*F):icon(nm,x,y-2.6*F,(v==='A'?15:13.5)*F);
+    if(SET.labels||big&&!PRINT)o+=`<text x="${x}" y="${y+9.6*F}" font-size="${2.75*F}" text-anchor="middle" font-weight="700" direction="rtl" fill="${SET.labelCol}">${CELL[v][1]}</text>`}
+  if(v in LVL&&SET.lvlBadge)o+=`<circle cx="${x}" cy="${y-RC+4.4*F}" r="${2.9*F}" fill="#000"/><text x="${x}" y="${y-RC+5.75*F}" font-size="${3.9*F}" text-anchor="middle" font-weight="800" fill="#fff">${LVL[v]}</text>`;
+  return big?`<g data-cell="${k}" style="cursor:pointer">${o}</g>`:o}
+// opt: {big, bleed (mm, print only), font (embed @font-face for canvas rendering)}
+function tileSvg(ti,opt={}){const t=tiles[ti],big=!!opt.big,u=++UID,bl=opt.bleed||0;
+  const pad=PRINT?bl:6, vb=`${-pad} ${-pad} ${S+2*pad} ${S+2*pad}`;
+  const out=[`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg"${PRINT?` width="${opt.px}" height="${opt.px}"`:''}>`];
+  if(opt.font)out.push(`<style>${FONTCSS}text{font-family:V,Tahoma,sans-serif}</style>`);
+  const tex=SET.corTex&&imgOf('tex')[0];
+  const fillRef=tex?`url(#tx${u})`:SET.corFillCol;
+  out.push('<defs>');
+  if(tex)out.push(`<pattern id="tx${u}" patternUnits="userSpaceOnUse" width="${S/4}" height="${S/4}"><rect width="${S/4}" height="${S/4}" fill="${SET.corFillCol}"/><image href="${href(tex)}" width="${S/4}" height="${S/4}" preserveAspectRatio="xMidYMid slice"/></pattern>`);
+  out.push('</defs>');
+  if(!PRINT)out.push(`<rect x="-6" y="-6" width="${S+12}" height="${S+12}" fill="#fff"/>`);
+  out.push(`<rect x="${-bl}" y="${-bl}" width="${S+2*bl}" height="${S+2*bl}" fill="${SET.tileBg}"/>`);
+  const bgi=ASSIGN.bg[ti];if(bgi)out.push(`<image href="${href(bgi)}" x="${-bl}" y="${-bl}" width="${S+2*bl}" height="${S+2*bl}" preserveAspectRatio="xMidYMid slice"/>`);
+  if(!PRINT&&!big)out.push('');
+  const os=[],is=[],ms=[],bs=[],ds=[];t.cors.forEach((c,i)=>{const [a,b,m,g,d]=corSvg(c,i,big,fillRef);os.push(a);is.push(b);ms.push(m);bs.push(g);ds.push(d)});
+  if(big){for(let r=0;r<3;r++)for(let c=0;c<3;c++){const k=r+','+c;if(!(k in t.cells)){const [x,y]=ctr([r,c]);
+    out.push(`<g data-empty="${k}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="${RC}" fill="#fff" fill-opacity=".6" stroke="#9a968d" stroke-width="0.5" stroke-dasharray="1.5 1.5"/><text x="${x}" y="${y+1.5}" font-size="4.5" text-anchor="middle" fill="#9a968d">+</text></g>`)}}}
+  if(SET.corStyle==='hollow'){out.push(`<mask id="mk${u}" maskUnits="userSpaceOnUse" x="${-pad}" y="${-pad}" width="${S+2*pad}" height="${S+2*pad}"><rect x="${-pad}" y="${-pad}" width="${S+2*pad}" height="${S+2*pad}" fill="#fff"/>${is.join('')}</mask><g mask="url(#mk${u})">${os.join('')}</g>`)}
+  else out.push(...os,...is);
+  out.push(...ms);
+  Object.entries(t.cells).forEach(([k,v])=>out.push(cellSvg(ti,k,v,big,u)));
+  out.push(...bs);
+  const fr=ASSIGN.frame[ti];if(fr)out.push(`<image href="${href(fr)}" x="${-bl}" y="${-bl}" width="${S+2*bl}" height="${S+2*bl}" preserveAspectRatio="none" pointer-events="none"/>`);
+  if(SET.edge)out.push(`<rect x="0.4" y="0.4" width="${S-.8}" height="${S-.8}" fill="none" stroke="${SET.edgeCol}" stroke-width="0.8"/>`);
+  if(SET.edge2&&t.level===2)out.push(`<rect x="1.8" y="1.8" width="${S-3.6}" height="${S-3.6}" fill="none" stroke="${SET.edgeCol}" stroke-width="0.3"/>`);
+  if(SET.text){const txt=SET.text.replace(/\{نام\}/g,t.name).replace(/\{شماره\}/g,fa(ti)).replace(/\{سطح\}/g,t.level?fa(t.level):'آغاز');
+    const yy=SET.textPos==='top'?Math.max(SET.textSize*.9,M*.7):S-Math.max(SET.textSize*.35,M*.3);
+    out.push(`<text x="${S/2}" y="${yy}" font-size="${SET.textSize}" text-anchor="middle" font-weight="700" direction="rtl" fill="${SET.textCol}">${esc(txt)}</text>`)}
+  if(SET.tileNo)out.push(`<text x="${S-2.2}" y="${4.2}" font-size="3" text-anchor="end" font-weight="800" fill="${SET.textCol}">${fa(ti)}</text>`);
+  if(big){
+    ['N','E','S','W'].forEach(sd=>[0,1,2].forEach(i=>{const e=[sd,i],has=slotIdx(t,sd,i)>=0,[x,y]=ctr(e);
+      const w=(sd==='N'||sd==='S')?9:4.2,h=(sd==='N'||sd==='S')?4.2:9;const ox=sd==='E'?x:(sd==='W'?x-w:x-w/2),oy=sd==='S'?y:(sd==='N'?y-h:y-h/2);
+      out.push(`<rect data-slot="${sd},${i}" x="${ox}" y="${oy}" width="${w}" height="${h}" rx="1" fill="${has?'#7a3b1e':'#fff'}" stroke="#7a3b1e" stroke-width="0.4" ${has?'':'stroke-dasharray="1 0.8"'} style="cursor:pointer"/>`)}));
+    const sc=sel&&sel.type==='cell'?[sel.k]:[], sr=sel&&sel.type==='cor'?[sel.i]:[];
+    const hc=hl?hl.cells:[], hr=hl?hl.cors:[];
+    hr.forEach(i=>out.push(`<path d="${ds[i]}" stroke="#b3261e" stroke-opacity=".55" stroke-width="9" fill="none" pointer-events="none"/>`));
+    sr.forEach(i=>out.push(`<path d="${ds[i]}" stroke="#7a3b1e" stroke-opacity=".5" stroke-width="10" fill="none" pointer-events="none"/>`));
+    hc.forEach(k=>{const [x,y]=ctr(unkey(k));out.push(`<circle cx="${x}" cy="${y}" r="${RC+1.6}" fill="none" stroke="#b3261e" stroke-width="1.6" pointer-events="none"/>`)});
+    sc.forEach(k=>{const [x,y]=ctr(unkey(k));out.push(`<circle cx="${x}" cy="${y}" r="${RC+1.8}" fill="none" stroke="#7a3b1e" stroke-width="1.8" pointer-events="none"/>`)});
+    if(pendingA){const pa=unkey(pendingA),[x,y]=ctr(pa);out.push(`<circle cx="${x}" cy="${y}" r="${isExit(pa)?5:RC+1.8}" fill="none" stroke="#7a3b1e" stroke-width="1.8" stroke-dasharray="2 1.5" pointer-events="none"/>`)}
+  }
+  out.push('</svg>');return out.join('');
+}
+
+/* ---------- UI ---------- */
+const $=id=>document.getElementById(id);
+function render(){
+  assign();
+  const t=tiles[cur];
+  $('num').textContent=fa(cur);$('tname').value=t.name;$('tlevel').value=String(t.level);
+  $('svgbox').innerHTML=tileSvg(cur,{big:true});
+  $('undo').disabled=!hist[cur].length;
+  $('hint').textContent=mode==='add'?(pendingA?'حالا سر دوم راهرو را بزن: یک خانه یا یک جای خروجی.':'سر اول راهرو را بزن: یک خانه یا یک جای خروجی لبه.'):'روی خانه، راهرو یا جای خروجی (مستطیل‌های لبه) بزن.';
+  $('notes').value=notes[cur];
+  renderEditor();renderIssues();renderThumbs();renderTotals();
+}
+function renderIssues(){const all=[...validate(tiles[cur]),...globalIssues()];const is=[...all.filter(x=>!x.warn),...all.filter(x=>x.warn)];const box=$('issues');
+  const ne=is.filter(x=>!x.warn).length;
+  const head=ne?'':'<div class="okbox">قانون‌های اصلی رعایت شده است.</div>';
+  if(!is.length){box.innerHTML=head;return}
+  box.innerHTML=head+'<ul class="issues">'+is.map((x,i)=>`<li data-i="${i}" tabindex="0" class="${x.warn?'warn':''}">${x.warn?'هشدار: ':''}${x.msg}</li>`).join('')+'</ul>';
+  box.querySelectorAll('li').forEach(li=>li.onclick=()=>{hl=is[+li.dataset.i];$('svgbox').innerHTML=tileSvg(cur,{big:true});setTimeout(()=>{hl=null},10)});
+}
+function renderThumbs(){$('thumbs').innerHTML=tiles.map((t,i)=>{const n=validate(t).filter(x=>!x.warn).length;
+  return `<button type="button" class="thumb${i===cur?' on':''}" data-t="${i}">${tileSvg(i)}<span>${fa(i)} · ${esc(t.name)}</span>${n?`<span class="flag">${fa(n)}</span>`:''}${edited[i]?'<span class="ed" title="ویرایش‌شده"></span>':''}</button>`}).join('');
+  $('thumbs').querySelectorAll('.thumb').forEach(b=>b.onclick=()=>go(+b.dataset.t));
+}
+
+/* ---------- stats: one row per tile, totals per level ---------- */
+const STATCOLS=[
+  ['cells','خانه','g1'],['Y','زرد','g1'],['O','نارنجی','g1'],['R','قرمز','g1'],['Q','نامعلوم','g1'],['dem','کل اهریمن','g1'],
+  ['T','صندوقچه','g2'],['C','سکه','g2'],['S','طومار','g2'],['E','جوهره','g2'],['P','پورتال','g2'],['F','چشمه','g2'],['K','نفرین','g2'],['emp','خالی','g2'],
+  ['cor','کل راهرو','g3'],['simple','ساده','g3'],['long','طولانی','g3'],['dark','تاریک (مشعل)','g3'],['coll','ریزش‌کرده (کلنگ)','g3'],['both','تاریک و ریزشی','g3'],['ow','یک‌طرفه','g3'],
+  ['exits','خروجی','g4'],['exIn','خروجی ورودی','g4'],['exOut','فقط خروج','g4'],['exx','خروجی به خروجی','g4'],['exDark','خروجی با مشعل','g4'],['exColl','خروجی با کلنگ','g4'],['exLong','خروجی طولانی','g4']];
+const GRPS={g1:'خانه‌ها و اهریمن‌ها',g2:'پاداش‌ها و خانه‌های ویژه',g3:'راهروهای داخل تایل و خروجی‌ها (همه)',g4:'خروجی‌های لبه'};
+function tileStats(t){const o={};STATCOLS.forEach(([k])=>o[k]=0);
+  Object.values(t.cells).forEach(v=>{o.cells++;if(v in o)o[v]++;if(v==='')o.emp++;if(v in LVL)o.dem++});
+  t.cors.forEach(c=>{const k=c[2],a=isExit(c[0]),b=isExit(c[1]);o.cor++;
+    if(!kD(k)&&!kX(k)&&!kL(k)&&!ow1(k))o.simple++;if(kL(k))o.long++;if(kD(k))o.dark++;if(kX(k))o.coll++;if(kD(k)&&kX(k))o.both++;if(ow1(k))o.ow++;
+    [[a,0],[b,1]].forEach(([isE,j])=>{if(!isE)return;o.exits++;const enter=j===1?bwd(k):fwd(k);if(enter)o.exIn++;else o.exOut++;
+      if(kD(k))o.exDark++;if(kX(k))o.exColl++;if(kL(k))o.exLong++});
+    if(a&&b)o.exx++});
+  return o}
+let SORT=null;
+function renderTotals(){
+  const rows=tiles.map((t,i)=>({i,t,s:tileStats(t)}));
+  let list=[...rows];if(SORT){const [c,dir]=SORT;list.sort((a,b)=>{const va=c==='name'?a.t.name:c==='lvl'?a.t.level:a.s[c],vb=c==='name'?b.t.name:c==='lvl'?b.t.level:b.s[c];return (va>vb?1:va<vb?-1:a.i-b.i)*dir})}
+  const sum=l=>{const o={};STATCOLS.forEach(([k])=>o[k]=0);const rs=rows.filter(r=>r.t.level===l);rs.forEach(r=>STATCOLS.forEach(([k])=>o[k]+=r.s[k]));return [o,rs.length]};
+  const td=(v,cls='')=>`<td class="${v===0?'z ':''}${cls}">${typeof v==='number'?fa(Math.round(v*10)/10):v}</td>`;
+  const sepAt=new Set();let last='';STATCOLS.forEach(([k,,g])=>{if(g!==last){sepAt.add(k);last=g}});
+  const cells=s=>STATCOLS.map(([k])=>td(s[k],sepAt.has(k)?'sep':'')).join('');
+  let grpRow='<tr><th class="grp" colspan="3"></th>';last='';let span=0;const gs=[];STATCOLS.forEach(([,,g])=>{if(g!==last){if(last)gs.push([last,span]);last=g;span=0}span++});gs.push([last,span]);
+  grpRow+=gs.map(([g,n])=>`<th class="grp sep" colspan="${n}">${GRPS[g]}</th>`).join('')+'</tr>';
+  const sa=c=>SORT&&SORT[0]===c?` aria-sort="${SORT[1]>0?'ascending':'descending'}"`:'';
+  const head=`<tr><th data-s="i"${sa('i')}>#</th><th data-s="name"${sa('name')}>نام</th><th data-s="lvl"${sa('lvl')}>سطح</th>${STATCOLS.map(([k,l])=>`<th data-s="${k}"${sa(k)} class="${sepAt.has(k)?'sep':''}">${l}</th>`).join('')}</tr>`;
+  const body=list.map(r=>`<tr data-t="${r.i}" class="${r.i===cur?'cur':''}"><td>${fa(r.i)}</td><td>${esc(r.t.name)}</td><td class="lv${r.t.level}">${r.t.level?fa(r.t.level):'آغاز'}</td>${cells(r.s)}</tr>`).join('');
+  let foot='';[1,2].forEach(l=>{const [o,n]=sum(l);if(!n)return;const avg={};STATCOLS.forEach(([k])=>avg[k]=o[k]/n);
+    foot+=`<tr><td colspan="3">جمع سطح ${fa(l)} (${fa(n)} تایل)</td>${cells(o)}</tr><tr class="avg"><td colspan="3">میانگین هر تایل سطح ${fa(l)}</td>${cells(avg)}</tr>`});
+  const [a1]=sum(1),[a2]=sum(2),all={};STATCOLS.forEach(([k])=>all[k]=a1[k]+a2[k]);
+  foot+=`<tr><td colspan="3">جمع سطح ۱ و ۲</td>${cells(all)}</tr>`;
+  $('totals').innerHTML=`<table class="tot"><thead>${grpRow}${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table>`;
+  $('totals').querySelectorAll('thead th[data-s]').forEach(th=>th.onclick=()=>{const c=th.dataset.s;SORT=c==='i'&&SORT&&SORT[0]==='i'&&SORT[1]<0?null:[c,SORT&&SORT[0]===c?-SORT[1]:(c==='name'||c==='i'||c==='lvl'?1:-1)];renderTotals()});
+  $('totals').querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>go(+tr.dataset.t));
+}
+function iconBtn(v){const n=CELL[v][0];const c=customIcon('cell:'+v);if(c)return `<img src="${c.url}" alt="">`;
+  return n?`<svg viewBox="0 0 512 512">${ICON[n]}</svg>`:'<svg viewBox="0 0 512 512"><circle cx="256" cy="256" r="200" fill="none" stroke="currentColor" stroke-width="30"/></svg>'}
+function renderEditor(){const ed=$('editor'),t=tiles[cur];
+  if(sel&&sel.type==='cell'&&sel.k in t.cells){const v=t.cells[sel.k];
+    ed.innerHTML=`<h2>خانه: ${cname(t,sel.k)}</h2><div class="grid-items">${ITEMS.map(x=>`<button type="button" class="item${x===v?' on':''}" data-v="${x}">${iconBtn(x)}<span>${SHORT[x]}</span></button>`).join('')}</div>
+    <div class="row"><button class="btn danger" id="delcell" type="button">حذف این خانه و راهروهایش</button></div>`;
+    ed.querySelectorAll('.item').forEach(b=>b.onclick=()=>{change(t=>{t.cells[sel.k]=b.dataset.v})});
+    $('delcell').onclick=()=>{const k=sel.k;change(t=>{delete t.cells[k];t.cors=t.cors.filter(c=>key(c[0])!==k&&key(c[1])!==k)});sel=null;render()};
+    return}
+  if(sel&&sel.type==='cor'&&t.cors[sel.i]){const c=t.cors[sel.i],k=c[2],ex=isExit(c[1])&&!isExit(c[0]),epn=p=>isExit(p)?'خروجی لبه':cname(t,key(p));
+    const d=kD(k),x=kX(k),l=kL(k),ow=ow1(k),suf=k.endsWith('i')?'i':'o';
+    const box=(id,on,txt)=>`<label class="${on?'on':''}"><input type="checkbox" id="${id}" ${on?'checked':''}> ${txt}</label>`;
+    ed.innerHTML=`<h2>راهرو: ${epn(c[0])} تا ${epn(c[1])}</h2>
+    <span class="hint">هر ترکیبی از این چهار ویژگی را می‌توانی تیک بزنی. بدون تیک یعنی راهروی ساده.</span>
+    <div class="checks">${box('c-d',d,'تاریک (مشعل)')}${box('c-x',x,'ریزش‌کرده (کلنگ)')}${box('c-l',l,'طولانی (۲ گام)')}${box('c-ow',ow,'یک‌طرفه')}</div>
+    ${ow?`<div class="row"><button class="btn" id="flip" type="button">برعکس کردن جهت</button>${ex?`<span class="hint">${suf==='o'?'فقط خروج از تایل':'فقط ورود به تایل'}</span>`:''}</div>`:''}
+    ${t.level===1&&x?'<span class="hint" style="color:var(--bad)">در سطح ۱ راهروی ریزش‌کرده نمی‌آید.</span>':''}
+    <div class="row"><label for="bend">خمیدگی</label><input type="range" id="bend" min="-40" max="40" step="1" value="${c[3]}"><span id="bendv">${fa(c[3])}</span></div>
+    <div class="row"><button class="btn danger" id="delcor" type="button">حذف راهرو</button></div>`;
+    const setK=(nd,nx,nl,no,sf=suf)=>change(t=>{t.cors[sel.i][2]=mkK(nd,nx,nl,no,sf)});
+    $('c-d').onchange=e=>setK(e.target.checked,x,l,ow);
+    $('c-x').onchange=e=>setK(d,e.target.checked,l,ow);
+    $('c-l').onchange=e=>setK(d,x,e.target.checked,ow);
+    $('c-ow').onchange=e=>setK(d,x,l,e.target.checked);
+    if($('flip'))$('flip').onclick=()=>ex?setK(d,x,l,true,suf==='o'?'i':'o'):change(t=>{const c=t.cors[sel.i];[c[0],c[1]]=[c[1],c[0]];c[3]=-c[3]});
+    const bd=$('bend');let pushed=false;
+    bd.oninput=()=>{if(!pushed){pushHist();pushed=true}tiles[cur].cors[sel.i][3]=+bd.value;$('bendv').textContent=fa(bd.value);$('svgbox').innerHTML=tileSvg(cur,{big:true});renderIssues()};
+    bd.onchange=()=>{pushed=false;afterChange()};
+    $('delcor').onclick=()=>{const i=sel.i;sel=null;change(t=>{t.cors.splice(i,1)})};
+    return}
+  ed.innerHTML=`<h2>راهنما</h2><span class="hint">روی یک خانه بزن تا محتوایش را عوض کنی. روی نشان یا خط یک راهرو بزن تا تاریک، ریزش‌کرده، طولانی یا یک‌طرفه بودنش (هر ترکیبی) یا خمیدگی‌اش را عوض کنی. مستطیل‌های کوچک لبه جای خروجی‌اند: روی جای خالی بزن تا به نزدیک‌ترین خانهٔ همان ردیف یا ستون وصل شود، یا با «کشیدن راهروی تازه» اول هر خانه‌ای را بزن و بعد جای خروجی را. دایرهٔ نقطه‌چین یعنی جای خالی؛ بزن تا خانه اضافه شود. ظاهر، ابعاد و گرافیک‌ها در «تنظیمات و گرافیک» است. هر تغییری خودکار ذخیره می‌شود.</span>`;
+}
+function pushHist(){hist[cur].push(JSON.stringify(tiles[cur]));if(hist[cur].length>80)hist[cur].shift()}
+function change(fn){pushHist();fn(tiles[cur]);afterChange()}
+function afterChange(){edited[cur]=true;render();scheduleSave(cur)}
+
+$('svgbox').addEventListener('click',e=>{const t=tiles[cur];const g=e.target.closest('[data-cell],[data-cor],[data-slot],[data-empty]');if(!g)return;
+  if(g.dataset.empty){change(t=>{t.cells[g.dataset.empty]=''});sel={type:'cell',k:g.dataset.empty};render();return}
+  if(g.dataset.slot){const [sd,i]=g.dataset.slot.split(',');const e2=[sd,+i];const idx=slotIdx(t,sd,+i);
+    if(idx>=0){sel={type:'cor',i:idx};if(mode==='add')setMode('select');else render();return}
+    let ac=null;
+    if(mode==='add'&&!pendingA){pendingA=sd+','+i;render();return}
+    if(mode==='add'&&pendingA===sd+','+i){pendingA=null;render();return}
+    if(mode==='add'&&pendingA)ac=unkey(pendingA);
+    else{const line={N:[[0,+i],[1,+i],[2,+i]],S:[[2,+i],[1,+i],[0,+i]],W:[[+i,0],[+i,1],[+i,2]],E:[[+i,2],[+i,1],[+i,0]]}[sd];ac=line.find(p=>key(p) in t.cells)||null}
+    if(!ac){flash('در امتداد این خروجی خانه‌ای نیست. با «کشیدن راهروی تازه» اول خانه را بزن، بعد این جای خروجی را.');return}
+    change(t=>t.cors.push([ac,e2,'s1',0]));pendingA=null;sel={type:'cor',i:tiles[cur].cors.length-1};setMode('select');return}
+  if(mode==='add'){if(!g.dataset.cell)return;const k=g.dataset.cell;
+    if(!pendingA){pendingA=k;render();return}
+    if(pendingA===k){pendingA=null;render();return}
+    if(isExit(unkey(pendingA))){const e=unkey(pendingA);pendingA=null;change(t=>t.cors.push([unkey(k),e,'s1',0]));sel={type:'cor',i:tiles[cur].cors.length-1};setMode('select');return}
+    if(t.cors.some(c=>[key(c[0]),key(c[1])].sort().join('|')===[pendingA,k].sort().join('|'))){flash('این دو خانه از قبل راهرو دارند.');pendingA=null;render();return}
+    const a=unkey(pendingA),b=unkey(k);pendingA=null;change(t=>t.cors.push([a,b,'s1',0]));sel={type:'cor',i:tiles[cur].cors.length-1};setMode('select');return}
+  if(g.dataset.cell)sel={type:'cell',k:g.dataset.cell};else sel={type:'cor',i:+g.dataset.cor};
+  render();
+});
+function flash(m){$('hint').textContent=m}
+function setMode(m){mode=m;pendingA=null;$('m-select').classList.toggle('on',m==='select');$('m-add').classList.toggle('on',m==='add');render()}
+$('m-select').onclick=()=>setMode('select');$('m-add').onclick=()=>{sel=null;setMode('add')};
+function go(i){cur=(i+tiles.length)%tiles.length;sel=null;pendingA=null;render()}
+$('prev').onclick=()=>go(cur-1);$('next').onclick=()=>go(cur+1);
+$('undo').onclick=()=>{const h=hist[cur].pop();if(!h)return;tiles[cur]=JSON.parse(h);sel=null;edited[cur]=true;render();scheduleSave(cur)};
+$('reset').onclick=()=>{$('confirm-text').textContent='تایل '+fa(cur)+' به نسخهٔ اصلی برگردد؟ تغییرات این تایل پاک می‌شود.';$('confirm').hidden=false};
+$('confirm-no').onclick=()=>{$('confirm').hidden=true};
+$('confirm-yes').onclick=()=>{$('confirm').hidden=true;pushHist();tiles[cur]=clone(BASE[cur]);edited[cur]=false;sel=null;render();scheduleSave(cur)};
+$('tname').onchange=e=>change(t=>{t.name=e.target.value.trim()||t.name});
+$('tlevel').onchange=e=>change(t=>{t.level=+e.target.value});
+let noteTimer=null;$('notes').oninput=e=>{notes[cur]=e.target.value;edited[cur]=true;clearTimeout(noteTimer);const i=cur;noteTimer=setTimeout(()=>scheduleSave(i),600)};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('ov-set').hidden=true;$('ov-print').hidden=true}
+  if(e.target.matches('input,textarea,select')||!$('ov-set').hidden||!$('ov-print').hidden)return;
+  if(e.key==='ArrowLeft')go(cur+1);if(e.key==='ArrowRight')go(cur-1);if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();$('undo').click()}});
+
+/* ---------- settings panel ---------- */
+let TAB='dim';
+const num=(k,l,min,max,step,unit='میلی‌متر')=>`<label class="fld"><span>${l}</span><span class="in"><input type="number" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${SET[k]}"><span class="hint">${unit}</span></span></label>`;
+const col=(k,l)=>`<label class="fld"><span>${l}</span><span class="in"><input type="color" data-k="${k}" value="${SET[k]}"><span class="hint" dir="ltr">${SET[k]}</span></span></label>`;
+const chk=(k,l)=>`<label class="chk"><input type="checkbox" data-k="${k}" ${SET[k]?'checked':''}> ${l}</label>`;
+const sel_=(k,l,opts)=>`<label class="fld"><span>${l}</span><select data-k="${k}">${opts.map(([v,t])=>`<option value="${v}" ${String(SET[k])===String(v)?'selected':''}>${t}</option>`).join('')}</select></label>`;
+const LVLOPT=[['b','هر دو سطح'],['1','فقط سطح ۱ (و تایل آغاز)'],['2','فقط سطح ۲']];
+function poolHtml(list,opt={}){return `<div class="pool">${list.map(x=>`<div class="pi${opt.round?' round':''}"><div class="im"><img src="${x.url}" alt=""><button class="x" type="button" data-del="${x.id}" title="حذف">×</button></div>
+  ${opt.level?`<select data-lvl="${x.id}">${LVLOPT.map(([v,t])=>`<option value="${v}" ${x.level===v?'selected':''}>${t}</option>`).join('')}</select>`:''}</div>`).join('')}
+  <label class="upl">+ افزودن تصویر (چند تا با هم)<input type="file" accept="image/*" multiple hidden data-up="${opt.kind}" data-cat="${opt.cat||''}"></label></div>`}
+function renderSettings(){const b=$('set-body');
+  $('set-tabs').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.tab===TAB));
+  let h='';
+  if(TAB==='dim')h=`<div class="form">${num('tileMM','ضلع تایل',60,200,.5)}${num('marginMM','حاشیهٔ تایل (از لبه تا جای دایره‌ها)',0,30,.5)}${num('cellD','قطر دایره‌ها',8,45,.5)}${num('cellStroke','ضخامت خط دور دایره (۰ = بدون خط)',0,3,.1)}
+    ${col('cellStrokeCol','رنگ خط دور دایره')}${col('cellFill','رنگ داخل دایره (زیر گرافیک)')}${col('tileBg','رنگ زمینهٔ تایل (وقتی پس‌زمینه ندارد)')}</div>
+    <div class="form">${chk('rings','حلقه‌های داخلی اهریمن نارنجی و قرمز و نفرین')}${chk('lvlBadge','عدد سطح روی اهریمن‌ها')}</div>
+    <p class="note">همهٔ اندازه‌ها میلی‌متر واقعی روی کاغذند. با بزرگ‌تر کردن دایره یا راهرو، بخش «بررسی قانون‌ها» دوباره همپوشانی‌ها را می‌سنجد.</p>`;
+  if(TAB==='cor')h=`<div class="form">${sel_('corStyle','حالت راهرو',[['filled','توپر (داخلش رنگ یا بافت)'],['hollow','توخالی (فقط دو خط لبه؛ پس‌زمینه دیده می‌شود)']])}${num('corW','ضخامت کل راهرو',2,16,.1)}${num('corBorder','ضخامت خط لبهٔ راهرو',0,4,.1)}
+    ${col('corFillCol','رنگ داخل راهرو')}${col('corBorderCol','رنگ لبهٔ راهرو')}${col('markCol','رنگ نقطه‌های تاریک و زیگزاگ ریزش')}</div>
+    <div class="form">${num('badgeScale','اندازهٔ نشان‌ها (۱ = عادی)',.5,2.5,.05,'برابر')}${col('badgeFill','رنگ زمینهٔ نشان‌ها')}${col('badgeStroke','رنگ خط دور نشان‌ها')}</div>
+    <h3>بافت راهرو (اختیاری، برای حالت توپر)</h3><p class="note">یک تصویر کوچک تکرارشونده مثل سنگ یا خاک؛ داخل همهٔ راهروها پر می‌شود.</p>
+    ${chk('corTex','بافت را نشان بده')}${poolHtml(imgOf('tex').slice(0,1),{kind:'tex'})}`;
+  if(TAB==='ico'){const row=(name,label,def)=>{const c=customIcon(name);return `<div class="icrow"><div class="pv">${c?`<img src="${c.url}" alt="">`:def}</div><div>${label}<div class="hint">${c?'آیکون تو':'پیش‌فرض'}</div></div>
+      <div class="row"><label class="btn sm">عوض کردن<input type="file" accept="image/*" hidden data-up="icon" data-cat="${name}"></label>${c?`<button class="btn sm" type="button" data-del="${c.id}">پیش‌فرض</button>`:''}</div></div>`};
+    h=`<div class="form">${col('iconCol','رنگ آیکون‌های پیش‌فرض')}${col('labelCol','رنگ نام زیر آیکون')}</div>
+    <div class="form">${chk('labels','نام خانه زیر آیکون نوشته شود (در چاپ هم)')}${chk('iconOverArt','آیکون روی گرافیک دایره هم بیاید')}</div>
+    <p class="note">تصویر PNG با زمینهٔ شفاف یا SVG بهترین نتیجه را می‌دهد. پیکان یک‌طرفه را رو به راست بکش؛ ویرایشگر آن را در جهت راهرو می‌چرخاند.</p>
+    <h3>آیکون‌های راهرو</h3>${CORICONS.map(([n,l])=>row(n,l,n==='arrow'?'<svg viewBox="-4 -4 8 8"><path d="M-2.3,-2.1 L2.5,0 L-2.3,2.1 Z"/></svg>':`<svg viewBox="0 0 512 512">${ICON[n]}</svg>`)).join('')}
+    <h3>آیکون‌های خانه‌ها</h3>${ITEMS.filter(v=>v).map(v=>row('cell:'+v,CELL[v][1],`<svg viewBox="0 0 512 512">${ICON[CELL[v][0]]}</svg>`)).join('')}`}
+  if(TAB==='bg')h=`<p class="note">چند پس‌زمینه بده؛ ویرایشگر آن‌ها را تصادفی روی تایل‌ها می‌گذارد و تا جای ممکن تکراری نمی‌گذارد. زیر هر تصویر انتخاب کن برای کدام سطح است. تصویر مربعی بهتر است (برای ۳۰۰ dpi دست‌کم ${fa(Math.ceil((S+6)/25.4*300))} پیکسل).</p>
+    ${poolHtml(imgOf('bg'),{kind:'bg',level:true})}
+    <h3>قاب روی تایل (اختیاری)</h3><p class="note">تصویر PNG شفاف که روی همه‌چیز می‌نشیند، مثل قاب سنگی دور تایل. این هم تصادفی و با انتخاب سطح است.</p>
+    ${poolHtml(imgOf('frame'),{kind:'frame',level:true})}
+    <div class="row"><button class="btn" type="button" id="reseed">قرعهٔ دوباره (چیدن تصادفی تازه)</button><span class="hint">شمارهٔ قرعه: ${fa(SET.seed)}</span></div>`;
+  if(TAB==='cell')h=`<p class="note">برای هر نوع خانه تعداد زیادی گرافیک دایره‌ای بده؛ هر خانه یکی را تصادفی می‌گیرد. اگر نوعی گرافیک نداشته باشد، از دستهٔ «همهٔ خانه‌ها» برمی‌دارد. تصویر مربعی بده؛ داخل دایره بریده می‌شود (برای ۳۰۰ dpi دست‌کم ${fa(Math.ceil(SET.cellD/25.4*300))} پیکسل).</p>
+    <div class="row"><button class="btn" type="button" id="reseed">قرعهٔ دوباره (چیدن تصادفی تازه)</button>${chk('iconOverArt','آیکون روی گرافیک دایره هم بیاید')}</div>
+    ${CELLCATS.map(([c,l])=>{const list=imgOf('cell',c);const used=c==='*'?'':` · ${fa(tiles.reduce((s,t)=>s+Object.values(t.cells).filter(v=>v===c).length,0))} خانه در تایل‌ها`;
+      return `<div class="cat"><div class="ch">${l}<span class="n">${fa(list.length)} گرافیک${used}</span></div>${poolHtml(list,{kind:'cell',cat:c,round:true})}</div>`}).join('')}`;
+  if(TAB==='info')h=`<div class="form">${chk('edge','خط دور تایل')}${chk('edge2','خط دوم داخلی برای تایل‌های سطح ۲')}${col('edgeCol','رنگ خط دور تایل')}</div>
+    <h3>نوشته روی همهٔ تایل‌ها</h3>
+    <div class="form"><label class="fld"><span>متن (می‌توانی {نام}، {شماره} و {سطح} بگذاری)</span><input type="text" data-k="text" value="${esc(SET.text)}" placeholder="مثلاً: ۱۲ شب · {نام}"></label>
+    ${sel_('textPos','جای نوشته',[['bottom','پایین تایل (در حاشیه)'],['top','بالای تایل (در حاشیه)']])}${num('textSize','اندازهٔ نوشته',1,10,.1)}${col('textCol','رنگ نوشته')}</div>
+    <div class="form">${chk('tileNo','شمارهٔ تایل در گوشهٔ بالا')}</div>
+    <p class="note">همهٔ تنظیم‌ها روی همهٔ تایل‌ها و روی PDF چاپی اعمال می‌شود.</p>
+    <div class="row"><button class="btn danger" type="button" id="set-reset">برگرداندن همهٔ تنظیم‌ها به پیش‌فرض</button><span class="hint">گرافیک‌ها پاک نمی‌شوند.</span></div>`;
+  b.innerHTML=h;
+  b.querySelectorAll('[data-k]').forEach(el=>{const k=el.dataset.k;const ev=el.type==='text'||el.type==='number'?'change':'input';
+    el.addEventListener(el.type==='checkbox'||el.tagName==='SELECT'?'change':ev,()=>{let v=el.type==='checkbox'?el.checked:el.type==='number'?+el.value:el.value;
+      if(el.type==='number'&&(isNaN(v)||el.value===''))return;SET[k]=v;
+      b.querySelectorAll(`[data-k="${k}"]`).forEach(o=>{if(o!==el){if(o.type==='checkbox')o.checked=v;else o.value=v}});
+      if(el.type==='color')el.nextElementSibling.textContent=v;settingsChanged()})});
+  b.querySelectorAll('[data-up]').forEach(inp=>inp.onchange=async()=>{const files=[...inp.files];if(!files.length)return;await addImages(files,inp.dataset.up,inp.dataset.cat);renderSettings();render()});
+  b.querySelectorAll('[data-del]').forEach(x=>x.onclick=async()=>{await delImage(x.dataset.del);renderSettings();render()});
+  b.querySelectorAll('[data-lvl]').forEach(x=>x.onchange=async()=>{const im=IMGS.find(i=>i.id===x.dataset.lvl);im.level=x.value;await putImage(im);render()});
+  if($('reseed'))$('reseed').onclick=()=>{SET.seed=(SET.seed%9999)+1;settingsChanged();renderSettings()};
+  if($('set-reset'))$('set-reset').onclick=()=>{const seed=SET.seed;SET=Object.assign({},DEF,{seed});settingsChanged();renderSettings()};
+}
+let setTimer=null;
+function settingsChanged(){geo();render();clearTimeout(setTimer);setTimer=setTimeout(saveSettings,300)}
+$('b-settings').onclick=()=>{$('ov-set').hidden=false;renderSettings()};
+$('set-close').onclick=()=>{$('ov-set').hidden=true};
+$('ov-set').onclick=e=>{if(e.target===$('ov-set'))$('ov-set').hidden=true};
+$('set-tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;TAB=b.dataset.tab;renderSettings()};
+
+/* ---------- image handling ---------- */
+function loadImg(src){return new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok(im);im.onerror=no;im.src=src})}
+function readFile(f){return new Promise((ok,no)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=no;r.readAsDataURL(f)})}
+// keep enough pixels for 300 dpi at the largest size the picture can be printed, no more
+function maxPx(kind){const dpi=300/25.4;if(kind==='cell')return Math.ceil(45*dpi);if(kind==='icon')return 600;if(kind==='tex')return 800;return Math.ceil((200+10)*dpi)}
+async function prepImage(f,kind){const d=await readFile(f);if(f.type==='image/svg+xml')return d;
+  const im=await loadImg(d);const mx=maxPx(kind);let w=im.naturalWidth,h=im.naturalHeight;if(Math.max(w,h)<=mx&&f.size<2.5e6)return d;
+  const s=Math.min(1,mx/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,0,0,w,h);
+  const alpha=f.type==='image/png'||f.type==='image/webp'||f.type==='image/gif';return cv.toDataURL(alpha?'image/png':'image/jpeg',.93)}
+async function addImages(files,kind,cat){setSave('در حال افزودن '+fa(files.length)+' تصویر…');
+  for(const f of files){try{const data=await prepImage(f,kind);
+    if(kind==='icon'||kind==='tex'){for(const old of IMGS.filter(x=>x.kind===kind&&(kind==='tex'||x.cat===cat)))await delImage(old.id,true)}
+    const im={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),kind,cat:cat||'',level:'b',name:f.name,data};im.url=dataToBlobUrl(data);IMGS.push(im);await putImage(im)}
+    catch(e){setSave('تصویر «'+f.name+'» خوانده نشد',true)}}
+  setSave(idbOk?'تصویرها ذخیره شد':'تصویرها اضافه شد، ولی این مرورگر اجازهٔ نگه‌داشتن‌شان را نمی‌دهد؛ فایل پروژه را ذخیره کن',!idbOk)}
+async function delImage(id,quiet){const i=IMGS.findIndex(x=>x.id===id);if(i<0)return;try{URL.revokeObjectURL(IMGS[i].url)}catch(e){}IMGS.splice(i,1);await idbDel(id)}
+
+/* ---------- storage: tiles in the shared db (claude.ai) or this browser; settings and images always in this browser ---------- */
+let idb=null,idbOk=false;
+function idbOpen(){return new Promise(ok=>{try{const r=indexedDB.open('dungeon-tile-editor',1);r.onupgradeneeded=()=>r.result.createObjectStore('img',{keyPath:'id'});r.onsuccess=()=>{idb=r.result;idbOk=true;ok()};r.onerror=()=>ok()}catch(e){ok()}})}
+function idbAll(){return new Promise(ok=>{if(!idb)return ok([]);try{const q=idb.transaction('img').objectStore('img').getAll();q.onsuccess=()=>ok(q.result||[]);q.onerror=()=>ok([])}catch(e){ok([])}})}
+function putImage(im){return new Promise(ok=>{if(!idb)return ok();try{const {url,...rec}=im;const tx=idb.transaction('img','readwrite');tx.objectStore('img').put(rec);tx.oncomplete=ok;tx.onerror=()=>{idbOk=false;ok()}}catch(e){idbOk=false;ok()}})}
+function idbDel(id){return new Promise(ok=>{if(!idb)return ok();try{const tx=idb.transaction('img','readwrite');tx.objectStore('img').delete(id);tx.oncomplete=ok;tx.onerror=ok}catch(e){ok()}})}
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}
+function saveSettings(){lsSet('dte-settings',{SET,PSET})}
+function saveLocalTiles(){lsSet('dte-tiles',{tiles,notes,edited})}
+
+function setSave(m,err){const s=$('save');s.textContent=m;s.classList.toggle('err',!!err)}
+const timers={};const writing={};const dirty={};
+function scheduleSave(i){if(HOST){HOST.changed(tiles,notes);setSave('در ویرایشگر بازی ثبت شد');return}dirty[i]=(dirty[i]||0)+1;saveLocalTiles();
+  if(!db){dirty[i]=0;setSave('در همین مرورگر ذخیره شد');return}
+  setSave('در حال ذخیره…');clearTimeout(timers[i]);timers[i]=setTimeout(()=>save(i),700)}
+async function save(i){if(writing[i]){clearTimeout(timers[i]);timers[i]=setTimeout(()=>save(i),400);return}writing[i]=true;const mark=dirty[i];
+  try{if(!edited[i]&&JSON.stringify(tiles[i])===JSON.stringify(BASE[i])&&!notes[i])await db.doc('tiles/t'+String(i).padStart(2,'0')).delete();
+    else await db.doc('tiles/t'+String(i).padStart(2,'0')).set({index:i,tile:tiles[i],notes:notes[i],updatedAt:new Date().toISOString()});
+    if(dirty[i]===mark)dirty[i]=0;setSave(dirty[i]?'در حال ذخیره…':'ذخیره شد')}
+  catch(e){setSave(e&&e.code==='invalid_argument'?'اجازهٔ ذخیره نداری':'ذخیره نشد؛ دوباره تغییر بده تا دوباره تلاش شود',true)}
+  finally{writing[i]=false}}
+
+/* ---------- project file: tiles + notes + settings + all pictures in one JSON ---------- */
+// inside claude.ai the viewer must confirm saves through the downloads capability; elsewhere a plain link works
+async function download(name,blob){let dl=null;try{dl=window.claude?await window.claude.use('downloads'):null}catch(e){dl=null}
+  if(dl){try{await dl.save({filename:name,data:blob})}catch(e){if(e&&e.code!=='declined')setSave('دانلود انجام نشد: '+(e&&e.message||e),true)}return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)}
+const today=()=>new Date().toISOString().slice(0,10);
+$('b-export').onclick=()=>{const proj={app:'dungeon-tile-editor',version:2,savedAt:new Date().toISOString(),tiles,notes,settings:SET,print:PSET,images:IMGS.map(({url,...r})=>r)};
+  download('dungeon_tiles_project_'+today()+'.json',new Blob([JSON.stringify(proj)],{type:'application/json'}));setSave('فایل پروژه دانلود شد')};
+$('b-import').onclick=()=>$('f-import').click();
+$('f-import').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const p=JSON.parse(await f.text());if(!Array.isArray(p.tiles))throw 0;
+    if(!confirm('همهٔ تایل‌ها، تنظیم‌ها و گرافیک‌های فعلی با محتوای این فایل جایگزین شود؟'))return;
+    tiles=p.tiles.map(clone);notes=tiles.map((_,i)=>(p.notes&&p.notes[i])||'');while(hist.length<tiles.length)hist.push([]);edited=tiles.map((t,i)=>JSON.stringify(t)!==JSON.stringify(BASE[i]));
+    SET=Object.assign({},DEF,p.settings||{});PSET=Object.assign({},PDEF,p.print||{});geo();
+    for(const im of [...IMGS])await delImage(im.id,true);
+    for(const r of p.images||[]){const im=Object.assign({},r);im.url=dataToBlobUrl(im.data);IMGS.push(im);await putImage(im)}
+    saveSettings();cur=0;sel=null;render();tiles.forEach((_,i)=>scheduleSave(i));setSave('فایل پروژه باز شد')}
+  catch(err){setSave('این فایل پروژهٔ ویرایشگر نیست',true)}};
+
+/* ---------- print: A4 at 300 dpi ---------- */
+const A4=[210,297];
+function layout(n){const cell=S+2*PSET.bleed,g=+PSET.gap,m=+PSET.margin;
+  const fit=(W,H)=>{const c=Math.max(0,Math.floor((W-2*m+g)/(cell+g))),r=Math.max(0,Math.floor((H-2*m+g)/(cell+g)));return {c,r,per:c*r,W,H}};
+  const a=fit(A4[0],A4[1]),b=fit(A4[1],A4[0]);const L=b.per>a.per?Object.assign(b,{orient:'l'}):Object.assign(a,{orient:'p'});
+  L.pages=L.per?Math.ceil(n/L.per):0;L.cell=cell;return L}
+function printList(){const s=PSET.sel;return tiles.map((t,i)=>i).filter(i=>s&&s.length===tiles.length?s[i]:(tiles[i].level>0||PSET.start))}
+function renderPrint(){if(!PSET.sel||PSET.sel.length!==tiles.length)PSET.sel=tiles.map(t=>t.level>0||PSET.start);
+  const list=printList(),L=layout(list.length);
+  const pn=(k,l,min,max,step)=>`<label class="fld"><span>${l}</span><span class="in"><input type="number" data-p="${k}" min="${min}" max="${max}" step="${step}" value="${PSET[k]}"><span class="hint">میلی‌متر</span></span></label>`;
+  $('pr-body').innerHTML=`<p class="note">آخرین نسخهٔ تایل‌ها با همهٔ تنظیم‌ها و گرافیک‌ها، در اندازهٔ واقعی (${fa(S)}×${fa(S)} میلی‌متر) و با وضوح ۳۰۰ dpi روی A4 چیده می‌شود.</p>
+  <div class="form">${pn('margin','حاشیهٔ کاغذ',0,30,.5)}${pn('gap','فاصلهٔ بین تایل‌ها',0,30,.5)}${pn('bleed','بلید (پس‌زمینه بیرون از خط برش)',0,5,.5)}
+  <label class="fld"><span>فرمت تصویر داخل PDF</span><select data-p="fmt"><option value="jpeg" ${PSET.fmt==='jpeg'?'selected':''}>JPEG باکیفیت (فایل سبک‌تر)</option><option value="png" ${PSET.fmt==='png'?'selected':''}>PNG بدون افت (فایل سنگین‌تر)</option></select></label></div>
+  <div class="form"><label class="chk"><input type="checkbox" data-p="cut" ${PSET.cut?'checked':''}> علامت برش در گوشه‌ها</label></div>
+  <h3>تایل‌هایی که چاپ می‌شوند</h3>
+  <div class="row"><button class="btn sm" type="button" data-pick="all">همه</button><button class="btn sm" type="button" data-pick="1">فقط سطح ۱</button><button class="btn sm" type="button" data-pick="2">فقط سطح ۲</button><button class="btn sm" type="button" data-pick="12">سطح ۱ و ۲</button></div>
+  <div class="tsel">${tiles.map((t,i)=>`<label><input type="checkbox" data-ts="${i}" ${PSET.sel[i]?'checked':''}> ${fa(i)} · ${esc(t.name)}</label>`).join('')}</div>
+  <div class="okbox" id="pr-sum">${L.per?`${fa(list.length)} تایل، ${fa(L.per)} تایل در هر صفحهٔ ${L.orient==='l'?'افقی':'عمودی'} (${fa(L.c)}×${fa(L.r)})، ${fa(L.pages)} صفحه.`:'<b>با این اندازه‌ها هیچ تایلی روی A4 جا نمی‌شود؛ حاشیه یا ضلع تایل را کم کن.</b>'}</div>
+  <div class="row"><button class="btn primary" type="button" id="pr-go" ${L.per&&list.length?'':'disabled'}>ساختن و دانلود PDF</button><span class="prog" id="pr-prog"></span></div>`;
+  $('pr-body').querySelectorAll('[data-p]').forEach(el=>el.onchange=()=>{const k=el.dataset.p;PSET[k]=el.type==='checkbox'?el.checked:el.type==='number'?+el.value:el.value;saveSettings();renderPrint()});
+  $('pr-body').querySelectorAll('[data-ts]').forEach(el=>el.onchange=()=>{PSET.sel[+el.dataset.ts]=el.checked;saveSettings();renderPrint()});
+  $('pr-body').querySelectorAll('[data-pick]').forEach(el=>el.onclick=()=>{const p=el.dataset.pick;PSET.sel=tiles.map(t=>p==='all'||(p==='12'?t.level>0:String(t.level)===p));saveSettings();renderPrint()});
+  $('pr-go').onclick=buildPdf;
+}
+$('b-print').onclick=()=>{$('ov-print').hidden=false;renderPrint()};
+$('pr-close').onclick=()=>{$('ov-print').hidden=true};
+$('ov-print').onclick=e=>{if(e.target===$('ov-print'))$('ov-print').hidden=true};
+// a tile as a PNG for the game (no bleed, no cut marks)
+window.__tileImage=async(i,px)=>{const b=PSET.bleed;PSET.bleed=0;try{const cv=await tileCanvas(i,px);return cv.toDataURL('image/png')}finally{PSET.bleed=b}};
+window.__tileCount=()=>tiles.length;
+async function tileCanvas(i,px){PRINT=true;let svg;try{svg=tileSvg(i,{bleed:+PSET.bleed,px,font:true})}finally{PRINT=false}
+  const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
+  try{const im=await loadImg(url);await new Promise(r=>setTimeout(r,30));const cv=document.createElement('canvas');cv.width=px;cv.height=px;const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,px,px);g.drawImage(im,0,0,px,px);return cv}
+  finally{URL.revokeObjectURL(url)}}
+// jsPDF ships next to this page; the CDN copy is only a fallback
+function addScript(src){return new Promise(ok=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=ok;document.head.appendChild(s)})}
+async function loadJsPdf(){await addScript('jspdf.umd.min.js');if(!window.jspdf)await addScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')}
+async function buildPdf(){const btn=$('pr-go'),prog=$('pr-prog');
+  if(!window.jspdf){prog.textContent='در حال بار کردن سازندهٔ PDF…';await loadJsPdf()}
+  if(!window.jspdf){prog.textContent='سازندهٔ PDF بار نشد؛ اتصال اینترنت را بررسی کن و صفحه را دوباره باز کن.';return}
+  btn.disabled=true;assign();
+  try{const list=printList(),L=layout(list.length),cell=L.cell,bl=+PSET.bleed,g=+PSET.gap;
+    const px=Math.round(cell/25.4*300);
+    const doc=new window.jspdf.jsPDF({orientation:L.orient==='l'?'landscape':'portrait',unit:'mm',format:'a4',compress:true});
+    const gw=L.c*cell+(L.c-1)*g,gh=L.r*cell+(L.r-1)*g,ox=(L.W-gw)/2,oy=(L.H-gh)/2;
+    for(let n=0;n<list.length;n++){const p=Math.floor(n/L.per),j=n%L.per;if(n&&j===0)doc.addPage('a4',L.orient==='l'?'landscape':'portrait');
+      prog.textContent=`تایل ${fa(n+1)} از ${fa(list.length)}…`;await new Promise(r=>setTimeout(r,0));
+      const cv=await tileCanvas(list[n],px);const x=ox+(j%L.c)*(cell+g),y=oy+Math.floor(j/L.c)*(cell+g);
+      const fmt=PSET.fmt==='png'?'PNG':'JPEG';doc.addImage(cv.toDataURL(fmt==='PNG'?'image/png':'image/jpeg',.95),fmt,x,y,cell,cell,undefined,'FAST');
+      if(PSET.cut){const tx=x+bl,ty=y+bl,len=Math.max(1.5,Math.min(4,g/2+bl,PSET.margin)),o=bl+.6;doc.setLineWidth(.15);doc.setDrawColor(0);
+        [[tx,ty],[tx+S,ty],[tx,ty+S],[tx+S,ty+S]].forEach(([cx,cy],q)=>{const sx=q%2?1:-1,sy=q<2?-1:1;
+          doc.line(cx+sx*o,cy,cx+sx*(o+len),cy);doc.line(cx,cy+sy*o,cx,cy+sy*(o+len))})}}
+    prog.textContent='در حال ساختن فایل…';await new Promise(r=>setTimeout(r,0));
+    doc.setProperties({title:'Dungeon tiles '+today()});
+    download('dungeon_tiles_A4_300dpi_'+today()+'.pdf',doc.output('blob'));prog.textContent=`PDF با ${fa(L.pages)} صفحه دانلود شد.`}
+  catch(e){console.error(e);prog.textContent='ساختن PDF شکست خورد: '+(e&&e.message||e)}
+  finally{btn.disabled=false}}
+
+/* ---------- start ---------- */
+(async()=>{
+  const st=lsGet('dte-settings');if(st){SET=Object.assign({},DEF,st.SET||{});PSET=Object.assign({},PDEF,st.PSET||{});geo()}
+  await idbOpen();(await idbAll()).forEach(r=>{const im=Object.assign({},r);im.url=dataToBlobUrl(im.data);IMGS.push(im)});
+  try{db=!HOST&&window.claude?await window.claude.use('db'):null}catch(e){db=null}
+  if(!db){const v=HOST?null:lsGet('dte-tiles');if(v&&Array.isArray(v.tiles)){tiles=v.tiles;notes=v.notes||notes;edited=v.edited||tiles.map(()=>true);while(hist.length<tiles.length)hist.push([])}
+    render();setSave(idbOk?'تغییرات در همین مرورگر ذخیره می‌شود. برای نسخهٔ پشتیبان «ذخیرهٔ فایل پروژه» را بزن.':'این مرورگر اجازهٔ ذخیره نمی‌دهد؛ قبل از بستن «ذخیرهٔ فایل پروژه» را بزن.',!idbOk);return}
+  render();setSave('وصل شد');
+  db.collection('tiles').onSnapshot(snap=>{let ch=false;snap.docs.forEach(d=>{const v=d.data();if(!v||typeof v.index!=='number')return;
+      if(writing[v.index]||dirty[v.index]||d.metadata.hasPendingWrites)return;
+      if(JSON.stringify(v.tile)!==JSON.stringify(tiles[v.index])||(v.notes||'')!==notes[v.index]){tiles[v.index]=clone(v.tile);notes[v.index]=v.notes||'';edited[v.index]=true;ch=true}});
+    if(ch){if(sel&&sel.type==='cor'&&!tiles[cur].cors[sel.i])sel=null;render()}},
+    e=>setSave('اتصال قطع شد؛ صفحه را دوباره باز کن',true));
+})();
+render();
+</script>
+</body>
+</html>

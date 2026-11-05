@@ -1,0 +1,94 @@
+# Builds the Windows zip and the Android APK from data/ (the editor's output) and publishes them as a GitHub Release.
+# Runs on every push to main (the editor's «ثبت و ساخت» button pushes) and by hand from the Actions tab.
+name: build
+on:
+  push:
+    branches: [main]
+    paths: ['data/**', 'game/**', 'android/**', 'tools/**', '.github/workflows/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - id: v
+        run: echo "version=$(node -p "require('./data/game.json').meta.version")" >> "$GITHUB_OUTPUT"
+      - name: robot plays full games with the new data
+        run: |
+          node tools/build.js
+          cd game && npm ci --ignore-scripts --omit=dev && node test/bot.js 40
+  windows:
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: node tools/build.js dist
+      - name: app icon
+        shell: bash
+        run: |
+          ICON=$(ls data/art/app/icon.* 2>/dev/null | head -1 || true)
+          if [ -n "$ICON" ]; then npx --yes png-to-ico@2.1.8 "$ICON" > dist/game/icon.ico || magick "$ICON" -define icon:auto-resize=256,128,64,48,32,16 dist/game/icon.ico; fi
+      - name: package
+        shell: bash
+        working-directory: dist/game
+        run: |
+          npm ci
+          ARGS=""; [ -f icon.ico ] && ARGS="--icon=icon.ico"
+          npx @electron/packager . 12Nights --platform=win32 --arch=x64 --out=../out --overwrite $ARGS
+      - name: zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/out/12Nights-win32-x64/* -DestinationPath "12Nights_Windows_v${{ needs.check.outputs.version }}.zip"
+      - uses: actions/upload-artifact@v4
+        with: { name: windows, path: '12Nights_Windows_*.zip' }
+  android:
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: 8.14.3 }
+      - name: signing key
+        env: { KEYSTORE_B64: '${{ secrets.KEYSTORE_B64 }}' }
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "::error::Repository secret KEYSTORE_B64 is missing (see README)"; exit 1; fi
+          echo "$KEYSTORE_B64" | base64 -d > android/keystore/twelvenights.jks
+      - name: app icon
+        run: |
+          ICON=$(ls data/art/app/icon.* 2>/dev/null | head -1 || true)
+          if [ -n "$ICON" ]; then command -v convert >/dev/null || sudo apt-get install -y imagemagick; for d in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do convert "$ICON" -resize ${d#*:}x${d#*:} android/app/src/main/res/mipmap-${d%%:*}/ic_launcher.png; done; fi
+      - name: build apk
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: ${{ needs.check.outputs.version }}
+        run: |
+          export VERSION_CODE=$((100 + VERSION_CODE))
+          gradle assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk "../12Nights_v${VERSION_NAME}.apk"
+      - uses: actions/upload-artifact@v4
+        with: { name: android, path: '12Nights_v*.apk' }
+  release:
+    needs: [check, windows, android]
+    if: ${{ always() && needs.windows.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: out, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check.outputs.version }}-b${{ github.run_number }}
+          name: نسخهٔ ${{ needs.check.outputs.version }} (ساخت ${{ github.run_number }})
+          body: |
+            ساخته‌شده از داده‌های ویرایشگر. ویندوز: zip را باز کن و 12Nights.exe را اجرا کن. اندروید: APK را روی گوشی‌ها نصب کن.
+            ${{ needs.android.result != 'success' && 'APK این بار ساخته نشد (کلید امضا یا خطای ساخت؛ صفحهٔ Actions را ببین).' || '' }}
+          files: out/*

@@ -1,0 +1,5 @@
+@font-face{font-family:"Vazirmatn";font-weight:400;src:url(fonts/Vazirmatn-FD-Regular.woff2) format("woff2")}
+@font-face{font-family:"Vazirmatn";font-weight:500 700;src:url(fonts/Vazirmatn-FD-Bold.woff2) format("woff2")}
+@font-face{font-family:"Vazirmatn";font-weight:800 900;src:url(fonts/Vazirmatn-FD-Black.woff2) format("woff2")}
+@font-face{font-family:"Lalezar";font-weight:400;src:url(fonts/Lalezar-ar.woff2) format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+200C-200E,U+FB50-FDFF,U+FE70-FEFC}
+@font-face{font-family:"Lalezar";font-weight:400;src:url(fonts/Lalezar-lat.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F}

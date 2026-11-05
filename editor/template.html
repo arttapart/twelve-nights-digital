@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ویرایشگر ۱۲ شب</title>
+<style>
+/*__FONTFACE__*/
+:root{--bg:#0e0f24;--pan:#17183a;--pan2:#1f2050;--line:#34356e;--tx:#ece6ff;--mut:#a9a3cf;--gold:#f3cf72;--gold2:#c9921f;--ok:#4fc08d;--bad:#e2574b;--blue:#7fc0ff}
+:root[data-theme="light"]{--bg:#f4f1e8;--pan:#fffdf7;--pan2:#f1ecdf;--line:#d9d0bb;--tx:#221d3a;--mut:#6c6587;--gold:#9a6b00;--gold2:#c9921f}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f4f1e8;--pan:#fffdf7;--pan2:#f1ecdf;--line:#d9d0bb;--tx:#221d3a;--mut:#6c6587;--gold:#9a6b00;--gold2:#c9921f}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font-family:"V",Tahoma,sans-serif;font-size:14px}
+button,input,select,textarea{font-family:inherit;font-size:13px;color:var(--tx)}
+#app{display:grid;grid-template-columns:220px 1fr;grid-template-rows:auto 1fr;height:100%}
+header{grid-column:1/3;display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--pan);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{margin:0;font-size:20px;color:var(--gold);font-weight:900;white-space:nowrap}
+header .sp{flex:1}
+#status{font-size:12px;color:var(--mut);max-width:420px}
+#status.err{color:var(--bad)}
+nav{background:var(--pan);border-left:1px solid var(--line);overflow:auto;padding:8px 6px}
+nav button{display:block;width:100%;text-align:right;background:none;border:0;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:14px;font-weight:700;color:var(--tx)}
+nav button:hover{background:var(--pan2)}nav button.on{background:var(--gold);color:#1b1530}
+nav .grp{font-size:11px;color:var(--mut);padding:10px 12px 4px;font-weight:800}
+main{overflow:auto;padding:14px 18px 40px;min-width:0}
+h2{margin:0 0 4px;font-size:20px;color:var(--gold)}
+.help{color:var(--mut);margin:0 0 12px;line-height:1.8;max-width:980px}
+.btn{background:var(--gold);color:#1b1530;border:0;border-radius:9px;padding:7px 14px;font-weight:800;cursor:pointer;white-space:nowrap}
+.btn.g{background:transparent;color:var(--tx);border:1.5px solid var(--line)}
+.btn.r{background:var(--bad);color:#fff}
+.btn:disabled{opacity:.45;cursor:default}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.bar input[type=search]{min-width:220px}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px 7px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:calc(100vh - 210px);background:var(--pan)}
+table.t{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+table.t th{position:sticky;top:0;background:var(--pan2);z-index:2;padding:7px 6px;font-size:12px;text-align:center;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;font-weight:800}
+table.t th small{display:block;color:var(--mut);font-weight:400}
+table.t td{border-bottom:1px solid var(--line);padding:3px 4px;vertical-align:middle}
+table.t tr.sel td{background:rgba(226,87,75,.12)}
+table.t tr.bad td{background:rgba(226,87,75,.22)}
+table.t td input,table.t td select,table.t td textarea{width:100%;border-color:transparent;background:transparent;padding:4px 5px}
+table.t td input:hover,table.t td select:hover,table.t td textarea:hover{border-color:var(--line)}
+table.t td input[type=number]{width:54px;text-align:center}
+table.t td input[type=checkbox]{width:auto}
+table.t td textarea{min-width:220px;resize:vertical;height:30px;line-height:1.5}
+table.t td.code input{direction:ltr;font-family:monospace;font-size:12px}
+.chip{display:inline-block;padding:2px 8px;border-radius:20px;background:var(--pan2);border:1px solid var(--line);font-size:11px;margin:1px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.box{background:var(--pan);border:1px solid var(--line);border-radius:12px;padding:12px}
+.box h3{margin:0 0 8px;font-size:15px}
+.f{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center}
+.f label{color:var(--mut);font-size:13px}
+.f input[type=number]{width:70px;text-align:center}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.slot{background:var(--pan);border:1.5px dashed var(--line);border-radius:12px;padding:8px;text-align:center;font-size:12px;position:relative}
+.slot.has{border-style:solid;border-color:var(--ok)}
+.slot .pv{height:110px;display:flex;align-items:center;justify-content:center;margin-bottom:6px;background:var(--bg);border-radius:8px;overflow:hidden}
+.slot .pv img{max-width:100%;max-height:100%}
+.slot .pv span{color:var(--mut)}
+.slot b{display:block;margin-bottom:4px}
+.slot .x{position:absolute;top:4px;left:4px;background:var(--bad);color:#fff;border:0;border-radius:50%;width:22px;height:22px;cursor:pointer;font-weight:900}
+.slot.drag{border-color:var(--gold);background:var(--pan2)}
+.sw{width:34px;height:26px;border-radius:6px;border:1px solid var(--line);display:inline-block;vertical-align:middle}
+#pv-wrap{display:flex;flex-direction:column;gap:12px}
+#pv-mon{width:960px;height:540px;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;background:#000;flex:none}
+#pv-mon iframe{width:1920px;height:1080px;border:0;transform:scale(.5);transform-origin:top right;position:absolute;top:0;right:0}
+#pv-ph{display:flex;gap:10px;flex-wrap:wrap}
+.phf{width:215px;height:465px;border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;background:#000;flex:none}
+.phf iframe{width:390px;height:844px;border:0;transform:scale(.55);transform-origin:top right;position:absolute;top:0;right:0}
+.phf .nm{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;background:rgba(0,0,0,.6);color:#fff;padding:2px;z-index:2}
+#tile-frame{width:100%;height:calc(100vh - 190px);border:1px solid var(--line);border-radius:10px;background:#fff}
+.errs{background:rgba(226,87,75,.12);border:1px solid var(--bad);border-radius:10px;padding:8px 14px;margin:8px 0}
+.errs li{margin:3px 0}
+.oks{background:rgba(79,192,141,.12);border:1px solid var(--ok);border-radius:10px;padding:8px 14px;margin:8px 0}
+.mut{color:var(--mut)}
+.ltr{direction:ltr;text-align:left;font-family:monospace}
+.tag{font-size:11px;color:var(--mut)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal>div{background:var(--pan);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:640px;width:92%;max-height:86vh;overflow:auto}
+@media (max-width:760px){#app{grid-template-columns:1fr;grid-template-rows:auto auto 1fr}nav{display:flex;overflow:auto;border:0;border-bottom:1px solid var(--line)}nav button{width:auto;white-space:nowrap}nav .grp{display:none}main{padding:12px 16px 40px}#pv-mon{width:100%;height:auto;aspect-ratio:16/9}}
+</style>
+</head><body>
+<div id="app">
+<header><h1>ویرایشگر ۱۲ شب</h1><span class="tag" id="ver"></span><span class="sp"></span><span id="status">در حال باز شدن…</span>
+<button class="btn g" id="b-theme" title="روشن / تیره">◐</button></header>
+<nav id="nav"></nav>
+<main id="main"></main>
+</div>
+<input type="file" id="f-open" accept=".zip,.json" hidden>
+<input type="file" id="f-up" hidden>
+<script>/*__JSZIP__*/</script>
+<script>
+/*__TX__*/
+</script>
+<script>
+'use strict';
+/*__INJECT__*/
+const $ = id => document.getElementById(id);
+const FA = '۰۱۲۳۴۵۶۷۸۹', fa = n => String(n).replace(/\d/g, d => FA[d]);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+function status(t, err) { const s = $('status'); s.textContent = t; s.className = err ? 'err' : ''; }
+
+/* ---------- storage (this browser): the working copy and the uploaded files ---------- */
+let idb = null;
+function idbOpen() { return new Promise(ok => { try { const r = indexedDB.open('twelve-nights-editor', 1); r.onupgradeneeded = () => { r.result.createObjectStore('kv'); r.result.createObjectStore('art'); }; r.onsuccess = () => { idb = r.result; ok(); }; r.onerror = () => ok(); } catch (e) { ok(); } }); }
+function idbGet(st, k) { return new Promise(ok => { if (!idb) return ok(null); try { const q = idb.transaction(st).objectStore(st).get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); } catch (e) { ok(null); } }); }
+function idbPut(st, k, v) { return new Promise(ok => { if (!idb) return ok(false); try { const tx = idb.transaction(st, 'readwrite'); tx.objectStore(st).put(v, k); tx.oncomplete = () => ok(true); tx.onerror = () => ok(false); } catch (e) { ok(false); } }); }
+function idbDel(st, k) { return new Promise(ok => { if (!idb) return ok(); try { const tx = idb.transaction(st, 'readwrite'); tx.objectStore(st).delete(k); tx.oncomplete = ok; tx.onerror = ok; } catch (e) { ok(); } }); }
+function idbKeys(st) { return new Promise(ok => { if (!idb) return ok([]); try { const q = idb.transaction(st).objectStore(st).getAllKeys(); q.onsuccess = () => ok(q.result || []); q.onerror = () => ok([]); } catch (e) { ok([]); } }); }
+
+let W = clone(DEFAULT);          // the game data being edited (data/game.json)
+const FILES = {};                // art path -> {blob, url}
+let saveT = null;
+function dirty(msg) { clearTimeout(saveT); status('ذخیره نشده…'); saveT = setTimeout(saveNow, 500); if (msg) status(msg); }
+async function saveNow() { const ok = await idbPut('kv', 'game', JSON.stringify(W)); status(ok ? 'در همین مرورگر ذخیره شد' : 'این مرورگر اجازهٔ ذخیره نمی‌دهد؛ از بخش «ساخت و انتشار» فایل zip بگیر', !ok); }
+async function putFile(path, blob) { if (FILES[path]) URL.revokeObjectURL(FILES[path].url); FILES[path] = { blob, url: URL.createObjectURL(blob) }; await idbPut('art', path, blob); }
+async function delFile(path) { if (FILES[path]) URL.revokeObjectURL(FILES[path].url); delete FILES[path]; await idbDel('art', path); }
+// art paths still referenced by the data
+function artRefs() { const s = new Set(); (function walk(o) { if (!o) return; if (typeof o === 'string') { s.add(o); return; } if (typeof o === 'object') for (const k in o) if (k !== 'mode') walk(o[k]); })(W.art); return s; }
+
+/* ---------- navigation ---------- */
+const TABS = [
+  ['g', 'داده‌های بازی'], ['cards', 'کارت‌های آکادمی'], ['wizards', 'جادوگران'], ['demons', 'کارت‌های اهریمن'], ['battlefield', 'اثرهای میدان نبرد'], ['items', 'وسایل و گنجینه‌ها'], ['challenges', 'توکن‌های چالش'], ['upgrades', 'ارتقاهای تخته'], ['houses', 'خاندان‌ها'], ['rules', 'قانون‌ها و عددها'], ['tiles', 'تایل‌های سیاه‌چال'],
+  ['g', 'ظاهر'], ['art', 'گرافیک'], ['texts', 'متن‌های برنامه'], ['colors', 'رنگ‌ها و ظاهر'],
+  ['g', 'ساخت'], ['preview', 'پیش‌نمایش زنده'], ['build', 'ساخت و انتشار']];
+let tab = 'cards';
+try { tab = localStorage.getItem('tne-tab') || 'cards'; } catch (e) {}
+function nav() { $('nav').innerHTML = TABS.map(([k, n]) => k === 'g' ? `<div class="grp">${n}</div>` : `<button data-t="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join(''); }
+$('nav').onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; go(b.dataset.t); };
+function go(t) { if (tab === 'preview' && t !== 'preview') stopPreview(); tab = t; try { localStorage.setItem('tne-tab', t); } catch (e) {} nav(); show(); }
+function show() { $('ver').textContent = 'نسخهٔ ' + fa(W.meta.version || ''); const m = $('main'); m.innerHTML = ''; (VIEWS[tab] || VIEWS.cards)(m); }
+$('b-theme').onclick = () => { const r = document.documentElement, cur = r.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'); r.dataset.theme = cur === 'light' ? 'dark' : 'light'; try { localStorage.setItem('tne-theme', r.dataset.theme); } catch (e) {} };
+try { const th = localStorage.getItem('tne-theme'); if (th) document.documentElement.dataset.theme = th; } catch (e) {}
+
+/* ---------- generic table ---------- */
+// cols: [{k, l (label), h (hint), ty: text|num|sel|chk|area|code|color, opts:[[v,label]], w, get(row), set(row,v), ro}]
+function table(host, o) {
+  // o: {rows() -> array, cols, add() -> new row, key (unique field), onChange(), canAdd, canDel, note}
+  let sortK = null, sortD = 1, filt = '';
+  const sel = new Set();
+  const wrap = document.createElement('div'); host.appendChild(wrap);
+  function val(r, c) { return c.get ? c.get(r) : r[c.k]; }
+  function draw() {
+    const rows = o.rows();
+    let idx = rows.map((r, i) => i);
+    if (filt) idx = idx.filter(i => JSON.stringify(rows[i]).includes(filt));
+    if (sortK) { const c = o.cols.find(x => x.k === sortK); idx.sort((a, b) => { const x = val(rows[a], c), y = val(rows[b], c); return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'fa')) * sortD; }); }
+    const dup = new Set(); if (o.key) { const seen = {}; rows.forEach((r, i) => { const k = r[o.key]; if (seen[k] != null || !k) { dup.add(i); dup.add(seen[k]); } seen[k] = i; }); }
+    let h = `<div class="bar"><input type="search" placeholder="جستجو در جدول…" value="${esc(filt)}" data-f>`;
+    if (o.canAdd !== false) h += `<button class="btn" data-add>+ ردیف تازه</button>`;
+    if (o.canDel !== false) h += `<button class="btn g" data-dupl ${sel.size ? '' : 'disabled'}>کپی ردیف‌های تیک‌خورده</button><button class="btn r" data-del ${sel.size ? '' : 'disabled'}>حذف ردیف‌های تیک‌خورده (${fa(sel.size)})</button>`;
+    h += `<span class="mut">${fa(idx.length)} ردیف</span>${o.note ? `<span class="mut">${o.note}</span>` : ''}</div>`;
+    h += `<div class="tw"><table class="t"><thead><tr>${o.canDel !== false ? '<th>✓</th>' : ''}${o.cols.map(c => `<th data-s="${c.k}" style="${c.w ? 'min-width:' + c.w + 'px' : ''}">${c.l}${sortK === c.k ? (sortD > 0 ? ' ▲' : ' ▼') : ''}${c.h ? `<small>${c.h}</small>` : ''}</th>`).join('')}</tr></thead><tbody>`;
+    for (const i of idx) {
+      const r = rows[i];
+      h += `<tr data-i="${i}" class="${sel.has(i) ? 'sel' : ''} ${dup.has(i) ? 'bad' : ''}">${o.canDel !== false ? `<td><input type="checkbox" data-sel ${sel.has(i) ? 'checked' : ''}></td>` : ''}`;
+      for (const c of o.cols) {
+        const v = val(r, c), ro = c.ro ? 'disabled' : '';
+        let cell;
+        if (c.ty === 'num') cell = `<input type="number" step="any" value="${v == null || v === '' ? '' : v}" data-c="${c.k}" ${ro}>`;
+        else if (c.ty === 'chk') cell = `<input type="checkbox" ${v ? 'checked' : ''} data-c="${c.k}" ${ro}>`;
+        else if (c.ty === 'sel') { const op = typeof c.opts === 'function' ? c.opts(r) : c.opts; cell = `<select data-c="${c.k}" ${ro}>${op.map(([a, b]) => `<option value="${esc(a)}" ${String(a) === String(v == null ? '' : v) ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>`; }
+        else if (c.ty === 'area') cell = `<textarea data-c="${c.k}" ${ro}>${esc(v)}</textarea>`;
+        else if (c.ty === 'color') cell = `<input type="color" value="${esc(v)}" data-c="${c.k}" ${ro}>`;
+        else if (c.ty === 'html') cell = c.html(r);
+        else cell = `<input value="${esc(v)}" data-c="${c.k}" ${ro}>`;
+        h += `<td class="${c.ty === 'code' ? 'code' : ''}" style="${c.w ? 'min-width:' + c.w + 'px' : ''}">${cell}</td>`;
+      }
+      h += '</tr>';
+    }
+    h += '</tbody></table></div>';
+    wrap.innerHTML = h;
+  }
+  wrap.addEventListener('input', e => { if (e.target.dataset.f != null) { filt = e.target.value; const p = e.target.selectionStart; draw(); const n = wrap.querySelector('[data-f]'); n.focus(); n.setSelectionRange(p, p); } });
+  wrap.addEventListener('change', e => {
+    const t = e.target, tr = t.closest('tr'); if (!tr || tr.dataset.i == null) return;
+    const i = +tr.dataset.i, rows = o.rows(), r = rows[i];
+    if (t.dataset.sel != null) { if (t.checked) sel.add(i); else sel.delete(i); draw(); return; }
+    const c = o.cols.find(x => x.k === t.dataset.c); if (!c) return;
+    let v = c.ty === 'chk' ? t.checked : c.ty === 'num' ? (t.value === '' ? null : +t.value) : t.value;
+    try { if (c.set) c.set(r, v); else r[c.k] = v; t.style.outline = ''; } catch (er) { t.style.outline = '2px solid var(--bad)'; status(er.message || String(er), true); return; }
+    o.onChange && o.onChange(); dirty(); if (c.redraw || (o.key && c.k === o.key)) draw();
+  });
+  wrap.addEventListener('click', e => {
+    const t = e.target;
+    if (t.dataset.s && t.tagName === 'TH') { const k = t.dataset.s; if (sortK === k) sortD = -sortD; else { sortK = k; sortD = 1; } draw(); return; }
+    if (t.dataset.add != null) { o.rows().push(o.add()); o.onChange && o.onChange(); dirty(); filt = ''; sortK = null; draw(); const tw = wrap.querySelector('.tw'); tw.scrollTop = tw.scrollHeight; return; }
+    if (t.dataset.del != null) { if (!confirm(fa(sel.size) + ' ردیف حذف شود؟')) return; const rows = o.rows(); [...sel].sort((a, b) => b - a).forEach(i => o.remove ? o.remove(i) : rows.splice(i, 1)); sel.clear(); o.onChange && o.onChange(); dirty(); draw(); return; }
+    if (t.dataset.dupl != null) { const rows = o.rows(); for (const i of [...sel].sort((a, b) => a - b)) { const c = clone(rows[i]); if (o.key) c[o.key] = c[o.key] + '_copy'; o.dupl ? o.dupl(c) : rows.push(c); } sel.clear(); o.onChange && o.onChange(); dirty(); draw(); }
+  });
+  draw();
+  return { draw };
+}
+// object of objects -> rows with an id field, written back on change
+function asRows(obj, keyName) { return Object.entries(obj).map(([k, v]) => Object.assign({ [keyName]: k }, v)); }
+const resCols = (k, l) => [['coin', 'سکه'], ['scroll', 'طومار'], ['ess', 'جوهره']].map(([r, n]) => ({ k: k + '_' + r, l: n, h: l, ty: 'num', get: x => (x[k] || {})[r] || 0, set: (x, v) => { x[k] = x[k] || {}; if (v) x[k][r] = v; else delete x[k][r]; } }));
+const numOrNull = v => v == null || v === '' ? null : +v;
+
+/* ---------- views ---------- */
+const VIEWS = {};
+const TYPES = [['prod', 'تولید'], ['magic', 'جادو'], ['skill', 'مهارت'], ['spell', 'طلسم'], ['crystal', 'چالش کریستال']];
+const DECKS = [['academy', 'دک آکادمی'], ['start', 'دک آغازین'], ['fixed', 'ردیف ثابت'], ['treasure', 'گنجینه']];
+VIEWS.cards = m => {
+  m.innerHTML = `<h2>کارت‌های آکادمی</h2><p class="help">هر ردیف یک کارت است. «تعداد» یعنی چند نسخه از آن کارت در دک است. ستون‌های «گرفتن» و «کشیدن» برای هر کارتی کار می‌کنند. اثر ویژه را از فهرست «اثر» انتخاب کن؛ این فهرست همهٔ اثرهایی است که برنامه بلد است. کارت تازه‌ای با سازوکار کاملاً تازه به برنامه‌نویسی نیاز دارد. کارت‌های «ردیف ثابت» به ازای هر بازیکن چند نسخه دارند. کارت‌های «دک آغازین» از بخش «قانون‌ها و عددها» به دست بازیکن می‌رسند.</p>`;
+  const rows = () => W._cardRows;
+  W._cardRows = Object.values(W.cards);
+  const sync = () => { const o = {}; for (const c of W._cardRows) o[c.id] = c; W.cards = o; };
+  table(m, {
+    rows, key: 'id', onChange: sync,
+    remove: i => W._cardRows.splice(i, 1),
+    add: () => ({ id: 'new' + Date.now().toString(36).slice(-4), code: '', ty: 'magic', deck: 'academy', name: 'کارت تازه', txt: '', count: 1, cost: { coin: 1 }, power: 0, fame: 0, strip: null, fx: '' }),
+    cols: [
+      { k: 'id', l: 'شناسه', h: 'انگلیسی، یکتا', ty: 'code', w: 90 }, { k: 'code', l: 'کد', w: 60 }, { k: 'name', l: 'نام', w: 140 },
+      { k: 'ty', l: 'نوع', ty: 'sel', opts: TYPES }, { k: 'deck', l: 'جای کارت', ty: 'sel', opts: DECKS },
+      { k: 'count', l: 'تعداد', ty: 'num' }, { k: 'perPlayer', l: 'برای هر بازیکن', h: 'ردیف ثابت', ty: 'num' },
+      ...resCols('cost', 'هزینه'), { k: 'cost_pow', l: 'قدرت', h: 'هزینه', ty: 'num', get: x => (x.cost || {}).pow || 0, set: (x, v) => { x.cost = x.cost || {}; if (v) x.cost.pow = v; else delete x.cost.pow; } },
+      { k: 'power', l: 'قدرت', h: 'جادو', ty: 'num' }, { k: 'fame', l: 'امتیاز', h: 'پایان بازی', ty: 'num' },
+      { k: 'txt', l: 'متن روی کارت', ty: 'area', w: 230 },
+      ...resCols('gain', 'گرفتن'), { k: 'draw', l: 'کشیدن کارت', ty: 'num' }, { k: 'fameNow', l: 'شهرت فوری', ty: 'num' },
+      { k: 'fx', l: 'اثر ویژه', ty: 'sel', opts: [['', '— بدون اثر ویژه —']].concat(FX.map(f => [f.k, f.d])), w: 220 },
+      ...['step', 'run', 'tele', 'eye'].map((k, j) => ({ k: 's_' + k, l: ['گام', 'دویدن', 'تله‌پورت', 'چشم سوم'][j], h: 'نوار سیاه‌چال', ty: k === 'step' ? 'num' : 'chk', get: x => (x.strip || {})[k] || (k === 'step' ? 0 : false), set: (x, v) => { x.strip = x.strip || {}; if (v) x.strip[k] = k === 'step' ? v : 1; else delete x.strip[k]; if (!Object.keys(x.strip).length) x.strip = null; } })),
+      { k: 's_ft', l: 'مشعل/کلنگ', h: 'نوار سیاه‌چال', ty: 'sel', opts: [['', '—'], ['t', 'مشعل'], ['a', 'مشعل یا کلنگ']], get: x => (x.strip || {}).ft || '', set: (x, v) => { x.strip = x.strip || {}; if (v) x.strip.ft = v; else delete x.strip.ft; if (!Object.keys(x.strip).length) x.strip = null; } }]
+  });
+};
+VIEWS.wizards = m => {
+  m.innerHTML = `<h2>جادوگران</h2><p class="help">همهٔ جادوگران، از جمله نوآموزها (گروه «نوآموز»). «دفاع» هزینهٔ استخدام است و «قدرت» قدرت پایه در نبرد. ستون «اثر» کد توانایی را نشان می‌دهد؛ معنای هر کد زیر جدول آمده است. اگر کد اشتباه باشد، ردیف قرمز می‌شود.</p>`;
+  const rows = () => W._wizRows; W._wizRows = Object.values(W.wizards);
+  const sync = () => { const o = {}; for (const w of W._wizRows) o[w.id] = w; W.wizards = o; };
+  table(m, {
+    rows, key: 'id', onChange: sync, remove: i => W._wizRows.splice(i, 1),
+    add: () => ({ id: 'X' + (W._wizRows.length + 1), g: 'S', L: 1, d: 4, p: 4, pq: false, t: '-', eff: ['none'], txt: '' }),
+    cols: [{ k: 'id', l: 'کد', ty: 'code', w: 60 }, { k: 'g', l: 'گروه', ty: 'sel', opts: [['S', 'سایه'], ['L', 'نور'], ['B', 'تعادل'], ['N', 'نوآموز']] },
+      { k: 'L', l: 'سطح', ty: 'num' }, { k: 'd', l: 'دفاع', ty: 'num' }, { k: 'p', l: 'قدرت', ty: 'num' }, { k: 'pq', l: 'قدرت «؟»', h: 'قدرت متغیر', ty: 'chk' },
+      { k: 't', l: 'زمان توانایی', ty: 'sel', opts: [['-', 'بدون توانایی'], ['I', 'آنی'], ['N', 'کارت بعدی'], ['E', 'تا پایان نبرد']] },
+      { k: 'eff', l: 'اثر (کد)', ty: 'code', w: 220, get: x => JSON.stringify(x.eff), set: (x, v) => { const e = JSON.parse(v); if (!Array.isArray(e) || !WEFF[e[0]]) throw new Error('کد اثر شناخته نشد: ' + v); x.eff = e; } },
+      { k: 'effd', l: 'معنای اثر', ty: 'html', html: x => `<span class="mut">${esc((WEFF[(x.eff || [])[0]] || {}).d || '؟')}</span>`, w: 200 },
+      { k: 'txt', l: 'متن روی کارت', ty: 'area', w: 220 }]
+  });
+  m.insertAdjacentHTML('beforeend', `<details class="box" style="margin-top:12px"><summary><b>فهرست کدهای اثر جادوگران</b></summary><table class="t" style="margin-top:8px"><tr><th>کد</th><th>نوع</th><th>نمونه</th><th>معنی</th></tr>${Object.entries(WEFF).map(([k, v]) => `<tr><td class="ltr">${esc(k)}</td><td>${esc(v.t)}</td><td class="ltr">${esc(v.ex)}</td><td>${esc(v.d)}</td></tr>`).join('')}</table></details>`);
+};
+const REW = { f: 'امتیاز شهرت', e: 'جوهرهٔ تاریک', c: 'سکه یا طومار', t: 'مشعل', b: 'کلنگ', tb: 'مشعل یا کلنگ', st: 'گام', tp: 'تله‌پورت', dr: 'کشیدن کارت', rm: 'حذف کارت' };
+const rewTxt = r => Object.entries(r || {}).map(([k, v]) => k + ':' + v).join(' ');
+const rewParse = s => { const o = {}; for (const p of String(s).trim().split(/[\s,،]+/).filter(Boolean)) { const [k, v] = p.split(':'); if (!REW[k]) throw new Error('پاداش ناشناخته: ' + k); o[k] = +(v || 1); } return o; };
+VIEWS.demons = m => {
+  m.innerHTML = `<h2>کارت‌های اهریمن</h2><p class="help">هر کارت سه بخش زرد، نارنجی و قرمز دارد: «عدد» قدرتی است که باید شکست داده شود. پاداش را به شکل «کد:تعداد» بنویس و چند پاداش را با فاصله جدا کن، مثلاً <span class="ltr">f:3 t:1</span>. کدها: ${Object.entries(REW).map(([k, v]) => `<span class="chip"><b class="ltr">${k}</b> ${v}</span>`).join(' ')}</p>`;
+  table(m, {
+    rows: () => W.demons, add: () => ({ y: [2, { f: 1 }], o: [4, { f: 2 }], r: [6, { f: 3 }] }),
+    cols: [{ k: 'n', l: '#', ty: 'html', html: x => fa(W.demons.indexOf(x) + 1) }, ...[['y', 'زرد'], ['o', 'نارنجی'], ['r', 'قرمز']].flatMap(([c, n]) => [
+      { k: c + 'v', l: 'عدد ' + n, ty: 'num', get: x => x[c][0], set: (x, v) => { x[c][0] = +v; } },
+      { k: c + 'r', l: 'پاداش ' + n, ty: 'code', w: 130, get: x => rewTxt(x[c][1]), set: (x, v) => { x[c][1] = rewParse(v); } }])]
+  });
+};
+VIEWS.battlefield = m => {
+  m.innerHTML = `<h2>اثرهای میدان نبرد</h2><p class="help">ماژول اختیاری: اگر میزبان در صفحهٔ اول روشنش کند، در شروع هر نبرد یکی از این اثرها به تصادف رو می‌شود. کدهای اثر: ${Object.entries(BFEFF).map(([k, v]) => `<span class="chip"><b class="ltr">${k}</b> ${esc(v)}</span>`).join(' ')}</p>`;
+  table(m, {
+    rows: () => W.battlefield, key: 'id', add: () => ({ id: 'F' + (W.battlefield.length + 1), name: 'اثر تازه', txt: '', eff: ['none'] }),
+    cols: [{ k: 'id', l: 'کد', ty: 'code', w: 60 }, { k: 'name', l: 'نام', w: 140 }, { k: 'txt', l: 'متن', ty: 'area', w: 280 },
+      { k: 'eff', l: 'اثر (کد)', ty: 'code', w: 220, get: x => JSON.stringify(x.eff), set: (x, v) => { const e = JSON.parse(v); if (!Array.isArray(e)) throw new Error('باید آرایه باشد'); x.eff = e; } }]
+  });
+};
+VIEWS.items = m => {
+  const R = W.rules;
+  m.innerHTML = `<h2>وسایل جادویی و گنجینه‌ها</h2><p class="help">نام و متن وسایل را می‌توانی عوض کنی. کار هر وسیله در برنامه نوشته شده است، برای همین ردیف تازه نمی‌شود اضافه کرد. در جدول دوم، تعداد هر گنجینه در کیسهٔ گنجینه را تعیین کن.</p>`;
+  const rows = asRows(R.items, 'key');
+  table(m, { rows: () => rows, canAdd: false, canDel: false, onChange: () => { for (const r of rows) R.items[r.key] = { name: r.name, txt: r.txt }; },
+    cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 80 }, { k: 'name', l: 'نام', w: 150 }, { k: 'txt', l: 'متن', ty: 'area', w: 360 }] });
+  m.insertAdjacentHTML('beforeend', '<h3 style="margin-top:20px">کیسهٔ گنجینه</h3>');
+  const kinds = [...new Set(['wand3', 'wand4', ...Object.keys(R.items), 'fame5', 'fame3', 'freeup', 'm6'])];
+  const trows = kinds.map(k => ({ key: k, name: R.items[k] ? R.items[k].name : R.treasureNames[k], n: R.treasures.filter(x => x === k).length, isItem: !!R.items[k] }));
+  table(m, { rows: () => trows, canAdd: false, canDel: false,
+    onChange: () => { R.treasures = trows.flatMap(r => Array(Math.max(0, r.n | 0)).fill(r.key)); for (const r of trows) if (!r.isItem) R.treasureNames[r.key] = r.name; },
+    cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 80 }, { k: 'name', l: 'نام', w: 180, ro: false }, { k: 'n', l: 'تعداد در کیسه', ty: 'num' }] });
+};
+VIEWS.challenges = m => {
+  const R = W.rules; const rows = asRows(R.challenges, 'key');
+  m.innerHTML = `<h2>توکن‌های چالش</h2><p class="help">«زود» و «دیر» تعیین می‌کند هر توکن در کدام شب‌ها به تصادف قرار بگیرد. شب‌ها در بخش «قانون‌ها و عددها» تنظیم می‌شوند. اینکه هر چالش چه چیزی را می‌شمارد در برنامه نوشته شده است.</p>`;
+  table(m, { rows: () => rows, canAdd: false, canDel: false, onChange: () => { for (const r of rows) R.challenges[r.key] = { name: r.name, pts: r.pts, kind: r.kind }; },
+    cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 90 }, { k: 'name', l: 'نام', w: 280 }, { k: 'pts', l: 'امتیاز', ty: 'num' }, { k: 'kind', l: 'زمان', ty: 'sel', opts: [['early', 'زود'], ['late', 'دیر'], ['fixed', 'ثابت']] }] });
+};
+VIEWS.upgrades = m => {
+  const R = W.rules; const rows = asRows(R.upgrades, 'key');
+  m.innerHTML = `<h2>ارتقاهای تختهٔ شخصی</h2><p class="help">هزینه، نام و متن «پیش از / پس از» هر ارتقا. کار هر ارتقا در برنامه نوشته شده است.</p>`;
+  table(m, { rows: () => rows, canAdd: false, canDel: false, onChange: () => { for (const r of rows) { const { key, ...v } = r; R.upgrades[key] = v; } },
+    cols: [{ k: 'key', l: 'شناسه', ty: 'code', ro: true, w: 80 }, { k: 'name', l: 'نام', w: 150 }, { k: 'before', l: 'پیش از', w: 110 }, { k: 'after', l: 'پس از', w: 140 }, ...resCols('cost', 'هزینه')] });
+};
+VIEWS.houses = m => {
+  m.innerHTML = `<h2>خاندان‌ها</h2><p class="help">نام و رنگ هر خاندان. بازیکن در صفحهٔ اول گوشی یکی را انتخاب می‌کند و رنگ فیگورش همین است. حداکثر ۵ بازیکن.</p>`;
+  table(m, { rows: () => W.rules.houses, key: 'id', add: () => ({ id: 'h' + Date.now().toString(36).slice(-3), name: 'تازه', color: '#888888' }),
+    cols: [{ k: 'id', l: 'شناسه', ty: 'code', w: 80 }, { k: 'name', l: 'نام', w: 140 }, { k: 'color', l: 'رنگ', ty: 'color' }] });
+};
+// ---- rules form ----
+function field(o, k, label, ty) { return { o, k, label, ty: ty || 'num' }; }
+VIEWS.rules = m => {
+  const R = W.rules, WR = W.wrules;
+  m.innerHTML = `<h2>قانون‌ها و عددها</h2><p class="help">عددهای اصلی بازی. هر تغییر در نسخهٔ بعدی برنامه اعمال می‌شود. برای امتحانش، «پیش‌نمایش زنده» را باز کن.</p><div class="cards" id="rf"></div>`;
+  const host = $('rf');
+  const box = (title, fields, extra) => { const d = document.createElement('div'); d.className = 'box'; d.innerHTML = `<h3>${title}</h3><div class="f">${fields.map((f, i) => `<label>${f.label}</label><input type="${f.ty === 'num' ? 'number' : 'text'}" data-i="${i}" value="${esc(f.get ? f.get() : f.o[f.k])}" ${f.ty !== 'num' ? 'style="width:160px"' : ''}>`).join('')}</div>${extra || ''}`;
+    d.addEventListener('change', e => { const f = fields[+e.target.dataset.i]; if (!f) return; try { const v = f.ty === 'num' ? +e.target.value : e.target.value; if (f.set) f.set(v); else f.o[f.k] = v; e.target.style.outline = ''; dirty(); } catch (er) { e.target.style.outline = '2px solid var(--bad)'; status(er.message, true); } });
+    host.appendChild(d); return d; };
+  box('دست و ذخیره', [field(R, 'handSize', 'کارت در شروع نوبت'), field(R, 'acadRow', 'کارت‌های ردیف آکادمی'), field(R, 'hallSize', 'جادوگران تالار'), field(R, 'storeBase', 'جای ذخیرهٔ هر منبع'), field(R, 'storeUp', 'جای ذخیره پس از ارتقا'), field(R, 'tokenMax', 'حداکثر مشعل + کلنگ')]);
+  box('شروع بازی', [field(R, 'startWand', 'سطح چوب‌دستی'), field(R, 'startTorch', 'مشعل'), field(R, 'startPick', 'کلنگ'), ...['coin', 'scroll', 'ess'].map(r => ({ label: ['سکه', 'طومار', 'جوهره'][['coin', 'scroll', 'ess'].indexOf(r)] + ' در ذخیره', ty: 'num', get: () => R.startStore[r] || 0, set: v => { R.startStore[r] = v; } }))]);
+  const costF = (o, k, n) => ['coin', 'scroll', 'ess'].map((r, j) => ({ label: n + ' (' + ['سکه', 'طومار', 'جوهره'][j] + ')', ty: 'num', get: () => (o[k] || {})[r] || 0, set: v => { o[k] = o[k] || {}; if (v) o[k][r] = v; else delete o[k][r]; } }));
+  box('تاس و آکادمی', [...costF(R, 'rerollCost', 'هزینهٔ بازانداختن'), field(R, 'rerollMax', 'بازانداختن پولی در نوبت'), ...costF(R, 'swapCost', 'هزینهٔ تعویض کارت آکادمی'), field(R, 'duelDice', 'تاس‌های دوئل کریستال')]);
+  box('نبرد جادوگران', [field(WR, 'rounds', 'تعداد راند'), field(WR, 'tokenPoints', 'امتیاز هر برد راند'), field(WR, 'mostTokensBonus', 'جایزهٔ بیشترین برد'), field(WR, 'teacherBonus', 'قدرت اضافهٔ نشان آموزگار'), field(WR, 'gemBonus', 'قدرت اضافهٔ گوهر نیرو'), field(WR, 'dieMax', 'بیشترین سطح تاس')]);
+  box('زخم', [field(R.wound, 'fame', 'امتیاز هر زخم در پایان'), field(R.wound, 'name', 'نام', 'text'), field(R.wound, 'txt', 'متن', 'text')]);
+  box('غنیمت خانه‌های سیاه‌چال', Object.keys(R.loot).flatMap(c => ['coin', 'scroll', 'ess'].filter(r => R.loot[c][r] != null || true).map(r => ({ label: ({ C: 'خانهٔ سکه', S: 'خانهٔ طومار', E: 'خانهٔ جوهره' }[c] || c) + ' – ' + ['سکه', 'طومار', 'جوهره'][['coin', 'scroll', 'ess'].indexOf(r)], ty: 'num', get: () => R.loot[c][r] || 0, set: v => { if (v) R.loot[c][r] = v; else delete R.loot[c][r]; } }))));
+  // dice faces
+  const dz = document.createElement('div'); dz.className = 'box'; dz.style.gridColumn = 'span 2'; dz.innerHTML = `<h3>وجه‌های تاس چوب‌دستی</h3><table class="t" style="width:auto;min-width:0">${Object.keys(R.die.faces).map(l => `<tr><td><input data-dn="${l}" value="${esc(R.die.names[l])}" style="width:70px"></td>${R.die.faces[l].map((v, j) => `<td><input type="number" data-df="${l}" data-j="${j}" value="${v}" style="width:44px;text-align:center"></td>`).join('')}</tr>`).join('')}</table>`;
+  dz.addEventListener('change', e => { const t = e.target; if (t.dataset.dn) R.die.names[t.dataset.dn] = t.value; if (t.dataset.df) R.die.faces[t.dataset.df][+t.dataset.j] = +t.value; dirty(); }); host.appendChild(dz);
+  // per player count
+  const pz = document.createElement('div'); pz.className = 'box'; pz.style.gridColumn = '1/-1';
+  const chT = o => Object.entries(o).map(([n, k]) => n + ':' + k).join(' ');
+  pz.innerHTML = `<h3>شب‌ها بسته به تعداد بازیکن</h3><p class="help" style="margin:0 0 6px">شب‌های نبرد را با فاصله جدا کن. شب‌های چالش را به شکل «شب:نوع» بنویس؛ نوع «early» یعنی یک توکن زود تصادفی، «late» یعنی یک توکن دیر تصادفی، یا شناسهٔ خود توکن مثل f_hunt.</p><table class="t"><tr><th>بازیکن</th><th>تعداد شب</th><th>شب‌های نبرد</th><th>شب‌های چالش</th></tr>${Object.keys(R.byPlayers).map(n => `<tr><td>${fa(n)}</td><td><input type="number" data-pn="${n}" data-w="nights" value="${R.byPlayers[n].nights}" style="width:60px"></td><td><input class="ltr" data-pn="${n}" data-w="battle" value="${R.byPlayers[n].battle.join(' ')}"></td><td><input class="ltr" data-pn="${n}" data-w="chal" value="${chT(R.byPlayers[n].chal)}" style="width:300px"></td></tr>`).join('')}</table>`;
+  pz.addEventListener('change', e => { const t = e.target, B = R.byPlayers[t.dataset.pn]; if (!B) return;
+    try { if (t.dataset.w === 'nights') B.nights = +t.value; else if (t.dataset.w === 'battle') B.battle = t.value.trim().split(/[\s,،]+/).filter(Boolean).map(Number); else { const o = {}; for (const p of t.value.trim().split(/\s+/).filter(Boolean)) { const [a, b] = p.split(':'); if (!b || isNaN(+a)) throw new Error('شکل درست: ۵:early'); if (!['early', 'late'].includes(b) && !R.challenges[b]) throw new Error('توکن ناشناخته: ' + b); o[+a] = b; } B.chal = o; } t.style.outline = ''; dirty(); }
+    catch (er) { t.style.outline = '2px solid var(--bad)'; status(er.message, true); } });
+  host.appendChild(pz);
+  // start deck + novices
+  const sd = document.createElement('div'); sd.className = 'box';
+  const cnt = (list, id) => list.filter(x => x === id).length;
+  const drawSD = () => { const starts = Object.values(W.cards).filter(c => c.deck === 'start'), nov = Object.values(W.wizards).filter(w => w.g === 'N');
+    sd.innerHTML = `<h3>دک آغازین هر بازیکن</h3><div class="f">${starts.map(c => `<label>${esc(c.name)} <span class="tag">${esc(c.id)}</span></label><input type="number" min="0" data-sd="${esc(c.id)}" value="${cnt(R.startDeck, c.id)}">`).join('')}</div><p class="mut">جمع: ${fa(R.startDeck.length)} کارت</p><h3>جادوگران آغازین</h3><div class="f">${nov.map(w => `<label>نوآموز ${esc(w.id)} (قدرت ${fa(w.p)})</label><input type="number" min="0" data-sw="${esc(w.id)}" value="${cnt(R.startWizards, w.id)}">`).join('')}</div>`; };
+  sd.addEventListener('change', e => { const t = e.target, n = Math.max(0, +t.value | 0);
+    if (t.dataset.sd) { const id = t.dataset.sd; R.startDeck = R.startDeck.filter(x => x !== id).concat(Array(n).fill(id)); }
+    if (t.dataset.sw) { const id = t.dataset.sw; R.startWizards = R.startWizards.filter(x => x !== id).concat(Array(n).fill(id)); WR.noviceCopies = Object.assign({}, WR.noviceCopies || {}, { [id]: n }); }
+    dirty(); drawSD(); });
+  drawSD(); host.appendChild(sd);
+  // duel prizes
+  const dp = document.createElement('div'); dp.className = 'box';
+  const drawDP = () => { dp.innerHTML = `<h3>جایزهٔ برندهٔ دوئل کریستال</h3><table class="t"><tr><th>متن دکمه</th><th>سکه</th><th>طومار</th><th>جوهره</th></tr>${R.duelPrizes.map((p, i) => `<tr><td><input data-dp="${i}" data-w="label" value="${esc(p.label)}"></td>${['coin', 'scroll', 'ess'].map(r => `<td><input type="number" data-dp="${i}" data-w="${r}" value="${p.gain[r] || 0}" style="width:50px"></td>`).join('')}</tr>`).join('')}</table>`; };
+  dp.addEventListener('change', e => { const t = e.target, p = R.duelPrizes[+t.dataset.dp]; if (!p) return; if (t.dataset.w === 'label') p.label = t.value; else { if (+t.value) p.gain[t.dataset.w] = +t.value; else delete p.gain[t.dataset.w]; } dirty(); });
+  drawDP(); host.appendChild(dp);
+  box('نسخه', [{ label: 'شمارهٔ نسخه (مثلاً 1.2.0)', ty: 'text', get: () => W.meta.version, set: v => { if (!/^\d+\.\d+\.\d+$/.test(v)) throw new Error('شکل درست: 1.2.0'); W.meta.version = v; $('ver').textContent = 'نسخهٔ ' + fa(v); } }]);
+};
+
+/* ---------- dungeon tiles: the full tile editor inside ---------- */
+window.__TILE_HOST__ = { get: () => ({ tiles: W.tiles, notes: W.tileNotes || [] }), changed: (t, n) => { W.tiles = clone(t); W.tileNotes = n.slice(); dirty(); } };
+VIEWS.tiles = m => {
+  const n = Object.keys((W.art && W.art.tiles) || {}).length;
+  m.innerHTML = `<h2>تایل‌های سیاه‌چال</h2><p class="help">همان ویرایشگر تایل، با همهٔ قابلیت‌هایش. هر تغییری اینجا مستقیم وارد بازی می‌شود. تایل شمارهٔ ۰ خانهٔ دروازه است. اگر می‌خواهی تایل‌ها در بازی با گرافیک ویرایشگر تایل (پس‌زمینه، قاب، تصویر خانه‌ها) دیده شوند، دکمهٔ زیر را بزن تا تصویر هر تایل ساخته و به بازی داده شود. بعد از هر تغییر تایل، دوباره بزنش.</p>
+  <div class="bar"><button class="btn" id="b-timg">ساختن تصویر تایل‌ها برای بازی</button><button class="btn g" id="b-tclr" ${n ? '' : 'disabled'}>برداشتن تصویرها (برگشت به نقشهٔ ساده)</button><span class="mut" id="t-st">${n ? fa(n) + ' تایل با تصویر' : 'تایل‌ها در بازی با نقشهٔ ساده کشیده می‌شوند'}</span></div>
+  <iframe id="tile-frame"></iframe>`;
+  $('tile-frame').srcdoc = TILE_EDITOR;
+  $('b-timg').onclick = async () => {
+    const fw = $('tile-frame').contentWindow; if (!fw.__tileImage) return status('ویرایشگر تایل هنوز باز نشده', true);
+    W.art.tiles = {};
+    for (let i = 0; i < W.tiles.length; i++) { $('t-st').textContent = 'تایل ' + fa(i + 1) + ' از ' + fa(W.tiles.length) + '…'; const d = await fw.__tileImage(i, 900); const b = await (await fetch(d)).blob(); const p = 'tiles/t' + String(i).padStart(2, '0') + '.png'; await putFile(p, b); W.art.tiles[i] = p; }
+    $('t-st').textContent = fa(W.tiles.length) + ' تصویر تایل ساخته شد'; $('b-tclr').disabled = false; dirty();
+  };
+  $('b-tclr').onclick = async () => { for (const p of Object.values(W.art.tiles || {})) await delFile(p); W.art.tiles = {}; $('t-st').textContent = 'تایل‌ها در بازی با نقشهٔ ساده کشیده می‌شوند'; $('b-tclr').disabled = true; dirty(); };
+};
+
+/* ---------- graphics ---------- */
+function slotsFor() {
+  const S = [];
+  S.push(['پس‌زمینه‌ها و فونت‌ها', [['bg', 'monitor', 'پس‌زمینهٔ مانیتور', 'image', '۱۹۲۰×۱۰۸۰'], ['bg', 'phone', 'پس‌زمینهٔ گوشی', 'image', '۳۹۰×۸۴۴'], ['fonts', 'body', 'فونت متن (جای وزیرمتن)', 'font'], ['fonts', 'title', 'فونت تیتر (جای لاله‌زار)', 'font'], ['app', 'icon', 'آیکون برنامه (ویندوز و اندروید)', 'image', 'مربع، دست‌کم ۵۱۲×۵۱۲']]]);
+  S.push(['پشت کارت‌ها', [['backs', 'academy', 'پشت کارت آکادمی', 'image'], ['backs', 'wizard', 'پشت کارت جادوگر', 'image'], ['backs', 'demon', 'پشت کارت اهریمن', 'image']]]);
+  S.push(['آیکون‌ها', ICONS.map(([k, n]) => ['icons', k, n, 'image', 'مربع'])]);
+  S.push(['کارت‌های آکادمی', Object.values(W.cards).map(c => ['cards', c.id, c.name + ' ' + (c.code || ''), 'image', '۱۳۸×۲۰۶ یا بزرگ‌تر با همین نسبت'])]);
+  S.push(['جادوگران', Object.values(W.wizards).map(w => ['wizards', w.id, 'جادوگر ' + w.id, 'image'])]);
+  S.push(['کارت‌های اهریمن', W.demons.map((d, i) => ['demons', String(i), 'اهریمن ' + fa(i + 1), 'image'])]);
+  S.push(['تایل‌های سیاه‌چال', W.tiles.map((t, i) => ['tiles', String(i), (i ? 'تایل ' + fa(i) : 'دروازه') + (t.name ? ' – ' + t.name : ''), 'image', 'مربع، بدون حاشیهٔ برش'])]);
+  return S;
+}
+VIEWS.art = m => {
+  W.art = W.art || {}; W.art.mode = W.art.mode || {};
+  m.innerHTML = `<h2>گرافیک</h2><p class="help">برای هر بخش تصویری بگذار (کلیک یا کشیدن فایل روی خانه). تصویر جای گرافیک ساده‌ای را می‌گیرد که برنامه الان می‌کشد. اگر تصویر کامل کارت را با متن و عددهایش داری، حالت «تصویر کامل» را انتخاب کن. اگر فقط نقاشی کارت را داری، حالت «فقط نقاشی» را بگذار تا متن و عددها را برنامه رویش بنویسد. فونت باید woff2، ttf یا otf باشد.</p>
+  <div class="bar"><label>کارت‌های آکادمی: <select data-mode="cards"><option value="full">تصویر کامل</option><option value="illus">فقط نقاشی (متن را برنامه می‌نویسد)</option></select></label><label>جادوگران: <select data-mode="wizards"><option value="full">تصویر کامل</option></select></label><input type="search" id="art-q" placeholder="جستجو…"></div><div id="art-list"></div>`;
+  m.querySelectorAll('[data-mode]').forEach(s => { s.value = W.art.mode[s.dataset.mode] || 'full'; s.onchange = () => { W.art.mode[s.dataset.mode] = s.value; dirty(); }; });
+  const list = $('art-list');
+  const draw = () => { const q = $('art-q').value.trim();
+    list.innerHTML = slotsFor().map(([g, items]) => { const its = items.filter(it => !q || (it[2] + it[1]).includes(q)); if (!its.length) return ''; const done = its.filter(([c, k]) => (W.art[c] || {})[k]).length;
+      return `<details ${q || g === 'پس‌زمینه‌ها و فونت‌ها' ? 'open' : ''} style="margin-bottom:10px"><summary><b>${g}</b> <span class="mut">${fa(done)} از ${fa(its.length)}</span></summary><div class="slots" style="margin-top:8px">${its.map(([c, k, n, ty, hint]) => { const p = (W.art[c] || {})[k], f = p && FILES[p];
+        return `<div class="slot ${p ? 'has' : ''}" data-c="${c}" data-k="${esc(k)}" data-ty="${ty}">${p ? '<button class="x" data-x title="حذف">×</button>' : ''}<div class="pv">${f ? (ty === 'font' ? `<span>${esc(p.split('/').pop())}</span>` : `<img src="${f.url}">`) : `<span>${ty === 'font' ? 'فایل فونت' : 'بدون تصویر'}</span>`}</div><b>${esc(n)}</b>${hint ? `<span class="tag">${hint}</span>` : ''}</div>`; }).join('')}</div></details>`; }).join(''); };
+  $('art-q').oninput = draw;
+  let target = null;
+  const take = async (slot, file) => {
+    const c = slot.dataset.c, k = slot.dataset.k, ty = slot.dataset.ty;
+    if (ty === 'image' && !/^image\//.test(file.type)) return status('این فایل تصویر نیست', true);
+    if (ty === 'font' && !/\.(woff2?|ttf|otf)$/i.test(file.name)) return status('فایل فونت باید woff2، ttf یا otf باشد', true);
+    const ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.png'])[0].toLowerCase();
+    const old = (W.art[c] || {})[k]; if (old) await delFile(old);
+    const p = c + '/' + String(k).replace(/[^a-zA-Z0-9_-]/g, '_') + ext;
+    await putFile(p, file); W.art[c] = W.art[c] || {}; W.art[c][k] = p; dirty('«' + file.name + '» گذاشته شد'); draw();
+  };
+  list.onclick = async e => { const s = e.target.closest('.slot'); if (!s) return;
+    if (e.target.dataset.x != null) { const p = W.art[s.dataset.c][s.dataset.k]; delete W.art[s.dataset.c][s.dataset.k]; if (!artRefs().has(p)) await delFile(p); dirty(); draw(); return; }
+    target = s; const f = $('f-up'); f.accept = s.dataset.ty === 'font' ? '.woff2,.woff,.ttf,.otf' : 'image/*'; f.click(); };
+  $('f-up').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f && target) take(target, f); };
+  list.ondragover = e => { const s = e.target.closest('.slot'); if (s) { e.preventDefault(); s.classList.add('drag'); } };
+  list.ondragleave = e => { const s = e.target.closest('.slot'); if (s) s.classList.remove('drag'); };
+  list.ondrop = e => { const s = e.target.closest('.slot'); if (!s) return; e.preventDefault(); s.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) take(s, f); };
+  draw();
+};
+
+/* ---------- texts ---------- */
+VIEWS.texts = m => {
+  W.texts = W.texts || {};
+  m.innerHTML = `<h2>متن‌های برنامه</h2><p class="help">همهٔ نوشته‌های فارسی صفحه‌های مانیتور و گوشی و پیام‌های بازی. متن تازه را در ستون دوم بنویس؛ اگر خالی بماند، متن اصلی می‌ماند. متن‌هایی که ${'«' }…${'»'} یا عدد کنارشان می‌آید، تکه‌ای از یک جمله‌اند و برنامه بقیهٔ جمله را کنارشان می‌گذارد. نام و متن کارت‌ها را در جدول خود کارت‌ها عوض کن.</p>
+  <div class="bar"><input type="search" id="tx-q" placeholder="جستجوی متن…"><select id="tx-f"><option value="">همهٔ بخش‌ها</option>${[...new Set(TEXTS.flatMap(t => t.f))].map(f => `<option>${f}</option>`).join('')}</select><label><input type="checkbox" id="tx-ch"> فقط تغییرکرده‌ها</label><span class="mut" id="tx-n"></span></div><div class="tw"><table class="t" id="tx-t"></table></div>`;
+  const FN = { 'www/monitor.js': 'مانیتور', 'www/phone.js': 'گوشی', 'www/common.js': 'مشترک', 'shared/engine.js': 'پیام‌های بازی', 'shared/dungeon.js': 'سیاه‌چال', 'shared/battle.js': 'نبرد', 'shared/wbattle.js': 'نبرد', 'www/tiles.js': 'تایل', 'shared/room.js': 'اتاق بازی', 'www/monitor.html': 'مانیتور', 'www/phone.html': 'گوشی' };
+  const draw = () => { const q = $('tx-q').value.trim(), ff = $('tx-f').value, ch = $('tx-ch').checked;
+    const L = TEXTS.filter(t => (!q || t.t.includes(q) || (W.texts[t.t] || '').includes(q)) && (!ff || t.f.includes(ff)) && (!ch || W.texts[t.t] != null)).slice(0, 400);
+    $('tx-n').textContent = fa(L.length) + (L.length === 400 ? '+ (جستجو را دقیق‌تر کن)' : '') + ' متن';
+    $('tx-t').innerHTML = `<tr><th style="width:42%">متن اصلی</th><th style="width:42%">متن تازه</th><th>بخش</th></tr>` + L.map(t => `<tr><td>${esc(t.t)}</td><td><textarea data-t="${esc(t.t)}" style="width:100%">${esc(W.texts[t.t] || '')}</textarea></td><td><span class="tag">${[...new Set(t.f.map(f => FN[f] || f))].join('، ')}</span></td></tr>`).join(''); };
+  $('tx-q').oninput = draw; $('tx-f').onchange = draw; $('tx-ch').onchange = draw;
+  $('tx-t').onchange = e => { const k = e.target.dataset.t; if (k == null) return; const v = e.target.value; if (v.trim()) W.texts[k] = v; else delete W.texts[k]; dirty(); };
+  draw();
+};
+
+/* ---------- colours and custom css ---------- */
+VIEWS.colors = m => {
+  W.colors = W.colors || {};
+  m.innerHTML = `<h2>رنگ‌ها و ظاهر</h2><p class="help">همهٔ رنگ‌هایی که صفحه‌های بازی به کار می‌برند، از پرکاربرد به کم‌کاربرد. هر رنگ را عوض کنی، همه‌جا عوض می‌شود. رنگ خاندان‌ها در بخش «خاندان‌ها» است. پایین صفحه جایی برای CSS دلخواه هست، برای تغییر اندازه، فاصله، جای اجزا یا پنهان کردنشان. این بخش برای کار پیشرفته است.</p><div class="bar"><button class="btn g" id="c-reset">برگرداندن همهٔ رنگ‌ها</button></div><div class="slots" id="c-list"></div>
+  <h3 style="margin-top:20px">CSS دلخواه</h3><p class="help">مثال: <span class="ltr">.zH{order:-1}</span> یا <span class="ltr">.mtoast{font-size:40px}</span>. نتیجه را در «پیش‌نمایش زنده» ببین.</p><textarea id="c-css" class="ltr" style="width:100%;height:200px">${esc(W.css || '')}</textarea>`;
+  const draw = () => { $('c-list').innerHTML = COLORS.map(({ c, n }) => { const v = W.colors[c] || c; return `<div class="slot ${W.colors[c] ? 'has' : ''}" style="text-align:right"><div style="display:flex;gap:6px;align-items:center"><span class="sw" style="background:${c}" title="رنگ اصلی"></span>←<input type="color" data-c="${c}" value="${v}"><span class="ltr tag">${c}</span></div><span class="tag">${fa(n)} بار</span></div>`; }).join(''); };
+  $('c-list').oninput = e => { const c = e.target.dataset.c; if (!c) return; if (e.target.value.toLowerCase() === c) delete W.colors[c]; else W.colors[c] = e.target.value.toLowerCase(); dirty(); };
+  $('c-list').onchange = draw;
+  $('c-reset').onclick = () => { if (!confirm('همهٔ رنگ‌ها به حالت اصلی برگردد؟')) return; W.colors = {}; dirty(); draw(); };
+  $('c-css').onchange = e => { W.css = e.target.value; dirty(); };
+  draw();
+};
+
+/* ---------- live preview: the whole game runs in this page ---------- */
+let PV = null;
+function gameData() { const d = clone(W); delete d.texts; delete d.colors; delete d.css; delete d._cardRows; delete d._wizRows; return d; }
+function artMap() { const o = {}; for (const p in FILES) o[p] = FILES[p].url; return o; }
+function srcT(name) { return TX.apply(SRC[name], name, W); }
+function inlineCss(name) { let c = srcT(name); if (name === 'www/fonts.css') c = c.replace(/url\(["']?fonts\/([^"')]+)["']?\)/g, (m, f) => `url(data:font/woff2;base64,${FONTS[f] || ''})`); return c; }
+function pageHtml(kind, extraHead) {
+  const D = gameData(), A = artMap();
+  let h = srcT('www/' + kind + '.html');
+  h = h.replace(/<link rel="stylesheet" href="([^"]+)">/g, (m, f) => f === 'custom.css' ? `<style>${TX.customCss(W, p => A[p] || '')}</style>` : `<style>${inlineCss('www/' + f)}</style>`);
+  h = h.replace('<script src="/shared/data.js"><\/script>', `<script>window.DATA=${JSON.stringify(D).replace(/</g, '\\u003c')};window.ARTMAP=${JSON.stringify(A)};window.SPRITE=${JSON.stringify(SRC['www/sprite.svg.html'])};<\/script>`);
+  h = h.replace(/<script src="([^"/][^"]*)"><\/script>/g, (m, f) => `<script>${srcT('www/' + f).replace(/<\/script/g, '<\\/script')}<\/script>`);
+  return h;
+}
+function hostHtml() {
+  const D = gameData();
+  const js = ['shared/wbattle.js', 'shared/engine.js', 'shared/dungeon.js', 'shared/battle.js', 'shared/room.js'].map(f => `<script>${srcT(f).replace(/<\/script/g, '<\\/script')}<\/script>`).join('');
+  const bot = SRC['test/bot.js'].replace(/^const \{ D, Game, Dun, WB \} = require\('\.\.\/shared\/index\.js'\);/m, '').replace(/if \(require\.main === module\) \{[\s\S]*$/, '');
+  return `<!doctype html><meta charset="utf-8"><script>window.DATA=${JSON.stringify(D).replace(/</g, '\\u003c')};window.CARD=DATA.wizards;window.RULES=DATA.wrules;<\/script>${js}<script>Game.use(Dun, WB);
+const SAVE={v:null};window.ROOM=Room({D:DATA,Game,Dun,WB},{save(o){SAVE.v=JSON.parse(JSON.stringify(o))},load(){return SAVE.v},discard(){SAVE.v=null},ips:()=>['192.168.137.1'],qr:()=>({'192.168.137.1':{url:'http://192.168.137.1:47130/p',svg:'<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#fff"/><text x="5" y="6" font-size="2" text-anchor="middle">پیش‌نمایش</text></svg>'}}),version:${JSON.stringify(W.meta.version)},port:47130});
+var D = DATA;
+${bot.replace(/<\/script/g, '<\\/script')}
+window.botStep=botStep;<\/script>`;
+}
+function stopPreview() { if (PV && PV.timer) clearInterval(PV.timer); PV = null; window.__ROOM__ = null; }
+VIEWS.preview = m => {
+  m.innerHTML = `<h2>پیش‌نمایش زنده</h2><p class="help">کل بازی با همهٔ تغییرهایت، همین‌جا و بدون شبکه اجرا می‌شود: مانیتور بالا و گوشی‌ها پایین. روی گوشی‌ها مثل بازی واقعی کلیک کن، یا «ربات» را بزن تا خودش بازی کند و به صفحه‌های بعدی برسی. هر بار که چیزی را عوض کردی، «شروع دوباره» را بزن.</p>
+  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
+  <div id="pv-wrap"><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
+  const start = () => {
+    stopPreview(); const n = +$('pv-n').value;
+    const hf = $('pv-host'); hf.srcdoc = hostHtml();
+    hf.onload = () => {
+      const R = hf.contentWindow.ROOM; if (!R) { $('pv-st').textContent = 'موتور بازی بار نشد؛ پیام خطا را در کنسول ببین'; return; }
+      PV = { R, hw: hf.contentWindow, timer: null, n }; window.__ROOM__ = () => R;
+      const H = W.rules.houses, fake = t => ({ token: t, role: 'phone', send() {} });
+      for (let i = 0; i < n; i++) R.message(fake('pv' + i), { t: 'join', name: 'بازیکن ' + fa(i + 1), house: H[i % H.length].id });
+      if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
+      R.message(fake('pv0'), { t: 'start', seed: 7 });
+      const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.srcdoc = pageHtml('monitor');
+      const ph = $('pv-ph'); ph.innerHTML = '';
+      for (let i = 0; i < n; i++) { const d = document.createElement('div'); d.className = 'phf'; d.innerHTML = `<div class="nm">بازیکن ${fa(i + 1)}</div><iframe data-tok="pv${i}"></iframe>`; ph.appendChild(d); d.querySelector('iframe').srcdoc = pageHtml('phone'); }
+      info();
+    };
+  };
+  const info = () => { if (!PV) return; const G = PV.R.G; $('pv-st').textContent = G ? 'شب ' + fa(G.night) + ' – ' + ({ start: 'جای شروع', turn: 'نوبت ' + (G.turn ? G.players[G.turn.pid].name : ''), night: 'پایان شب', battle: 'نبرد جادوگران', end: 'پایان بازی' }[G.phase] || G.phase) : ''; };
+  let rs = 11; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
+  const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) PV.hw.botStep(PV.R.G, rnd); } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
+  $('pv-go').onclick = start; $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
+  $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) PV.hw.botStep(PV.R.G, rnd); PV.R.broadcast(); info(); };
+  $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };
+  start();
+};
+
+/* ---------- checks before a build ---------- */
+function check() {
+  const E = [], R = W.rules, C = W.cards, Wz = W.wizards;
+  const ids = Object.keys(C);
+  for (const c of Object.values(C)) {
+    if (!/^[A-Za-z0-9_]+$/.test(c.id)) E.push('شناسهٔ کارت «' + c.name + '» باید فقط حرف انگلیسی، عدد یا _ باشد');
+    if (c.fx && !FX.some(f => f.k === c.fx)) E.push('اثر ویژهٔ کارت ' + c.id + ' شناخته نشد');
+    if (c.deck === 'academy' && !(c.count > 0)) E.push('کارت آکادمی ' + c.id + ' تعداد ندارد');
+  }
+  if (!Object.values(C).some(c => c.deck === 'academy')) E.push('دک آکادمی خالی است');
+  for (const id of R.startDeck) if (!C[id]) E.push('دک آغازین کارت ناموجود دارد: ' + id);
+  for (const id of R.startWizards) if (!Wz[id]) E.push('جادوگر آغازین ناموجود: ' + id);
+  if (!R.startDeck.length) E.push('دک آغازین خالی است');
+  for (const w of Object.values(Wz)) { if (!WEFF[(w.eff || [])[0]]) E.push('کد اثر جادوگر ' + w.id + ' شناخته نشد'); if (!(w.L >= (w.g === 'N' ? 0 : 1))) E.push('سطح جادوگر ' + w.id + ' درست نیست'); }
+  if (Object.values(Wz).filter(w => w.g !== 'N').length < R.hallSize) E.push('جادوگران شهر از اندازهٔ تالار کمترند');
+  for (const t of R.treasures) if (!R.items[t] && !R.treasureNames[t]) E.push('گنجینهٔ ناشناخته: ' + t);
+  if (R.treasures.includes('m6') && !C.m6) E.push('گنجینهٔ «کارت جادوی قدرت ۶» کارت m6 را لازم دارد');
+  for (const n in R.byPlayers) { const B = R.byPlayers[n]; for (const b of B.battle) if (b > B.nights) E.push(fa(n) + ' بازیکن: شب نبرد ' + fa(b) + ' بعد از پایان بازی است'); for (const k in B.chal) if (+k > B.nights) E.push(fa(n) + ' بازیکن: شب چالش ' + fa(k) + ' بعد از پایان بازی است'); }
+  if (R.houses.length < 5) E.push('برای ۵ بازیکن دست‌کم ۵ خاندان لازم است');
+  if (new Set(R.houses.map(h => h.id)).size !== R.houses.length) E.push('شناسهٔ خاندان‌ها تکراری است');
+  for (const p of artRefs()) if (!FILES[p]) E.push('فایل گرافیک «' + p + '» در این مرورگر نیست (دوباره بگذارش یا از گیت‌هاب بار کن)');
+  // a quick full game with the robot
+  try { const r = quickGame(); if (r) E.push('بازی آزمایشی ربات: ' + r); } catch (e) { E.push('بازی آزمایشی ربات خطا داد: ' + e.message); }
+  return E;
+}
+function quickGame() {
+  const f = document.createElement('iframe'); f.style.display = 'none'; document.body.appendChild(f);
+  try {
+    const d = f.contentDocument; d.open(); d.write(hostHtml().replace('<!doctype html>', '')); d.close();
+    const w = f.contentWindow; if (!w.ROOM) return 'موتور بازی بار نشد';
+    for (const n of [2, 3, 4, 5]) {
+      const G = w.Game.newGame({ players: Array.from({ length: n }, (_, i) => ({ name: 'p' + i, house: W.rules.houses[i].id })), bf: true, seed: 3 + n });
+      let s = n, steps = 0; const r = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+      while (G.phase !== 'end' && steps < 60000) { w.botStep(G, r); steps++; }
+      if (G.phase !== 'end') return fa(n) + ' بازیکن: بازی تمام نشد';
+    }
+  } finally { f.remove(); }
+  return null;
+}
+
+/* ---------- build & publish ---------- */
+let GH = { owner: 'arttapart', repo: 'twelve-nights-digital', branch: 'main', token: '' };
+async function ghApi(path, opt = {}) {
+  const r = await fetch('https://api.github.com/repos/' + GH.owner + '/' + GH.repo + path, Object.assign({}, opt, { headers: Object.assign({ Authorization: 'Bearer ' + GH.token, Accept: 'application/vnd.github+json' }, opt.headers || {}) }));
+  if (!r.ok) { let m = ''; try { m = (await r.json()).message; } catch (e) {} throw new Error('گیت‌هاب: ' + r.status + ' ' + m); }
+  return r.status === 204 ? null : r.json();
+}
+const b64 = async blob => { const buf = new Uint8Array(await blob.arrayBuffer()); let s = ''; for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000)); return btoa(s); };
+async function gitSha(blob) { const buf = new Uint8Array(await blob.arrayBuffer()); const head = new TextEncoder().encode('blob ' + buf.length + '\0'); const all = new Uint8Array(head.length + buf.length); all.set(head); all.set(buf, head.length); const h = await crypto.subtle.digest('SHA-1', all); return [...new Uint8Array(h)].map(b => b.toString(16).padStart(2, '0')).join(''); }
+function gameJson() { const d = clone(W); delete d._cardRows; delete d._wizRows; return JSON.stringify(d, null, 1) + '\n'; }
+async function publish(log) {
+  const ref = await ghApi('/git/ref/heads/' + GH.branch); const head = ref.object.sha;
+  const commit = await ghApi('/git/commits/' + head);
+  const tree = await ghApi('/git/trees/' + commit.tree.sha + '?recursive=1');
+  const remote = {}; for (const t of tree.tree) if (t.type === 'blob') remote[t.path] = t.sha;
+  const want = { 'data/game.json': new Blob([gameJson()], { type: 'application/json' }) };
+  for (const p of artRefs()) if (FILES[p]) want['data/art/' + p] = FILES[p].blob;
+  const entries = [];
+  for (const path in want) {
+    const sha = await gitSha(want[path]);
+    if (remote[path] === sha) continue;
+    log('فرستادن ' + path + '…');
+    const b = await ghApi('/git/blobs', { method: 'POST', body: JSON.stringify({ content: await b64(want[path]), encoding: 'base64' }) });
+    entries.push({ path, mode: '100644', type: 'blob', sha: b.sha });
+  }
+  for (const path in remote) if (path.startsWith('data/art/') && !want[path]) entries.push({ path, mode: '100644', type: 'blob', sha: null });
+  if (!entries.length) return null;
+  const nt = await ghApi('/git/trees', { method: 'POST', body: JSON.stringify({ base_tree: commit.tree.sha, tree: entries }) });
+  const nc = await ghApi('/git/commits', { method: 'POST', body: JSON.stringify({ message: 'ویرایشگر: نسخهٔ ' + W.meta.version, tree: nt.sha, parents: [head] }) });
+  await ghApi('/git/refs/heads/' + GH.branch, { method: 'PATCH', body: JSON.stringify({ sha: nc.sha }) });
+  return nc.sha;
+}
+async function loadFromGitHub(log) {
+  const meta = await ghApi('/contents/data/game.json?ref=' + GH.branch);
+  const txt = new TextDecoder().decode(Uint8Array.from(atob(meta.content.replace(/\n/g, '')), c => c.charCodeAt(0)));
+  const d = JSON.parse(txt);
+  const ref = await ghApi('/git/ref/heads/' + GH.branch); const commit = await ghApi('/git/commits/' + ref.object.sha);
+  const tree = await ghApi('/git/trees/' + commit.tree.sha + '?recursive=1');
+  for (const t of tree.tree) if (t.type === 'blob' && t.path.startsWith('data/art/')) {
+    const p = t.path.slice(9); if (FILES[p] && await gitSha(FILES[p].blob) === t.sha) continue;
+    log('گرفتن ' + p + '…'); const b = await ghApi('/git/blobs/' + t.sha);
+    const bin = Uint8Array.from(atob(b.content.replace(/\n/g, '')), c => c.charCodeAt(0));
+    await putFile(p, new Blob([bin], { type: mimeOf(p) }));
+  }
+  return d;
+}
+const mimeOf = p => ({ png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', svg: 'image/svg+xml', gif: 'image/gif', woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf', otf: 'font/otf' }[p.split('.').pop().toLowerCase()] || 'application/octet-stream');
+async function exportZip() {
+  if (!window.JSZip) return status('ساختن zip به اینترنت نیاز دارد (کتابخانهٔ JSZip بار نشد)', true);
+  const z = new JSZip(); z.file('data/game.json', gameJson());
+  for (const p of artRefs()) if (FILES[p]) z.file('data/art/' + p, FILES[p].blob);
+  const blob = await z.generateAsync({ type: 'blob' });
+  await download('12nights_data_v' + W.meta.version + '.zip', blob);
+}
+async function download(name, blob) {
+  let dl = null; try { dl = window.claude ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+  if (dl) { try { await dl.save({ filename: name, data: blob }); } catch (e) { if (!e || e.code !== 'declined') status('دانلود انجام نشد', true); } return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+}
+async function openFile(f) {
+  try {
+    if (/\.json$/i.test(f.name)) { const d = JSON.parse(await f.text()); if (!d.cards || !d.rules) throw new Error('این فایل game.json بازی نیست'); W = d; }
+    else { if (!window.JSZip) throw new Error('باز کردن zip به اینترنت نیاز دارد'); const z = await JSZip.loadAsync(f); const g = z.file(/(^|\/)data\/game\.json$/)[0] || z.file(/game\.json$/)[0]; if (!g) throw new Error('در zip فایل data/game.json نیست'); W = JSON.parse(await g.async('string'));
+      for (const e of Object.values(z.files)) { const m = e.name.match(/(?:^|\/)data\/art\/(.+)$/); if (m && !e.dir) await putFile(m[1], new Blob([await e.async('uint8array')], { type: mimeOf(m[1]) })); } }
+    norm(); await saveNow(); show(); status('«' + f.name + '» باز شد');
+  } catch (e) { status(e.message || String(e), true); }
+}
+$('f-open').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) openFile(f); };
+VIEWS.build = m => {
+  m.innerHTML = `<h2>ساخت و انتشار</h2>
+  <div class="box" style="max-width:860px;margin-bottom:12px"><h3>۱. بررسی</h3><p class="help">پیش از ساخت، داده‌ها بررسی می‌شوند و ربات با ۲ تا ۵ بازیکن هر کدام یک بازی کامل انجام می‌دهد.</p><button class="btn" id="b-chk">بررسی کن</button><div id="chk"></div></div>
+  <div class="box" style="max-width:860px;margin-bottom:12px"><h3>۲. ساخت نسخهٔ تازه در گیت‌هاب</h3><p class="help">با زدن «ثبت و ساخت»، تغییرها در مخزن گیت‌هاب ثبت می‌شوند و گیت‌هاب خودش zip ویندوز و APK اندروید را می‌سازد (حدود ۱۰ دقیقه). فایل‌ها در صفحهٔ Releases مخزن قرار می‌گیرند. برای این کار یک توکن گیت‌هاب لازم است که فقط در همین مرورگر ذخیره می‌شود. راهنمای ساختنش در README مخزن آمده است.</p>
+  <div class="f" style="max-width:560px"><label>صاحب مخزن</label><input id="gh-o" class="ltr"><label>نام مخزن</label><input id="gh-r" class="ltr"><label>شاخه</label><input id="gh-b" class="ltr"><label>توکن (Fine-grained, Contents: Read and write)</label><input id="gh-t" type="password" class="ltr"></div>
+  <div class="bar"><button class="btn" id="b-pub">ثبت و ساخت</button><button class="btn g" id="b-load">بار کردن آخرین نسخه از گیت‌هاب</button><a class="btn g" id="gh-rel" target="_blank" rel="noopener">صفحهٔ Releases</a><a class="btn g" id="gh-act" target="_blank" rel="noopener">وضعیت ساخت (Actions)</a></div><div id="pub" class="mut"></div></div>
+  <div class="box" style="max-width:860px"><h3>۳. بدون توکن: فایل</h3><p class="help">«گرفتن zip» همهٔ داده‌ها و گرافیک‌ها را در یک فایل می‌دهد. محتوای آن را در گیت‌هاب در پوشهٔ اصلی مخزن آپلود کن (Add file ← Upload files، پوشهٔ data را بکش). ساخت خودکار بعد از آپلود شروع می‌شود. همین فایل برای پشتیبان‌گیری یا بردن کار به کامپیوتر دیگر هم به کار می‌آید.</p>
+  <div class="bar"><button class="btn" id="b-zip">گرفتن zip</button><button class="btn g" id="b-open">باز کردن zip یا game.json</button><button class="btn r" id="b-reset">برگشت به داده‌های اصلی</button></div></div>`;
+  $('gh-o').value = GH.owner; $('gh-r').value = GH.repo; $('gh-b').value = GH.branch; $('gh-t').value = GH.token;
+  const links = () => { $('gh-rel').href = `https://github.com/${GH.owner}/${GH.repo}/releases`; $('gh-act').href = `https://github.com/${GH.owner}/${GH.repo}/actions`; };
+  links();
+  m.querySelectorAll('#gh-o,#gh-r,#gh-b,#gh-t').forEach(i => i.onchange = () => { GH = { owner: $('gh-o').value.trim(), repo: $('gh-r').value.trim(), branch: $('gh-b').value.trim() || 'main', token: $('gh-t').value.trim() }; idbPut('kv', 'gh', GH); links(); });
+  const runCheck = () => { $('chk').innerHTML = '<p class="mut">در حال بررسی… (چند ثانیه)</p>'; return new Promise(ok => setTimeout(() => { const E = check(); $('chk').innerHTML = E.length ? `<ul class="errs">${E.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : '<div class="oks">همه‌چیز درست است. ربات با ۲، ۳، ۴ و ۵ بازیکن بازی را تا آخر رفت.</div>'; ok(E); }, 30)); };
+  $('b-chk').onclick = runCheck;
+  $('b-pub').onclick = async () => {
+    if (!GH.token) return $('pub').textContent = 'اول توکن گیت‌هاب را بنویس.';
+    const E = await runCheck(); if (E.length && !confirm('بررسی ' + fa(E.length) + ' مشکل پیدا کرد. باز هم ثبت شود؟')) return;
+    $('b-pub').disabled = true;
+    try { const sha = await publish(t => $('pub').textContent = t); $('pub').innerHTML = sha ? `ثبت شد. ساخت شروع شد؛ حدود ۱۰ دقیقهٔ دیگر نسخهٔ ${esc(W.meta.version)} در <a href="https://github.com/${GH.owner}/${GH.repo}/releases" target="_blank">Releases</a> است.` : 'چیزی برای ثبت نبود؛ گیت‌هاب همین نسخه را دارد.'; }
+    catch (e) { $('pub').textContent = (e.message || String(e)) + (/Failed to fetch/.test(e.message) ? ' (این صفحه اجازهٔ تماس با گیت‌هاب ندارد؛ فایل ویرایشگر را از مخزن دانلود کن و در مرورگر باز کن، یا از بخش ۳ zip بگیر)' : ''); }
+    finally { $('b-pub').disabled = false; }
+  };
+  $('b-load').onclick = async () => { if (!GH.token) return $('pub').textContent = 'اول توکن گیت‌هاب را بنویس.'; if (!confirm('داده‌های این مرورگر با نسخهٔ گیت‌هاب جایگزین شود؟')) return;
+    try { W = await loadFromGitHub(t => $('pub').textContent = t); norm(); await saveNow(); $('pub').textContent = 'نسخهٔ ' + W.meta.version + ' از گیت‌هاب بار شد.'; $('ver').textContent = 'نسخهٔ ' + fa(W.meta.version); } catch (e) { $('pub').textContent = e.message; } };
+  $('b-zip').onclick = exportZip; $('b-open').onclick = () => $('f-open').click();
+  $('b-reset').onclick = async () => { if (!confirm('همهٔ تغییرهای این مرورگر پاک شود و داده‌های اصلی برگردد؟ (فایل‌های گرافیک هم پاک می‌شوند)')) return; W = clone(DEFAULT); for (const p of Object.keys(FILES)) await delFile(p); await saveNow(); show(); };
+};
+
+function norm() { W.art = W.art || {}; W.texts = W.texts || {}; W.colors = W.colors || {}; W.meta = W.meta || { version: '1.0.0' }; if (!W.tileNotes) W.tileNotes = []; }
+(async () => {
+  await idbOpen();
+  const s = await idbGet('kv', 'game'); if (s) { try { W = JSON.parse(s); } catch (e) {} }
+  const g = await idbGet('kv', 'gh'); if (g) GH = Object.assign(GH, g);
+  for (const k of await idbKeys('art')) { const b = await idbGet('art', k); if (b) FILES[k] = { blob: b, url: URL.createObjectURL(b) }; }
+  norm(); nav(); show();
+  status(idb ? (s ? 'کار قبلی از همین مرورگر باز شد' : 'داده‌های اصلی بازی باز شد') : 'این مرورگر اجازهٔ ذخیره نمی‌دهد؛ پیش از بستن صفحه zip بگیر', !idb);
+})();
+</script>
+</body></html>

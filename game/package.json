@@ -1,0 +1,23 @@
+{
+  "name": "twelve-nights",
+  "version": "1.0.0",
+  "description": "12 Nights digital (host + monitor)",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "host": "node server/server.js",
+    "test": "node test/bot.js 40"
+  },
+  "keywords": [],
+  "author": "Farshad",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^33.2.1"
+  },
+  "productName": "12Nights"
+}

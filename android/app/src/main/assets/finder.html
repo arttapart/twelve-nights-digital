@@ -1,0 +1,35 @@
+<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+@font-face{font-family:V;font-weight:400;src:url(fonts/Vazirmatn-FD-Regular.woff2)}@font-face{font-family:V;font-weight:800;src:url(fonts/Vazirmatn-FD-Black.woff2)}@font-face{font-family:L;src:url(fonts/Lalezar-ar.woff2)}
+html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 20%,#1d1a4a,#0b0c1d 75%);color:#ece6ff;font-family:V,sans-serif}
+.w{display:flex;flex-direction:column;gap:14px;padding:28px 18px;box-sizing:border-box;min-height:100%}
+h1{font-family:L,V;font-weight:400;color:#f3cf72;font-size:64px;margin:10px 0 0;text-align:center;text-shadow:0 0 30px rgba(243,207,114,.4)}
+.st{text-align:center;font-weight:800;padding:12px;border-radius:12px;background:rgba(243,207,114,.12);border:1.5px solid #f3cf72;color:#ffe7a6}
+.st.err{background:rgba(226,59,59,.16);border-color:#e23b3b;color:#ffd2cc}
+.sp{display:inline-block;width:14px;height:14px;border:3px solid #f3cf72;border-top-color:transparent;border-radius:50%;animation:r 1s linear infinite;vertical-align:-2px;margin-inline-start:8px}@keyframes r{to{transform:rotate(360deg)}}
+.b{display:block;text-align:center;font:inherit;font-weight:800;font-size:18px;padding:14px;border-radius:14px;border:0;background:linear-gradient(#ffe08a,#c9921f);color:#2a1d05;width:100%}
+.b.g{background:rgba(255,255,255,.06);color:#ece6ff;border:1.5px solid rgba(224,181,82,.5)}
+.row{display:flex;gap:8px}input{flex:1;min-width:0;font:inherit;font-size:18px;font-weight:800;direction:ltr;text-align:center;border-radius:12px;padding:12px;background:#12132e;border:1.5px solid #4b4c7a;color:#ece6ff}
+.n{font-size:13px;color:#a9a3cf;line-height:1.8}
+#hosts .b{margin-bottom:8px}
+</style></head><body><div class="w">
+<h1>۱۲ شب</h1>
+<div id="st" class="st">در حال جست‌وجوی مانیتور<span class="sp"></span></div>
+<div id="hosts"></div>
+<button class="b" onclick="Android.scan()">اسکن QR روی مانیتور</button>
+<div id="lastw"></div>
+<div class="row"><input id="ip" placeholder="192.168.137.1" inputmode="decimal"><button class="b g" style="width:auto;padding:12px 18px" onclick="manual()">وصل شو</button></div>
+<div class="n">• گوشی و کامپیوتر باید به یک شبکه وصل باشند: هات‌اسپات کامپیوتر، هات‌اسپات یکی از گوشی‌ها یا مودم. اینترنت لازم نیست.<br>• برنامهٔ «۱۲ شب» روی کامپیوتر باید باز باشد. نشانی روی صفحهٔ مانیتور نوشته شده است.<br>• نشانی این گوشی: <span id="me" style="direction:ltr;display:inline-block"></span></div>
+</div><script>
+const msg=decodeURIComponent(location.hash.slice(1)||'');
+const st=document.getElementById('st');
+if(msg){st.className='st err';st.textContent=msg}
+let auto=!msg, opened=false;
+function go(u){if(opened)return;opened=true;Android.open(u)}
+window.onFound=function(o){const h=document.getElementById('hosts');const b=document.createElement('button');b.className='b g';b.textContent='مانیتور پیدا شد: '+o.url.replace('http://','').replace('/p','');b.onclick=()=>go(o.url);h.appendChild(b);if(auto)setTimeout(()=>go(o.url),700);else{st.className='st';st.textContent='مانیتور پیدا شد؛ رویش بزن'}};
+window.onFindError=function(o){st.className='st err';st.textContent='جست‌وجو کار نکرد. QR را اسکن کن یا نشانی را بنویس.'};
+window.onScan=function(o){if(!o.text)return;let t=o.text.trim();if(/^https?:\/\//.test(t))go(t);else{st.className='st err';st.textContent='این QR مال بازی نیست'}};
+function manual(){let v=document.getElementById('ip').value.trim();if(!v)return;if(!/^https?:/.test(v)){if(!/:\d+/.test(v))v+=':47130';v='http://'+v+'/p'}go(v)}
+try{const l=Android.last();if(l){document.getElementById('lastw').innerHTML='<button class="b g">اتصال دوباره به '+l.replace('http://','').replace('/p','')+'</button>';document.querySelector('#lastw button').onclick=()=>go(l)}document.getElementById('me').textContent=Android.ips()}catch(e){}
+Android.find(true);
+</script></body></html>
