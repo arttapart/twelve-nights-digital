@@ -19,6 +19,7 @@ const api = connect('monitor', (m, up) => {
   render();
 });
 
+let CURK = '';
 function render() {
   const G = S.G;
   if (!G) { morph(stage, lobby(), 'lobby'); return; }
@@ -30,6 +31,7 @@ function render() {
   else if (G.phase === 'night') { h = nightScr(); k = 'night'; }
   else if (S.ui && S.ui.dun && G.turn) { h = dunScr(); k = 'dun'; }
   else { h = mainScr(); k = 'main'; }
+  CURK = k;
   morph(stage, h + overlays(), k);
   fitCur(); requestAnimationFrame(fitCur); setTimeout(fitCur, 120);
 }
@@ -72,7 +74,7 @@ function chalLine(G) {
 }
 function topH(G, extra) {
   const T = G.turn;
-  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}${G.huntLeft != null && G.huntLeft < 999 ? ' – توکن شکار مانده ' + fa(G.huntLeft) : ''}</span></div></div>`;
+  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}</span></div></div>`;
 }
 function pbarH(G) {
   const T = G.turn;
@@ -98,11 +100,10 @@ function spendH(G) {
 }
 function curCard(G) {
   const T = G.turn; if (!T) return '';
-  const ui = S.ui || {};
-  if (ui.tab === 'acad') { const L = acadList(G); const it = L[ui.i]; if (it) return acard(it.id); }
-  if (ui.tab === 'hall') { const w = G.hall.row[ui.i]; if (w) return wcard(w.id, w.tok); }
   const x = T.played[T.played.length - 1];
-  return x ? acard(x.c, { k: '-p' + T.played.length }) : '<div class="sub">هنوز کارتی بازی نشده</div>';
+  // only the last played card, while the player still has cards in hand
+  const pl = G.players[T.pid], hn = pl.handN != null ? pl.handN : (pl.hand || []).length;
+  return x && hn ? acard(x.c, { k: '-p' + T.played.length }) : '';
 }
 const acadList = G => G.acad.row.map((id, i) => ({ src: 'row', i, id })).concat(Object.keys(G.acad.fixed).map(id => ({ src: 'fixed', i: id, id })));
 
@@ -111,15 +112,21 @@ function mainScr() {
   const G = S.G, ui = S.ui || {}, T = G.turn;
   const acadI = T && ui.tab === 'acad' ? ui.i : -1, hallI = T && ui.tab === 'hall' ? ui.i : -1;
   const seals = G.acad.seal;
-  const row = G.acad.row.map((id, i) => acard(id, { cls: i === acadI ? 'view' : '', seal: seals[i] ? H(seals[i].pid) : null })).join('');
+  const seen = {}; const row = G.acad.row.map((id, i) => acard(id, { cls: i === acadI ? 'view' : '', seal: seals[i] ? H(seals[i].pid) : null, k: '-' + (seen[id] = (seen[id] || 0) + 1) })).join('');
   const fixed = Object.keys(G.acad.fixed).map((id, k) => `<div class="stk"><span class="cl">${fa(G.acad.fixed[id])} کارت</span>${acard(id, { cls: G.acad.row.length + k === acadI ? 'view' : '' })}</div>`).join('');
   const hall = G.hall.row.map((w, i) => wcard(w.id, w.tok, { cls: i === hallI ? 'view' : '' })).join('');
   return `<div class="M" data-s="a">${topH(G)}
-<div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone"><div class="curh"><h4>${ui.tab === 'acad' || ui.tab === 'hall' ? 'کارت در حال دیدن' : 'کارت در حال اجرا'}</h4>${spendH(G)}</div><div class="curc">${curCard(G)}</div></div></div>
-<div class="zone zA"><div class="zt"><h3>آکادمی سحرستان</h3><span>دک: ${fa(G.acad.deckN)} کارت – سوخته: ${fa(G.acad.discard.length)}</span></div><div class="rowc"><div class="deck">دک آکادمی</div>${row}<div class="sep"></div>${fixed}</div></div>
-<div class="zone zH"><div class="zt"><h3>تالار جادوگران</h3><span>دک جادوگران شهر: ${fa(G.hall.deckN)}</span></div><div class="rowc"><div class="deck">دک جادوگران</div>${hall}</div></div>
+<div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone"><div class="curh"><h4>کارت در حال اجرا</h4>${spendH(G)}</div><div class="curc">${curCard(G)}</div></div></div>
+<div class="zone zA"><div class="zt"><h3>آکادمی سحرستان</h3><span>دک: ${fa(G.acad.deckN)} کارت – سوخته: ${fa(G.acad.discard.length)}</span></div><div class="rowc">${fixed}<div class="sep"></div>${row}<div class="deck">دک آکادمی</div></div></div>
+<div class="zone zH"><div class="zt"><h3>تالار جادوگران</h3><span>دک جادوگران شهر: ${fa(G.hall.deckN)}</span></div><div class="rowc">${hall}<div class="deck">دک جادوگران</div></div></div>
 <div class="zone zG"><h3>گوبلین</h3><div class="gh"></div><p><span>۱ ${sv('pow')} بده</span><span>۱ ${sv('coin')} یا ۱ ${sv('scr')} بگیر</span>هر نوبت ۱ بار</p></div>
-${pbarH(G)}${waitLine(G)}</div>`;
+${actH(G)}${pbarH(G)}${waitLine(G)}</div>`;
+}
+// the active player's actions this turn stay on screen (newest first, like the log on the phone)
+function actH(G) {
+  const T = G.turn; if (!T) return '';
+  const L = G.log.filter(l => l.n > (T.ev0 || 0)).reverse(); if (!L.length) return '';
+  return `<div class="act" style="--pc:${H(T.pid)}">${L.slice(0, 4).map((l, i) => `<div class="${i ? 'old' : 'new'}" data-k="lg-${l.n}">${esc(l.t)}</div>`).join('')}${L.length > 4 ? `<div class="more">و ${fa(L.length - 4)} کار دیگر در این نوبت</div>` : ''}</div>`;
 }
 
 // ---------- dungeon mode ----------
@@ -234,7 +241,7 @@ function overlays() {
   const G = S.G; let o = '';
   const last = G.toasts[G.toasts.length - 1];
   if (last && last.n > seen.toast) { seen.toast = last.n; timers.toastT = last; show('toast', 4500); }
-  if (live('toast') && timers.toastT) o += `<div class="mtoast k-${timers.toastT.kind}">${esc(timers.toastT.t)}</div>`;
+  if (live('toast') && timers.toastT && CURK !== 'main') o += `<div class="mtoast k-${timers.toastT.kind}">${esc(timers.toastT.t)}</div>`;
   const die = G.turn && G.turn.die;
   if (die && die.n > seen.die) { seen.die = die.n; show('die', 3200); }
   if (live('die') && die) o += `<div class="dieo"><div class="dv"><svg style="width:150px;height:150px"><use href="#i-die"/></svg><div style="font-size:64px;font-weight:900;line-height:1.1">${die.vals.map(fa).join(' + ')}</div><div style="font-size:26px;font-weight:700">تاس ${DIEN[die.lv] || ''} ${NM(G.turn.pid)} – ${fa(die.total)} ${sv('pow')}${die.flags.x2 ? ' – دو برابر' : ''}${die.flags.gem ? ' – گوهر نیرو ۱+' : ''}</div></div></div>`;

@@ -193,6 +193,8 @@ function aEnter(el, ctx) {
   if (!ANIM.on || ctx.n++ > 40 || !el.animate || hasCssAnim(el)) return;
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
   const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? -70 : 70) : 0;
+  const par = el.parentElement;
+  if (!sx && par && par.classList.contains('rowc') && el.dataset && el.dataset.k) { const dk = par.querySelector('.deck'); if (dk) { const r0 = dk.getBoundingClientRect(), r1 = el.getBoundingClientRect(), sc = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (sc || 1); el.animate([{ opacity: .4, transform: `translateX(${dx}px) rotateY(90deg)` }, { opacity: 1, transform: `translateX(${dx * .4}px) rotateY(60deg)`, offset: .35 }, { opacity: 1, transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.3,.7,.3,1)' }); return; } }
   if (!sx && el.parentElement && el.parentElement.classList.contains('curc')) { el.animate([{ opacity: 0, transform: 'translateY(-160px) scale(.55) rotate(-6deg)' }, { opacity: 1, transform: 'translateY(8px) scale(1.06)', offset: .7 }, { opacity: 1, transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)' }); return; }
   el.animate([{ opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(10px) scale(.95)' }, { opacity: 1, transform: 'none' }], { duration: sx ? 280 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }

@@ -154,7 +154,7 @@ function drawCards(G, p, n) {
 }
 function startTurn(G) {
   const p = curP(G);
-  G.turn = { pid: p.id, pool: { coin: 0, scroll: 0, ess: 0, power: 0, step: 0, tele: 0 }, played: [], die: null, dieUsed: false, reroll: 0, freeReroll: false,
+  G.turn = { pid: p.id, ev0: G.ev, pool: { coin: 0, scroll: 0, ess: 0, power: 0, step: 0, tele: 0 }, played: [], die: null, dieUsed: false, reroll: 0, freeReroll: false,
     gob: false, swap: false, flags: {}, both: false, ft: [], run: 0, runFrom: null, steps: false, buyDiscard: false, fk: false, phoenix: false, startedAt: G.ev };
   let n = R.handSize + (p.ups.draw6 ? 1 : 0);
   if (hasItem(p, 'jam')) n++;
