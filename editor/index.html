@@ -64,7 +64,7 @@ table.t td.code input{direction:ltr;font-family:monospace;font-size:12px}
 #pv-wrap{display:flex;flex-direction:column;gap:12px}
 #pv-mon{width:960px;height:540px;border:1px solid var(--line);border-radius:10px;overflow:hidden;position:relative;background:#000;flex:none}
 #pv-mon iframe{width:1920px;height:1080px;border:0;transform:scale(.5);transform-origin:top right;position:absolute;top:0;right:0}
-#pv-ph{display:flex;gap:10px;flex-wrap:wrap}.pvcap{display:flex;gap:8px;align-items:center;margin-bottom:4px;max-width:960px}.pvl{font-size:12px;color:var(--mut,#888);line-height:1.5}.pvcol .pvcap{max-width:293px;min-height:34px}
+#pv-ph{display:flex;gap:10px;flex-wrap:wrap}.pvcap{display:flex;gap:8px;align-items:center;margin-bottom:4px;max-width:960px}.pvl{font-size:12px;color:var(--mut,#888);line-height:1.5}.pvcol .pvcap{max-width:293px;min-height:34px}.pvc.on{background:#ff3b6b;color:#fff}
 .phf{width:215px;height:465px;border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;background:#000;flex:none}
 .phf iframe{width:390px;height:844px;border:0;transform:scale(.55);transform-origin:top right;position:absolute;top:0;right:0}
 .phf .nm{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;background:rgba(0,0,0,.6);color:#fff;padding:2px;z-index:2}
@@ -619,13 +619,23 @@ VIEWS.preview = m => {
   // comments: the caption next to the frame is filled with what the screen shows right now, then the comment is anchored to it
   m.addEventListener('click', async e => {
     const b = e.target.closest('[data-pvc]'); if (!b || !CMT || !PV) return;
-    const k = b.dataset.pvc, G = PV.R.G, el = $('pvl' + k);
-    const where = G ? 'شب ' + fa(G.night) + ' – ' + $('pv-st').textContent : '';
-    let txt;
-    if (k === 'm') { const d = $('pv-mon').firstChild.contentDocument, h = d && d.querySelector('h2'); txt = 'مانیتور – ' + where + (h ? ' – ' + h.textContent.trim() : ''); }
-    else { const fr = document.querySelector('iframe[data-tok="pv' + k + '"]'), d = fr && fr.contentDocument, t = d && d.querySelector('.nav .tb.on'), q = d && d.querySelector('h4,h3'); txt = 'گوشی بازیکن ' + fa(+k + 1) + ' – ' + (t ? 'تب ' + t.textContent.trim() : 'صفحهٔ ویژه') + (q ? ' – ' + q.textContent.trim().slice(0, 60) : '') + ' – ' + where; }
-    el.textContent = txt;
-    try { await CMT.openComposer({ element: el }); } catch (er) { status('باز کردن کامنت ممکن نشد', true); }
+    // step 1: the 💬 button arms the frame; step 2: the next click inside that screen picks the exact spot
+    const k = b.dataset.pvc, fr = k === 'm' ? $('pv-mon').firstChild : document.querySelector('iframe[data-tok="pv' + k + '"]'), d = fr && fr.contentDocument;
+    if (!d) return;
+    const old = b.textContent; b.textContent = 'حالا روی همان جای صفحه کلیک کن…'; b.classList.add('on');
+    const pick = async ev => {
+      ev.preventDefault(); ev.stopPropagation(); d.removeEventListener('click', pick, true); b.textContent = old; b.classList.remove('on');
+      let t = ev.target; while (t && t !== d.body && !(t.innerText || '').trim()) t = t.parentElement;
+      const spot = t ? (t.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 90) : '';
+      if (t && t.style) { const o = t.style.outline; t.style.outline = '3px solid #ff3b6b'; setTimeout(() => { t.style.outline = o; }, 2500); }
+      const G = PV.R.G, where = G ? $('pv-st').textContent : '';
+      let scr;
+      if (k === 'm') { const h = d.querySelector('h2'); scr = 'مانیتور' + (h ? ' – صفحهٔ ' + h.textContent.trim() : ''); }
+      else { const tb = d.querySelector('.nav .tb.on'); scr = 'گوشی بازیکن ' + fa(+k + 1) + (tb ? ' – تب ' + tb.textContent.trim() : ''); }
+      const el = $('pvl' + k); el.textContent = scr + ' – ' + where + ' – جای کلیک: «' + spot + '»';
+      try { await CMT.openComposer({ element: el }); } catch (er) { status('باز کردن کامنت ممکن نشد', true); }
+    };
+    d.addEventListener('click', pick, true);
   });
   $('pv-hp').onchange = e => { PVHP = e.target.value; start(); };
   $('pv-go').onclick = start; $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
