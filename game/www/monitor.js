@@ -82,7 +82,8 @@ function pbarH(G) {
     const p = G.players[id], on = T && T.pid === id;
     // only the active player's latest action, until the next one replaces it
     const lastL = on ? G.log.filter(l => l.n > (T.ev0 || 0)).pop() : null;
-    const played = lastL ? `<div class="lastact" data-k="lg-${lastL.n}">${esc(lastL.t)}</div>` : '';
+    const minis = on ? `<div class="played">${T.played.slice(-6).map(x => { const c = card(x.c); return `<div class="mini"><div class="mt2" style="background:${TYBG[c.ty]}">${TYN[c.ty]}</div><div class="mn">${esc(c.name)}</div></div>`; }).join('')}</div>` : '';
+    const played = (lastL ? `<div class="lastact" data-k="lg-${lastL.n}">${esc(lastL.t)}</div>` : '') + minis;
     return `<div class="pt ${on ? 'on' : ''}" style="--pc:${p.color}">${played}<div class="nm"><i style="background:${p.color}"></i>${esc(p.name)}${on ? '<span style="font-size:16px;font-weight:600;opacity:.8">· در حال بازی</span>' : ''}</div><div class="stats"><span>${sv('fame')}${fa(p.fame)}</span><span>${sv('coin')}${fa(p.store.coin)}</span><span>${sv('scr')}${fa(p.store.scroll)}</span><span>${sv('ess')}${fa(p.store.ess)}</span><span>${sv('hunt')}${fa(p.hunt)}</span>${p.wounds ? `<span class="wd">زخم ${fa(p.wounds)}</span>` : ''}</div></div>`;
   }).join('')}</div>`;
 }
