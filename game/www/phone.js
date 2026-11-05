@@ -30,7 +30,9 @@ function render() {
   if (!G) h = lobby();
   else if (G.me == null) h = `<div class="ph"><b style="font-size:26px;color:#f3cf72">۱۲ شب</b></div><div class="ctr" style="flex:1"><div class="pmsg gold">بازی شروع شده و این گوشی بازیکن آن نیست.</div></div>`;
   else h = game();
-  root.innerHTML = P(h + (errMsg ? `<div class="perr">${esc(errMsg)}</div>` : ''));
+  const mine = G && G.me != null ? G.prompts.find(q => q.to === G.me && q.opts) : null;
+  const sk = !G ? 'lobby' : [G.phase, G.battle ? 'b' + (G.battle.phase || '') : '', G.fight && G.fight.pid === G.me ? 'f' : '', mine ? 'q' + mine.id : '', view || '', myTurn() && S.ui && S.ui.dun ? 'd' : '', tab].join('|');
+  morph(root, P(h + (errMsg ? `<div class="perr">${esc(errMsg)}</div>` : '')), sk);
   bind();
 }
 
@@ -319,13 +321,13 @@ function finalP() {
 // ---------- input ----------
 function sendUI(o) { if (myTurn()) api.send(Object.assign({ t: 'ui' }, o)); }
 function swipe(k, d) {
-  ix[k] = (ix[k] || 0) + d;
+  ix[k] = (ix[k] || 0) + d; ANIM.swipe = d;
   render();
   if (k === 'acad' || k === 'hall') sendUI({ tab: k, i: ix[k] });
 }
 function bind() {
   const R = root;
-  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { tab = e.dataset.tab; view = null; render(); sendUI({ tab, i: ix[tab] || 0 }); });
+  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; tab = e.dataset.tab; view = null; render(); sendUI({ tab, i: ix[tab] || 0 }); });
   R.querySelectorAll('[data-sub]').forEach(e => e.onclick = () => { sub = +e.dataset.sub; render(); });
   R.querySelectorAll('[data-sw]').forEach(e => e.onclick = ev => { ev.stopPropagation(); const car = e.closest('[data-car]'); if (car) swipe(car.dataset.car, +e.dataset.sw); });
   R.querySelectorAll('[data-house]').forEach(e => e.onclick = () => { if (e.classList.contains('tk')) return; pickHouse = e.dataset.house; typedName = R.querySelector('#nm').value; render(); });
@@ -344,6 +346,7 @@ function bind() {
   R.querySelectorAll('[data-do]').forEach(e => e.onclick = () => { if (e.classList.contains('off') && !['start'].includes(e.dataset.do)) return; doIt(e.dataset.do, e); });
   // swipes on carousels: left/right to browse, up to play
   R.querySelectorAll('[data-car]').forEach(el => {
+    if (el._sw) return; el._sw = 1;   // the screen is patched, not rebuilt: bind each carousel once
     let x0, y0;
     const st = (x, y) => { x0 = x; y0 = y; };
     const en = (x, y) => { if (x0 == null) return; const dx = x - x0, dy = y - y0; x0 = null; if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) swipe(el.dataset.car, dx < 0 ? 1 : -1); else if (dy < -70 && Math.abs(dy) > Math.abs(dx)) swipeUp(el.dataset.car); };

@@ -47,19 +47,19 @@ function acard(id, o = {}) {
   const c = card(id); if (!c) return '';
   const art = ART.cards && ART.cards[id], md = (ART.mode && ART.mode.cards) || 'full';
   const extra = `${o.seal ? `<span class="seal" style="background:${o.seal}"></span>` : ''}${o.n != null ? `<span class="cl">${fa(o.n)} کارت</span>` : ''}`;
-  if (art && md === 'full') return `<div class="ac artfull ${o.cls || ''}" ${o.attr || ''} style="background-image:url('${artU(art)}')">${extra}</div>`;
+  if (art && md === 'full') return `<div class="ac artfull ${o.cls || ''}" data-k="c-${esc(id)}${o.k || ''}" ${o.attr || ''} style="background-image:url('${artU(art)}')">${extra}</div>`;
   const pw = c.power ? `<div class="adm n${Math.min(6, c.power)}">${'<b></b>'.repeat(Math.min(6, c.power))}</div>${c.txt ? `<div class="ef ef2">${txtH(c.txt)}</div>` : ''}` : `<div class="ef">${txtH(c.txt)}</div>`;
-  return `<div class="ac ${c.ty === 'wound' ? 'wound' : ''} ${o.cls || ''}" ${o.attr || ''}>${art ? `<img class="aill" src="${artU(art)}">` : ''}${costH(c)}<div class="ty ${TYC[c.ty]}">${TYN[c.ty]}${c.ty === 'magic' ? '' : ''}</div><div class="nmc">${esc(c.name)}</div>${pw}${stripH(c.strip)}${o.seal ? `<span class="seal" style="background:${o.seal}"></span>` : ''}${o.n != null ? `<span class="cl">${fa(o.n)} کارت</span>` : ''}</div>`;
+  return `<div class="ac ${c.ty === 'wound' ? 'wound' : ''} ${o.cls || ''}" data-k="c-${esc(id)}${o.k || ''}" ${o.attr || ''}>${art ? `<img class="aill" src="${artU(art)}">` : ''}${costH(c)}<div class="ty ${TYC[c.ty]}">${TYN[c.ty]}${c.ty === 'magic' ? '' : ''}</div><div class="nmc">${esc(c.name)}</div>${pw}${stripH(c.strip)}${o.seal ? `<span class="seal" style="background:${o.seal}"></span>` : ''}${o.n != null ? `<span class="cl">${fa(o.n)} کارت</span>` : ''}</div>`;
 }
 // wizard card face. tok = -1 defense tokens; o.dagger adds 1 more
 function wcard(id, tok = 0, o = {}) {
   const w = wiz(id); if (!w) return '';
   const m = (tok || 0) + (o.dagger ? 1 : 0);
   const art = ART.wizards && ART.wizards[id], md = (ART.mode && ART.mode.wizards) || 'full';
-  if (art && md === 'full') return `<div class="wz artfull g${w.g} ${o.cls || ''}" ${o.attr || ''} style="background-image:url('${artU(art)}')">${tok ? `<div class="mk">${fa(tok)}-</div>` : ''}${m && w.g !== 'N' ? `<div class="def hit">${fa(Math.max(1, w.d - m))}<s>${fa(w.d)}</s></div>` : ''}</div>`;
+  if (art && md === 'full') return `<div class="wz artfull g${w.g} ${o.cls || ''}" data-k="w-${esc(id)}${o.k || ''}" ${o.attr || ''} style="background-image:url('${artU(art)}')">${tok ? `<div class="mk">${fa(tok)}-</div>` : ''}${m && w.g !== 'N' ? `<div class="def hit">${fa(Math.max(1, w.d - m))}<s>${fa(w.d)}</s></div>` : ''}</div>`;
   const d = Math.max(1, w.d - m);
   const t = TN[w.t] || ['', ''];
-  return `<div class="wz g${w.g} ${o.cls || ''}" ${o.attr || ''}>${tok ? `<div class="mk">${fa(tok)}-</div>` : ''}${w.g !== 'N' ? `<div class="def ${m ? 'hit' : ''}">${fa(d)}${m ? `<s>${fa(w.d)}</s>` : ''}</div>` : ''}<div class="lv">${'<i></i>'.repeat(w.L)}</div><div class="wmid"><div class="pw">${fa(w.p)}</div></div><div class="we">${t[0] ? `<i class="wt">${t[0]} ${t[1]}</i>` : ''}${esc(w.g === 'N' ? 'جادوگر نوآموز' : w.txt)}</div><div class="wid">${esc(w.id)}</div></div>`;
+  return `<div class="wz g${w.g} ${o.cls || ''}" data-k="w-${esc(id)}${o.k || ''}" ${o.attr || ''}>${tok ? `<div class="mk">${fa(tok)}-</div>` : ''}${w.g !== 'N' ? `<div class="def ${m ? 'hit' : ''}">${fa(d)}${m ? `<s>${fa(w.d)}</s>` : ''}</div>` : ''}<div class="lv">${'<i></i>'.repeat(w.L)}</div><div class="wmid"><div class="pw">${fa(w.p)}</div></div><div class="we">${t[0] ? `<i class="wt">${t[0]} ${t[1]}</i>` : ''}${esc(w.g === 'N' ? 'جادوگر نوآموز' : w.txt)}</div><div class="wid">${esc(w.id)}</div></div>`;
 }
 function nightsH(G) {
   let o = '';
@@ -177,4 +177,80 @@ function connect(role, onState) {
 function fitStage(el, w, h) {
   const f = () => { const s = Math.min(innerWidth / w, innerHeight / h); el.style.transform = `translate(-50%,-50%) scale(${s})`; };
   addEventListener('resize', f); f(); return f;
+}
+
+// ---------- animation: patch the screen instead of replacing it, so things that arrive, leave, move or change can be animated ----------
+// morph(root, html, screenKey): a new screenKey swaps the whole screen with a transition; otherwise the DOM is patched in place:
+// new elements fade/slide in, removed ones fade out where they were, keyed elements (data-k) glide to their new place, changed numbers pop.
+const ANIM = { on: !(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches), swipe: 0, dir: 0 };
+const AKEYS = ['data-k', 'data-car', 'data-tab', 'data-do', 'data-s', 'id', 'data-i', 'data-src', 'data-sw', 'data-gob', 'data-up', 'data-house'];
+function akey(n) {
+  if (n.nodeType !== 1) return '#' + n.nodeType;
+  let k = n.tagName; for (const a of AKEYS) { const v = n.getAttribute(a); if (v != null) k += '|' + a + '=' + v; } return k;
+}
+const hasCssAnim = el => { try { const s = getComputedStyle(el); return s.animationName && s.animationName !== 'none'; } catch (e) { return false; } };
+function aEnter(el, ctx) {
+  if (!ANIM.on || ctx.n++ > 40 || !el.animate || hasCssAnim(el)) return;
+  const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
+  const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? 70 : -70) : 0;
+  el.animate([{ opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(10px) scale(.95)' }, { opacity: 1, transform: 'none' }], { duration: sx ? 280 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
+}
+function aLeave(el, ctx) {
+  if (!ANIM.on || !el.animate || !el.offsetParent || ctx.n > 40) { el.remove(); return; }
+  const w = el.offsetWidth, h = el.offsetHeight; if (!w || !h) { el.remove(); return; }
+  const op = el.offsetParent, opw = op.offsetWidth * op.offsetHeight; if (!el.dataset.k && w * h > opw * 0.4) { el.remove(); return; }
+  Object.assign(el.style, { position: 'absolute', left: el.offsetLeft + 'px', top: el.offsetTop + 'px', width: w + 'px', height: h + 'px', margin: '0', pointerEvents: 'none', zIndex: 5 });
+  el._ghost = true;
+  const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
+  const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? -70 : 70) : 0;
+  const a = el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: 260, easing: 'ease-in' });
+  a.onfinish = () => el.remove(); setTimeout(() => el.remove(), 600);
+}
+function aPop(el, ctx) {
+  if (!ANIM.on || !el || !el.animate || ctx.p++ > 30 || (el.textContent || '').length > 10) return;
+  el.animate([{ transform: 'scale(1)', filter: 'brightness(1)' }, { transform: 'scale(1.3)', filter: 'brightness(1.6)' }, { transform: 'scale(1)', filter: 'brightness(1)' }], { duration: 420, easing: 'ease-out' });
+}
+function syncAttrs(o, n) {
+  for (const a of [...o.attributes]) if (!n.hasAttribute(a.name)) o.removeAttribute(a.name);
+  for (const a of [...n.attributes]) if (o.getAttribute(a.name) !== a.value) o.setAttribute(a.name, a.value);
+}
+function patchKids(oP, nP, ctx) {
+  const olds = [...oP.childNodes].filter(x => !x._ghost), news = [...nP.childNodes], keys = olds.map(akey), used = new Array(olds.length).fill(false);
+  const out = []; let last = -1;
+  for (const nc of news) {
+    const k = akey(nc); let j = -1;
+    for (let i = last + 1; i < olds.length; i++) if (!used[i] && keys[i] === k) { j = i; break; }
+    if (j < 0) for (let i = 0; i <= last && i < olds.length; i++) if (!used[i] && keys[i] === k) { j = i; break; }
+    if (j >= 0) {
+      used[j] = true; last = Math.max(last, j); const oc = olds[j];
+      if (oc.nodeType === 1) { syncAttrs(oc, nc); patchKids(oc, nc, ctx); }
+      else if (oc.nodeValue !== nc.nodeValue) { oc.nodeValue = nc.nodeValue; if (oc.nodeType === 3) aPop(oP, ctx); }
+      out.push([oc, false]);
+    } else out.push([nc, true]);
+  }
+  olds.forEach((oc, i) => { if (!used[i]) { if (oc.nodeType === 1) aLeave(oc, ctx); else oc.remove(); } });
+  let ref = oP.firstChild;
+  for (const [node, isNew] of out) {
+    while (ref && ref._ghost) ref = ref.nextSibling;
+    if (node !== ref) oP.insertBefore(node, ref); else ref = ref.nextSibling;
+    if (isNew && node.nodeType === 1) ctx.enter.push(node);
+  }
+}
+function morph(root, html, screenKey) {
+  if (!ANIM.on || !root.firstChild || root._sk !== screenKey) {
+    const changed = root._sk !== undefined && root._sk !== screenKey; root._sk = screenKey; root.innerHTML = html;
+    if (changed && ANIM.on) { const top = root.firstElementChild; if (top) [...top.children].forEach((el, i) => { if (el.classList.contains('nav') || el.classList.contains('ph') || !el.animate || hasCssAnim(el)) return; el.animate([{ opacity: 0, transform: `translate(${ANIM.dir * 40}px, ${ANIM.dir ? 0 : 16}px)` }, { opacity: 1, transform: 'none' }], { duration: 380, delay: Math.min(i, 8) * 35, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }); }); }
+    ANIM.swipe = 0; ANIM.dir = 0; return;
+  }
+  const before = new Map(); for (const el of root.querySelectorAll('[data-k]')) before.set(el, el.getBoundingClientRect());
+  const tpl = document.createElement('template'); tpl.innerHTML = html;
+  const ctx = { n: 0, p: 0, enter: [] };
+  patchKids(root, tpl.content, ctx);
+  for (const el of ctx.enter) aEnter(el, ctx);
+  for (const [el, r0] of before) {
+    if (!el.isConnected || el._ghost || !el.animate) continue;
+    const r1 = el.getBoundingClientRect(), s = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (s || 1), dy = (r0.top - r1.top) / (s || 1);
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  }
+  ANIM.swipe = 0; ANIM.dir = 0;
 }

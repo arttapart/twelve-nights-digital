@@ -21,16 +21,16 @@ const api = connect('monitor', (m, up) => {
 
 function render() {
   const G = S.G;
-  if (!G) { stage.innerHTML = lobby(); return; }
-  let h;
-  if (G.phase === 'start') h = setupScr();
-  else if (G.phase === 'end') h = finalScr();
-  else if (G.battle) h = battleScr();
-  else if (G.fight) h = fightScr();
-  else if (G.phase === 'night') h = nightScr();
-  else if (S.ui && S.ui.dun && G.turn) h = dunScr();
-  else h = mainScr();
-  stage.innerHTML = h + overlays();
+  if (!G) { morph(stage, lobby(), 'lobby'); return; }
+  let h, k;
+  if (G.phase === 'start') { h = setupScr(); k = 'setup'; }
+  else if (G.phase === 'end') { h = finalScr(); k = 'end'; }
+  else if (G.battle) { h = battleScr(); k = 'battle'; }
+  else if (G.fight) { h = fightScr(); k = 'fight'; }
+  else if (G.phase === 'night') { h = nightScr(); k = 'night'; }
+  else if (S.ui && S.ui.dun && G.turn) { h = dunScr(); k = 'dun'; }
+  else { h = mainScr(); k = 'main'; }
+  morph(stage, h + overlays(), k);
 }
 
 // ---------- lobby ----------
