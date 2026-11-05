@@ -88,7 +88,7 @@ function game() {
   if (G.phase === 'end') body = finalP();
   else if (mine && mine.kind === 'cell') body = startCell(mine);
   else if (mine) body = promptP(mine);
-  else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)}</div></div>`;
+  else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)} است که خانهٔ شروع را انتخاب کند</div><div class="lbl">ترتیب بازی تصادفی است و روی مانیتور دیده می‌شود</div></div>`;
   else if (G.battle) body = battleP();
   else if (G.phase === 'night') body = `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="font-size:40px">پایان شب ${fa(G.night)}</div><div class="lbl" style="text-align:center;font-size:15px">اهریمن‌ها پیش می‌روند و رویداد شب اجرا می‌شود.<br>مانیتور را ببین.</div>${waitFor()}</div>${navH()}`;
   else if (G.fight && G.fight.pid === G.me) body = fightP();
