@@ -161,7 +161,7 @@ ${chalStrip(G)}
 // the challenge tokens chosen for this game, each tagged with the night it sits on (Farshad 2026-11-05)
 function chalStrip(G) {
   const ns = Object.keys(G.chal).map(Number).sort((a, b) => a - b);
-  return `<div style="display:flex;gap:16px;justify-content:center;padding:18px 10px 0;flex-wrap:wrap">${ns.map(n => { const [name, pts] = CHN[G.chal[n]] || ['؟', 0]; return `<div class="zone" style="align-items:center;gap:8px;padding:12px 18px;min-width:230px;max-width:300px;text-align:center"><span class="tag" style="font-size:18px">شب ${fa(n)}</span><b style="font-size:21px;line-height:1.5">${esc(name)}</b><span style="font-size:19px">${fa(pts)} ${sv('fame')}</span></div>`; }).join('')}</div>`;
+  return `<div style="display:flex;gap:16px;justify-content:center;padding:18px 10px 0;flex-wrap:wrap">${ns.map(n => { const [name, pts] = CHN[G.chal[n]] || ['؟', 0]; return `<div class="zone" style="align-items:center;gap:8px;padding:12px 18px;min-width:230px;max-width:300px;text-align:center"><span class="tag" style="font-size:18px">چالش شب ${fa(n)}</span><b style="font-size:21px;line-height:1.5">${esc(name)}</b><span style="font-size:19px">${fa(pts)} ${sv('fame')}</span></div>`; }).join('')}</div>`;
 }
 
 // ---------- night ----------
