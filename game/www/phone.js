@@ -88,7 +88,7 @@ function game() {
   if (G.phase === 'end') body = finalP();
   else if (mine && mine.kind === 'cell') body = startCell(mine);
   else if (mine) body = promptP(mine);
-  else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)}</div></div>`;
+  else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)} است</div></div>`;
   else if (G.battle) body = battleP();
   else if (G.phase === 'night') body = `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="font-size:40px">پایان شب ${fa(G.night)}</div><div class="lbl" style="text-align:center;font-size:15px">اهریمن‌ها پیش می‌روند و رویداد شب اجرا می‌شود.<br>مانیتور را ببین.</div>${waitFor()}</div>${navH()}`;
   else if (G.fight && G.fight.pid === G.me) body = fightP();
@@ -103,7 +103,7 @@ function waitFor() { const q = S.G.prompts[0]; return q && q.to !== S.G.me ? `<d
 // ---- tabs ----
 function tabP() {
   const G = S.G, p = me(), mt = myTurn(), T = G.turn;
-  const top = mt ? poolH() : `<div class="pmsg tn">نوبت <b style="color:${T ? G.players[T.pid].color : '#fff'}">${T ? esc(G.players[T.pid].name) : ''}</b> است – دستت را ببین و برنامه بریز</div>`;
+  const top = mt ? poolH() : `<div class="pmsg tn">نوبت <b style="color:${T ? G.players[T.pid].color : '#fff'}">${T ? esc(G.players[T.pid].name) : ''}</b> است</div>`;
   let o = '';
   if (tab === 'hand') {
     const h = p.hand; const i = clamp('hand', h.length);
