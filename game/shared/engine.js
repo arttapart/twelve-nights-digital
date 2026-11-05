@@ -116,8 +116,25 @@ function removeFromRow(G, i) { const id = G.acad.row.splice(i, 1)[0]; const s = 
 
 // ---------- crystal duel ----------
 function duel(G) {
-  const res = [];
-  for (const id of G.order) { const p = P(G, id); const rolls = Array.from({ length: R.duelDice }, () => rollFace(G, p.wand) + (hasItem(p, 'gem') ? 1 : 0)); res.push({ id, rolls, sum: rolls.reduce((a, b) => a + b, 0) }); }
+  // each player rolls the duel dice themselves, one die per press, in turn order
+  G.duelPend = { res: G.order.map(id => ({ id, rolls: [], sum: 0 })), k: 0 };
+  askDuel(G);
+}
+function askDuel(G) {
+  const D2 = G.duelPend, r = D2.res[D2.k];
+  ask(G, r.id, 'duelRoll', { title: 'دوئل چالش کریستال', text: 'پرتاب ' + fa(r.rolls.length + 1) + ' از ' + fa(R.duelDice) + ' – تاس را بینداز', opts: [{ v: 1, label: 'انداختن تاس' }] });
+}
+H.duelRoll = (G, pid) => {
+  const D2 = G.duelPend; if (!D2) return true; const r = D2.res[D2.k]; if (!r || r.id !== pid) return false;
+  const p = P(G, pid), v = rollFace(G, p.wand) + (hasItem(p, 'gem') ? 1 : 0);
+  r.rolls.push(v); r.sum += v; G.roll = { n: ++G.ev, pid, lv: p.wand, vals: [v], label: 'دوئل کریستال – پرتاب ' + fa(r.rolls.length) };
+  log(G, p.name + ' در دوئل تاس انداخت: ' + fa(v));
+  if (r.rolls.length >= R.duelDice) D2.k++;
+  if (D2.k < D2.res.length) { askDuel(G); return true; }
+  finishDuel(G); return true;
+};
+function finishDuel(G) {
+  const res = G.duelPend.res; G.duelPend = null;
   const best = Math.max(...res.map(r => r.sum));
   let W = res.filter(r => r.sum === best);
   if (W.length > 1) { const ring = W.filter(r => hasItem(P(G, r.id), 'ring')); W = ring.length === 1 ? ring : []; }
@@ -295,35 +312,55 @@ function rollFace(G, lv) { const f = DIE[Math.min(4, lv)]; return f[Math.floor(r
 function dieValue(G, p, face) { let v = face + (hasItem(p, 'gem') ? 1 : 0); if (G.turn && G.turn.flags.x2) v *= 2; return v; }
 function rollPower(G, p) {
   const T = G.turn; if (T.dieUsed) return 'تاس این نوبت را انداخته‌ای';
-  const lv = p.wand + (T.flags.dieup ? 1 : 0);
-  const faces = [rollFace(G, lv)]; if (T.flags.twice) faces.push(rollFace(G, lv));
-  const vals = faces.map(f => dieValue(G, p, f));
-  T.die = { lv, faces, vals, total: vals.reduce((a, b) => a + b, 0), n: ++G.ev, flags: { x2: !!T.flags.x2, twice: !!T.flags.twice, gem: hasItem(p, 'gem') } };
-  T.dieUsed = true; T.pool.power += T.die.total;
-  toast(G, p.name + ' تاس ' + DIE_NAME[Math.min(4, lv)] + ' انداخت: ' + vals.map(fa).join(' و ') + ' ← ' + fa(T.die.total) + ' قدرت', 'die');
+  if (T.die && T.die.acc < T.die.faces.length) return 'اول نتیجهٔ همین تاس را قبول کن';
+  const lv = T.die ? T.die.lv : p.wand + (T.flags.dieup ? 1 : 0);
+  if (!T.die) T.die = { lv, faces: [], vals: [], total: 0, acc: 0, need: 1, flags: { x2: !!T.flags.x2, twice: !!T.flags.twice, gem: hasItem(p, 'gem') } };
+  T.die.need = Math.max(T.die.need, T.flags.twice ? 2 : 1);
+  const f = rollFace(G, lv), v = dieValue(G, p, f);
+  T.die.faces.push(f); T.die.vals.push(v); T.die.total += v; T.die.n = ++G.ev;
+  T.pool.power += v;
+  G.roll = { n: T.die.n, pid: p.id, lv, vals: [v], label: 'تاس ' + DIE_NAME[Math.min(4, lv)] + (T.die.need > 1 ? ' – تاس ' + fa(T.die.faces.length) + ' از ' + fa(T.die.need) : '') };
+  toast(G, p.name + ' تاس ' + DIE_NAME[Math.min(4, lv)] + ' انداخت: ' + fa(v) + ' قدرت', 'die');
+  return null;
+}
+// the player accepts the current die; with two dice the second one can then be rolled
+function dieOk(G, p) {
+  const T = G.turn; if (!T.die || T.die.acc >= T.die.faces.length) return 'تاسی برای قبول نیست';
+  T.die.acc = T.die.faces.length; T.die.need = Math.max(T.die.need, T.flags.twice ? 2 : 1);
+  if (T.die.acc >= T.die.need) T.dieUsed = true;
+  log(G, p.name + ' عدد تاس را قبول کرد: ' + fa(T.die.vals[T.die.vals.length - 1]));
   return null;
 }
 function reroll(G, p) {
   const T = G.turn; if (!T.die) return 'هنوز تاس نینداخته‌ای';
+  if (T.die.acc >= T.die.faces.length) return 'نتیجهٔ این تاس را قبول کرده‌ای';
   const hpFree = hasHP(p, 'hp_luck') && !T.flags.hpLuck;
   const free = (hasItem(p, 'fate') && !T.freeReroll) || hpFree;
   if (!free) { if (T.reroll >= R.rerollMax) return 'بازانداختن بیشتر ممکن نیست'; if (!canPay(G, p, R.rerollCost)) return 'منابع بازانداختن کافی نیست'; }
-  if (T.pool.power < T.die.total) return 'قدرت این تاس خرج شده و بازانداختن ممکن نیست';
+  const j = T.die.vals.length - 1, old = T.die.vals[j];
+  if (T.pool.power < old) return 'قدرت این تاس خرج شده و بازانداختن ممکن نیست';
   if (free) { if (hasItem(p, 'fate') && !T.freeReroll) T.freeReroll = true; else T.flags.hpLuck = true; } else { pay(G, p, R.rerollCost); T.reroll++; }
-  T.pool.power -= T.die.total;
-  const faces = T.die.faces.map(() => rollFace(G, T.die.lv)); const vals = faces.map(f => dieValue(G, p, f));
+  T.pool.power -= old;
+  const f = rollFace(G, T.die.lv), v = dieValue(G, p, f);
+  const faces = T.die.faces.slice(), vals = T.die.vals.slice(); faces[j] = f; vals[j] = v;
   T.die = Object.assign({}, T.die, { faces, vals, total: vals.reduce((a, b) => a + b, 0), n: ++G.ev, rer: true });
-  T.pool.power += T.die.total;
-  toast(G, p.name + ' تاس را دوباره انداخت: ' + vals.map(fa).join(' و ') + ' ← ' + fa(T.die.total) + ' قدرت', 'die');
+  T.pool.power += v;
+  G.roll = { n: T.die.n, pid: p.id, lv: T.die.lv, vals: [v], label: 'بازانداختن تاس' };
+  toast(G, p.name + ' تاس را دوباره انداخت: ' + fa(v) + ' قدرت', 'die');
   return null;
 }
 function resRoll(G, p) {
-  const T = G.turn, lv = p.wand + (T.flags.dieup ? 1 : 0);
+  ask(G, p.id, 'resGo', { title: 'تاس منابع', text: 'تاس را بینداز؛ به اندازهٔ عددش سکه یا طومار می‌گیری.', opts: [{ v: 1, label: 'انداختن تاس' }] });
+}
+H.resGo = (G, pid) => {
+  const p = P(G, pid), T = G.turn, lv = p.wand + (T && T.flags.dieup ? 1 : 0);
   const v = dieValue(G, p, rollFace(G, lv));
-  T.resDie = { v, n: ++G.ev };
+  if (T) T.resDie = { v, n: ++G.ev };
+  G.roll = { n: ++G.ev, pid, lv, vals: [v], label: 'تاس منابع' };
   toast(G, p.name + ' تاس منابع انداخت: ' + fa(v), 'die');
   if (v > 0) { const opts = []; for (let c = v; c >= 0; c--) opts.push({ v: c, label: fa(c) + ' سکه + ' + fa(v - c) + ' طومار' }); ask(G, p.id, 'resRoll', { title: 'تاس منابع: ' + fa(v), text: 'به همین اندازه سکه یا طومار بگیر.', opts, data: { v } }); }
-}
+  return true;
+};
 H.resRoll = (G, pid, v, q) => { if (!(v >= 0 && v <= q.data.v)) return false; G.turn.pool.coin += v; G.turn.pool.scroll += q.data.v - v; return true; };
 
 // ---------- buy ----------
@@ -557,6 +594,7 @@ function act(G, pid, a) {
       case 'play': return playCard(G, p, a.u, a.mode || 'main');
       case 'roll': return rollPower(G, p);
       case 'reroll': return reroll(G, p);
+      case 'dieok': return dieOk(G, p);
       case 'buy': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return buy(G, p, a.src, a.i);
       case 'swap': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return swapAcademy(G, p, a.i);
       case 'hire': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return hire(G, p, a.src || 'row', a.i);

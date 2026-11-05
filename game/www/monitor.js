@@ -12,7 +12,7 @@ const api = connect('monitor', (m, up) => {
   if (m.t !== 'state') return;
   S = m;
   if (first && S.G) { // do not replay old overlays after a reload
-    const G = S.G; seen.toast = G.toasts.length ? G.toasts[G.toasts.length - 1].n : 0; seen.die = G.turn && G.turn.die ? G.turn.die.n : 0;
+    const G = S.G; seen.toast = G.toasts.length ? G.toasts[G.toasts.length - 1].n : 0; seen.die = G.roll ? G.roll.n : 0;
     seen.duel = G.duel ? G.duel.n : 0; seen.chal = G.chalResult ? G.chalResult.n : 0; seen.breach = G.lastBreach ? G.lastBreach.n : 0;
   }
   first = false;
@@ -245,9 +245,9 @@ function overlays() {
   const last = G.toasts[G.toasts.length - 1];
   if (last && last.n > seen.toast) { seen.toast = last.n; timers.toastT = last; show('toast', 4500); }
   if (live('toast') && timers.toastT && CURK !== 'main') o += `<div class="mtoast k-${timers.toastT.kind}">${esc(timers.toastT.t)}</div>`;
-  const die = G.turn && G.turn.die;
-  if (die && die.n > seen.die) { seen.die = die.n; show('die', 3200); }
-  if (live('die') && die) o += `<div class="dieo"><div class="dv"><svg style="width:150px;height:150px"><use href="#i-die"/></svg><div style="font-size:64px;font-weight:900;line-height:1.1">${die.vals.map(fa).join(' + ')}</div><div style="font-size:26px;font-weight:700">تاس ${DIEN[die.lv] || ''} ${NM(G.turn.pid)} – ${fa(die.total)} ${sv('pow')}${die.flags.x2 ? ' – دو برابر' : ''}${die.flags.gem ? ' – گوهر نیرو ۱+' : ''}</div></div></div>`;
+  // every die a player rolls: spinning faces on the big screen, then the result
+  const rr = G.roll;
+  if (rr && rr.n > seen.die) { seen.die = rr.n; setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
   if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 9000); }
   if (live('duel') && G.duel) {
     const D2 = G.duel;

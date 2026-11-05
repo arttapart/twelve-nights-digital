@@ -271,3 +271,20 @@ function morph0(root, html, screenKey) {
   }
   ANIM.swipe = 0; ANIM.dir = 0;
 }
+
+// die roll effect: an overlay where the faces spin and slow down, then land on the result (max ~2 s)
+function dieFx(host, r, cls) {
+  const old = host.querySelector('.dfx'); if (old) old.remove();
+  const faces = (DIEF[Math.min(4, r.lv || 1)] || [1, 2, 3, 4, 5, 6]), fin = (r.vals || []).map(fa).join(' + ');
+  const el = document.createElement('div'); el.className = 'dfx ' + (cls || '');
+  el.innerHTML = `<div class="dfx-b"><svg class="dfx-sv"><use href="#i-die"/></svg><div class="dfx-num">؟</div><div class="dfx-lab">${esc(r.label || '')}</div></div>`;
+  host.appendChild(el);
+  const num = el.querySelector('.dfx-num'), box = el.querySelector('.dfx-b');
+  const steps = [50, 55, 60, 70, 80, 95, 110, 130, 160, 200, 250, 320]; let i = 0;
+  const tick = () => {
+    if (i < steps.length) { num.textContent = r.vals.map(() => fa(faces[Math.floor(Math.random() * faces.length)])).join(' + '); setTimeout(tick, steps[i++]); }
+    else { num.textContent = fin; box.classList.add('land'); setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 1300); }
+  };
+  if (!ANIM.on) { num.textContent = fin; setTimeout(() => el.remove(), 1500); return; }
+  tick();
+}

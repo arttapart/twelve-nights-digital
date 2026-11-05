@@ -32,6 +32,7 @@ function render() {
   else h = game();
   const mine = G && G.me != null ? G.prompts.find(q => q.to === G.me && q.opts) : null;
   const sk = !G ? 'lobby' : [G.phase, G.battle ? 'b' + (G.battle.phase || '') : '', G.fight && G.fight.pid === G.me ? 'f' : '', mine ? 'q' + mine.id : '', view || '', myTurn() && S.ui && S.ui.dun ? 'd' : '', tab].join('|');
+  rollShow();
   morph(root, P(h + (errMsg ? `<div class="perr">${esc(errMsg)}</div>` : '')), sk);
   bind();
 }
@@ -72,7 +73,7 @@ ${L.hasSave ? '<div class="btn ghost" data-do="resume">ادامهٔ بازی ذ�
 // ---------- in game ----------
 function header() {
   const G = S.G, p = me(), T = G.turn, mt = myTurn();
-  const fabs = mt ? `<div class="phfab"><div class="fab dice ${T.dieUsed ? 'used' : ''}" data-do="dice" title="تاس">${sv('die')}</div><div class="fab ${S.ui && S.ui.dun ? 'dunon' : ''}" data-do="dun" title="مد سیاه‌چال">${sv('dun')}</div></div>` : '';
+  const fabs = mt ? `<div class="phfab"><div class="fab dice ${T.dieUsed ? 'used' : ''}" ${T.dieUsed ? '' : 'data-do="dice"'} title="تاس">${sv('die')}</div><div class="fab ${S.ui && S.ui.dun ? 'dunon' : ''}" data-do="dun" title="مد سیاه‌چال">${sv('dun')}</div></div>` : '';
   return `<div class="ph"><div class="hs" style="background:${p.color}">${esc(p.name[0])}</div><b>${esc(p.name)}</b>${fabs}<div class="fs">${sv('fame')} ${fa(p.fame)}</div></div>`;
 }
 function presH(p, perm) { return `<div class="pres${perm ? ' pres5' : ''}">${['coin', 'scroll', 'ess'].map(r => `<div>${sv(RI[r])} ${fa(p.store[r])}<small>/${fa(p.ups[{ coin: 'capCoin', scroll: 'capScroll', ess: 'capEss' }[r]] ? 4 : 2)}</small></div>`).join('')}${perm ? `<div>${sv('torch')} ${fa(p.torch)}</div>${p.pick ? `<div>${sv('pick')} ${fa(p.pick)}</div>` : ''}` : ''}</div>`; }
@@ -107,6 +108,16 @@ function game() {
   else if (myTurn() && S.ui && S.ui.dun) body = dunP();
   else body = tabP();
   return header() + body;
+}
+// a die rolled by this player: rolling faces slow down for ~1.8 s, then the result stays a moment
+let rollSeen = null;
+function rollShow() {
+  if (!S.G) return; const r = S.G.roll;
+  if (rollSeen === null) { rollSeen = r ? r.n : 0; return; }   // do not replay an old roll after a reload
+  if (!r) return;
+  if (r.n <= rollSeen) return; rollSeen = r.n;
+  if (r.pid !== S.G.me) return;
+  dieFx(document.body, r, 'ph');
 }
 function waitFor() { const q = S.G.prompts[0]; return q && q.to !== S.G.me ? `<div class="pmsg">منتظر ${esc(S.G.players[q.to].name)}: ${esc(q.title || '')}</div>` : ''; }
 
@@ -195,17 +206,21 @@ function boardP() {
 
 // ---- dice ----
 function diceP() {
-  const T = S.G.turn, p = me(), lv = Math.min(4, p.wand + (T.flags.dieup ? 1 : 0));
-  let o = poolH(false) + `<div class="dieb"><div class="lbl" style="font-size:15px">تاس ${DIEN[lv]} – سطح ${fa(lv)}${T.flags.twice ? ' – دو تاس' : ''}${T.flags.x2 ? ' – دو برابر' : ''}</div>`;
-  if (!T.die) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div><div class="face">؟</div></div><div class="btn" data-do="roll">انداختن تاس</div>`;
+  const T = S.G.turn, p = me(), d = T.die, lv = Math.min(4, d ? d.lv : p.wand + (T.flags.dieup ? 1 : 0)), need = Math.max(d ? d.need : 1, T.flags.twice ? 2 : 1);
+  let o = poolH(false) + `<div class="dieb"><div class="lbl" style="font-size:15px">تاس ${DIEN[lv]} – سطح ${fa(lv)}${need > 1 ? ' – دو تاس' : ''}${T.flags.x2 ? ' – دو برابر' : ''}</div>`;
+  const pend = d && d.acc < d.faces.length;       // rolled, not yet accepted
+  if (!d) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div><div class="face">؟</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
   else {
-    o += `<div class="face">${T.die.vals.map(fa).join('+')}</div><div class="lbl">${fa(T.die.total)} قدرت به استخر اضافه شد</div></div>`;
-    const free = Game_hasItem(p, 'fate') && !T.freeReroll, hpFree = p.hp === 'hp_luck' && !T.flags.hpLuck;
-    if (free) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (طومار تقدیر)</div>`;
-    else if (hpFree) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (قدرت خاندان)</div>`;
-    else if (T.reroll < 1) o += `<div class="btn ${canPayC({ scroll: 1 }) ? '' : 'off'}" data-do="reroll">بازانداختن – ۱ ${sv('scr')}</div>`;
+    o += `<div class="face">${d.vals.map((v, i) => `<span class="${i < d.acc ? 'okd' : ''}">${fa(v)}</span>`).join(' + ')}</div>${need > 1 ? `<div class="lbl">${d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + fa(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ')}</div>` : ''}</div>`;
+    if (pend) {
+      const free = Game_hasItem(p, 'fate') && !T.freeReroll, hpFree = p.hp === 'hp_luck' && !T.flags.hpLuck;
+      if (free) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (طومار تقدیر)</div>`;
+      else if (hpFree) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (قدرت خاندان)</div>`;
+      else if (T.reroll < 1) o += `<div class="btn ${canPayC({ scroll: 1 }) ? '' : 'off'}" data-do="reroll">بازانداختن – ۱ ${sv('scr')}</div>`;
+      o += `<div class="btn grn" data-do="dieok">قبول عدد ${fa(d.vals[d.vals.length - 1])}</div>`;
+    } else if (!T.dieUsed) o += `<div class="btn" data-do="roll">انداختن تاس دوم</div>`;
   }
-  return o + `<div class="btn ghost" data-do="back">${T.die ? 'قبول عدد ' + fa(T.die.total) : 'برگشت'}</div>` + navH();
+  return o + (pend ? '' : `<div class="btn ghost" data-do="back">برگشت</div>`) + navH();
 }
 // ---- end of turn ----
 function endP() {
@@ -393,6 +408,7 @@ function doIt(k, e) {
     case 'dun': sendUI({ dun: !(S.ui && S.ui.dun) }); view = null; return;
     case 'roll': act({ t: 'roll' }); return;
     case 'reroll': act({ t: 'reroll' }); return;
+    case 'dieok': { const d = S.G.turn.die, last = d && d.acc + 1 >= Math.max(d.need, S.G.turn.flags.twice ? 2 : 1); act({ t: 'dieok' }); if (last) view = null; return; }
     case 'hpalch': act({ t: 'hpalch' }); return;
     case 'buy': { const it = acadItems()[ix.acad]; if (it) act({ t: 'buy', src: it.src, i: it.i }); return; }
     case 'swap': { const it = acadItems()[ix.acad]; if (it) act({ t: 'swap', i: it.i }); return; }

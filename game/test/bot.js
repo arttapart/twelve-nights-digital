@@ -20,6 +20,7 @@ function botStep(G, r) {
   }
   if (G.phase !== 'turn') throw new Error('stuck phase ' + G.phase);
   const p = Game.curP(G), T = G.turn, A = a => Game.act(G, p.id, a);
+  if (T.die && T.die.acc < T.die.faces.length) { A({ t: 'dieok' }); return; }   // accept the current die before anything else
   if (G.dun.place) { if (r() < .5) A({ t: 'd_rot' }); else A({ t: 'd_place' }); return; }
   if (G.dun.portal) { const po = G.dun.portal; if (r() < .3) { A({ t: 'd_pcancel' }); return; } if (r() < .3) { A({ t: 'd_pnext' }); return; } const e = A({ t: 'd_pgo', n: po.list[po.i].cells[0] }); if (e) A({ t: 'd_pcancel' }); return; }
   if (G.fight) {
