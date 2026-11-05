@@ -129,3 +129,5 @@ input.inp:focus{border-color:#f3cf72}
 .act .more{font-size:14px;opacity:.5;order:0}
 
 .lastact{position:absolute;bottom:calc(100% + 10px);right:0;left:0;margin:auto;width:max-content;max-width:100%;background:linear-gradient(#2c2560,#191640);border:2px solid var(--pc,#f3cf72);border-radius:12px;padding:8px 20px;font-size:22px;font-weight:800;color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.zA .rowc,.zH .rowc{perspective:1400px;position:relative}
+.zA .rowc>.ac,.zH .rowc>.wz{backface-visibility:hidden}

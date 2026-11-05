@@ -194,7 +194,7 @@ function aEnter(el, ctx) {
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
   const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? -70 : 70) : 0;
   const par = el.parentElement;
-  if (!sx && par && par.classList.contains('rowc') && el.dataset && el.dataset.k) { const dk = par.querySelector('.deck'); if (dk) { const r0 = dk.getBoundingClientRect(), r1 = el.getBoundingClientRect(), sc = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (sc || 1); el.animate([{ opacity: .4, transform: `translateX(${dx}px) rotateY(90deg)` }, { opacity: 1, transform: `translateX(${dx * .4}px) rotateY(60deg)`, offset: .35 }, { opacity: 1, transform: 'none' }], { duration: 750, easing: 'cubic-bezier(.3,.7,.3,1)' }); return; } }
+  if (!sx && par && par.classList.contains('rowc') && el.dataset && el.dataset.k) { const dk = par.querySelector('.deck'); if (dk) { const r0 = dk.getBoundingClientRect(), r1 = el.getBoundingClientRect(), sc = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (sc || 1); el.animate([{ opacity: 1, transform: `translateX(${dx}px) rotateY(180deg) scale(.9)` }, { opacity: 1, transform: `translateX(${dx * .5}px) rotateY(90deg) scale(1.05)`, offset: .45 }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 850, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'backwards' }); return; } }
   if (!sx && el.parentElement && el.parentElement.classList.contains('curc')) { el.animate([{ opacity: 0, transform: 'translateY(-160px) scale(.55) rotate(-6deg)' }, { opacity: 1, transform: 'translateY(8px) scale(1.06)', offset: .7 }, { opacity: 1, transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)' }); return; }
   el.animate([{ opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(10px) scale(.95)' }, { opacity: 1, transform: 'none' }], { duration: sx ? 280 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
@@ -206,8 +206,9 @@ function aLeave(el, ctx) {
   el._ghost = true;
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
   const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? 70 : -70) : 0;
-  const a = el.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: 260, easing: 'ease-in' });
-  a.onfinish = () => el.remove(); setTimeout(() => el.remove(), 600);
+  const inRow = el.parentElement && el.parentElement.classList.contains('rowc');
+  const a = el.animate(inRow ? [{ opacity: 1, transform: 'none', filter: 'brightness(1)' }, { opacity: 1, transform: 'translateY(-30px) scale(1.08)', filter: 'brightness(1.6)', offset: .35 }, { opacity: 0, transform: 'translateY(-90px) scale(.7)', filter: 'brightness(1)' }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: inRow ? 650 : 260, easing: 'ease-in' });
+  a.onfinish = () => el.remove(); setTimeout(() => el.remove(), inRow ? 1000 : 600);
 }
 function aPop(el, ctx) {
   if (!ANIM.on || !el || !el.animate || ctx.p++ > 30 || (el.textContent || '').length > 10) return;
@@ -265,7 +266,8 @@ function morph0(root, html, screenKey) {
   for (const [el, r0] of before) {
     if (!el.isConnected || el._ghost || !el.animate) continue;
     const r1 = el.getBoundingClientRect(), s = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (s || 1), dy = (r0.top - r1.top) / (s || 1);
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    const inRow = el.parentElement && el.parentElement.classList.contains('rowc');
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], inRow ? { duration: 650, delay: 350, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'backwards' } : { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
   }
   ANIM.swipe = 0; ANIM.dir = 0;
 }
