@@ -127,3 +127,5 @@ input.inp:focus{border-color:#f3cf72}
 .act .new{background:linear-gradient(#2c2560,#191640);border:2px solid var(--pc,#f3cf72);border-radius:14px;padding:8px 28px;font-size:26px;font-weight:800;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.5);order:9}
 .act .old{font-size:17px;font-weight:600;color:#cfc8ee;opacity:.7;order:1}
 .act .more{font-size:14px;opacity:.5;order:0}
+
+.lastact{position:absolute;bottom:calc(100% + 10px);right:0;left:0;margin:auto;width:max-content;max-width:100%;background:linear-gradient(#2c2560,#191640);border:2px solid var(--pc,#f3cf72);border-radius:12px;padding:8px 20px;font-size:22px;font-weight:800;color:#fff;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5)}
