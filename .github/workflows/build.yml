@@ -61,6 +61,7 @@ jobs:
         env: { KEYSTORE_B64: '${{ secrets.KEYSTORE_B64 }}' }
         run: |
           if [ -z "$KEYSTORE_B64" ]; then echo "::error::Repository secret KEYSTORE_B64 is missing (see README)"; exit 1; fi
+          mkdir -p android/keystore
           echo "$KEYSTORE_B64" | base64 -d > android/keystore/twelvenights.jks
       - name: app icon
         run: |
