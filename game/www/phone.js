@@ -85,9 +85,11 @@ function poolH(perm = true) { const T = S.G.turn, p = me(), q = T.pool; const it
 const NAV = [['hand', 'دست'], ['mywiz', 'جادوگران'], ['acad', 'آکادمی'], ['hall', 'تالار'], ['board', 'تخته']];
 const navH = () => `<div class="nav">${NAV.map(([k, t]) => `<div class="tb ${tab === k && !view ? 'on' : ''}" data-tab="${k}">${sv(k)}${t}</div>`).join('')}</div>`;
 const dotsH = (n, i) => n > 1 ? `<div class="dots">${Array.from({ length: Math.min(n, 14) }, (_, k) => `<i class="${k === Math.min(i, 13) ? 'on' : ''}"></i>`).join('')}</div>` : '<div class="dots"></div>';
-const arrs = `<span class="arr" data-sw="-1" style="right:-4px">›</span><span class="arr" data-sw="1" style="left:-4px">‹</span>`;
+// carousel arrows: only towards the side that still has cards (uses the last clamp() call)
+let CL = { n: 0, i: 0 };
+const arrsF = () => CL.n > 1 ? `${CL.i > 0 ? '<span class="arr" data-sw="-1" style="right:-4px">›</span>' : ''}${CL.i < CL.n - 1 ? '<span class="arr" data-sw="1" style="left:-4px">‹</span>' : ''}` : '';
 const hintH = (t, off) => `<div class="hint ${off ? 'off' : ''}"><span class="ar">↑</span> ${t}</div>`;
-const clamp = (k, n) => { if (ix[k] >= n) ix[k] = Math.max(0, n - 1); if (ix[k] < 0) ix[k] = 0; return ix[k]; };
+const clamp = (k, n) => { if (ix[k] >= n) ix[k] = Math.max(0, n - 1); if (ix[k] < 0) ix[k] = 0; ix[k] = ix[k] || 0; CL = { n, i: ix[k] }; return ix[k]; };
 
 function game() {
   const G = S.G, p = me(), mine = G.prompts.find(q => q.to === G.me && q.opts);
@@ -118,7 +120,7 @@ function tabP() {
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
     if (h.length) {
       const c = card(h[i].c);
-      o += `<div class="zoom" data-car="hand">${acard(h[i].c)}${arrs}</div>${dotsH(h.length, i)}`;
+      o += `<div class="zoom" data-car="hand">${acard(h[i].c)}${arrsF()}</div>${dotsH(h.length, i)}`;
       if (mt) {
         const btns = [];
         if (c.ty !== 'wound') btns.push(`<div class="btn" data-play="main" data-u="${h[i].u}">بازی کارت</div>`);
@@ -136,13 +138,13 @@ function tabP() {
   } else if (tab === 'mywiz') {
     const w = p.wiz, i = clamp('mywiz', w.length), cnt = {};
     for (const id of w) { const g = wiz(id).g; cnt[g] = (cnt[g] || 0) + 1; }
-    o += `<div class="pmsg gold" style="font-size:14px">جادوگران من – ${fa(w.length)} کارت – ${Object.entries(cnt).map(([g, n]) => GN[g] + ' ' + fa(n)).join(' – ')}</div><div class="zoom xl" data-car="mywiz">${wcard(w[i])}${arrs}</div>${dotsH(w.length, i)}<div class="lbl" style="text-align:center">فقط برای دیدن و برنامه‌ریزی؛ نبرد در پایان شب‌های نبرد</div>`;
+    o += `<div class="pmsg gold" style="font-size:14px">جادوگران من – ${fa(w.length)} کارت – ${Object.entries(cnt).map(([g, n]) => GN[g] + ' ' + fa(n)).join(' – ')}</div><div class="zoom xl" data-car="mywiz">${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="lbl" style="text-align:center">فقط برای دیدن و برنامه‌ریزی؛ نبرد در پایان شب‌های نبرد</div>`;
   } else if (tab === 'acad') {
     const L = acadItems(), i = clamp('acad', L.length), it = L[i];
-    o += mt ? poolH() : top;
+    o += mt ? poolH(false) : top;
     if (it) {
       const c = card(it.id), seal = it.src === 'row' && G.acad.seal[it.i];
-      o += `<div class="lbl" style="text-align:center">${it.src === 'fixed' ? 'ردیف ثابت – ' + fa(G.acad.fixed[it.id]) + ' کارت مانده' : it.src === 'discard' ? 'سوخته‌های آکادمی' : 'آکادمی – کارت ' + fa(it.i + 1) + ' از ' + fa(G.acad.row.length)}${seal ? ' – مهر ' + esc(G.players[seal.pid].name) : ''}</div><div class="zoom" data-car="acad">${acard(it.id)}${arrs}</div>${dotsH(L.length, i)}`;
+      o += `<div class="lbl" style="text-align:center">${it.src === 'fixed' ? 'ردیف ثابت – ' + fa(G.acad.fixed[it.id]) + ' کارت مانده' : it.src === 'discard' ? 'سوخته‌های آکادمی' : 'آکادمی – کارت ' + fa(it.i + 1) + ' از ' + fa(G.acad.row.length)}${seal ? ' – مهر ' + esc(G.players[seal.pid].name) : ''}</div><div class="zoom" data-car="acad">${acard(it.id)}${arrsF()}</div>${dotsH(L.length, i)}`;
       if (mt && c.ty !== 'crystal') {
         const bc = hpCost(c, p, T);
         o += `<div class="btn ${canPayC(bc) ? '' : 'off'}" data-do="buy">خرید ${costInline(bc)}${bc !== c.cost ? ' (تخفیف خاندان)' : ''}</div>`;
@@ -152,10 +154,10 @@ function tabP() {
   } else if (tab === 'hall') {
     const L = G.hall.row.map((w, j) => ({ src: 'row', i: j, w })).concat((G.hall.reserved[G.me] || []).map((w, j) => ({ src: 'res', i: j, w })));
     const i = clamp('hall', L.length), it = L[i];
-    o += mt ? poolH() : top;
+    o += mt ? poolH(false) : top;
     if (it) {
       const cost = Math.max(1, wiz(it.w.id).d - (it.w.tok || 0) - (Game_hasItem(p, 'dagger') ? 1 : 0) - (p.hp === 'hp_lord' ? 1 : 0));
-      o += `<div class="lbl" style="text-align:center">${it.src === 'res' ? 'کنار گذاشته برای تو' : 'تالار – جادوگر ' + fa(it.i + 1) + ' از ' + fa(G.hall.row.length)} – هزینهٔ استخدام = دفاع فعلی</div><div class="zoom" data-car="hall">${wcard(it.w.id, it.w.tok, { dagger: Game_hasItem(p, 'dagger') })}${arrs}</div>${dotsH(L.length, i)}`;
+      o += `<div class="lbl" style="text-align:center">${it.src === 'res' ? 'کنار گذاشته برای تو' : 'تالار – جادوگر ' + fa(it.i + 1) + ' از ' + fa(G.hall.row.length)} – هزینهٔ استخدام = دفاع فعلی</div><div class="zoom" data-car="hall">${wcard(it.w.id, it.w.tok, { dagger: Game_hasItem(p, 'dagger') })}${arrsF()}</div>${dotsH(L.length, i)}`;
       if (mt) o += `<div class="btn ${T.pool.power >= cost ? '' : 'off'}" data-do="hire" data-src="${it.src}" data-i="${it.i}">به خدمت گرفتن – ${sv('pow')} ${fa(cost)}</div>`;
     }
     if (mt) o += `<div class="pbox" style="padding:10px 12px"><h5>گوبلین – هر نوبت ۱ بار${T.flags.gob2 ? ' – ۲ برابر' : ''}</h5><div class="brow"><div class="btn ghost ${T.gob ? 'off' : ''}" data-gob="coin" style="padding:9px">${sv('pow')}۱ ← ${sv('coin')}${T.flags.gob2 ? '۲' : '۱'}</div><div class="btn ghost ${T.gob ? 'off' : ''}" data-gob="scroll" style="padding:9px">${sv('pow')}۱ ← ${sv('scr')}${T.flags.gob2 ? '۲' : '۱'}</div></div></div>`;
@@ -193,7 +195,7 @@ function boardP() {
 // ---- dice ----
 function diceP() {
   const T = S.G.turn, p = me(), lv = Math.min(4, p.wand + (T.flags.dieup ? 1 : 0));
-  let o = poolH() + `<div class="dieb"><div class="lbl" style="font-size:15px">تاس ${DIEN[lv]} – سطح ${fa(lv)}${T.flags.twice ? ' – دو تاس' : ''}${T.flags.x2 ? ' – دو برابر' : ''}</div>`;
+  let o = poolH(false) + `<div class="dieb"><div class="lbl" style="font-size:15px">تاس ${DIEN[lv]} – سطح ${fa(lv)}${T.flags.twice ? ' – دو تاس' : ''}${T.flags.x2 ? ' – دو برابر' : ''}</div>`;
   if (!T.die) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div><div class="face">؟</div></div><div class="btn" data-do="roll">انداختن تاس</div>`;
   else {
     o += `<div class="face">${T.die.vals.map(fa).join('+')}</div><div class="lbl">${fa(T.die.total)} قدرت به استخر اضافه شد</div></div>`;
@@ -277,7 +279,7 @@ function promptP(q) {
     o += `<div class="pgrid">${pics.map(x => `<div class="pg ${sel.includes(x.v) ? 'on' : ''}" data-sel="${encodeURIComponent(JSON.stringify(x.v))}">${optFace(x)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(sel.length)} از ${fa(q.many)} انتخاب شد</div><div class="btn" data-do="many" data-q="${q.id}">تأیید</div>`;
   } else if (pics.length) {
     const i = clamp('pr', pics.length), x = pics[i];
-    o += `<div class="zoom ${x.wiz ? 'xl2' : ''}" data-car="pr">${optFace(x)}${pics.length > 1 ? arrs : ''}</div>${dotsH(pics.length, i)}${x.grp ? `<div class="lbl" style="text-align:center">از ${esc(x.grp)}</div>` : ''}<div class="btn" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label || 'انتخاب این')}</div>`;
+    o += `<div class="zoom ${x.wiz ? 'xl2' : ''}" data-car="pr">${optFace(x)}${pics.length > 1 ? arrsF() : ''}</div>${dotsH(pics.length, i)}${x.grp ? `<div class="lbl" style="text-align:center">از ${esc(x.grp)}</div>` : ''}<div class="btn" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label || 'انتخاب این')}</div>`;
   } else o += q.text ? `<div class="ctr" style="flex:1"><div class="qbig">${esc(q.text)}</div></div>` : '<div style="flex:1"></div>';
   o += plain.map((x, k) => `<div class="btn ${pics.length || k > 0 ? 'ghost' : ''}" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label)}</div>`).join('');
   return o + (pics.length && !q.many ? '' : '<div style="height:20px"></div>');
@@ -304,7 +306,7 @@ function battleP() {
     if (B.ready[G.me]) return bfm + `<div class="ctr" style="flex:1;gap:12px"><div class="bigr gold" style="font-size:34px">آماده‌ای ✓</div><div class="lbl">منتظر بقیهٔ بازیکنان…</div></div><div class="btn ghost" data-do="b_unready">تغییر حذف‌ها</div>`;
     if (!prepRm) prepRm = [];
     const w = p.wiz, i = clamp('prep', w.length), rm = prepRm.includes(i), keep = w.length - prepRm.length;
-    return bfm + `<div class="pmsg gold" style="font-size:14px">${fa(prepRm.length)} حذف – ${fa(keep)} می‌ماند${keep < 6 ? ' – کمتر از ۶ کارت، در راندهای آخر کارت نداری' : ''}</div><div class="zoom ${rm ? 'del' : ''} xl2" data-car="prep">${rm ? '<span class="xb">✕ حذف شده</span>' : ''}${wcard(w[i])}${arrs}</div>${dotsH(w.length, i)}<div class="brow"><div class="btn ghost" data-do="b_tog">${rm ? '↩ برگرداندن این کارت' : '✕ حذف این کارت'}</div></div><div class="btn grn" data-do="b_prep">آماده‌ام</div>`;
+    return bfm + `<div class="pmsg gold" style="font-size:14px">${fa(prepRm.length)} حذف – ${fa(keep)} می‌ماند${keep < 6 ? ' – کمتر از ۶ کارت، در راندهای آخر کارت نداری' : ''}</div><div class="zoom ${rm ? 'del' : ''} xl2" data-car="prep">${rm ? '<span class="xb">✕ حذف شده</span>' : ''}${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="brow"><div class="btn ghost" data-do="b_tog">${rm ? '↩ برگرداندن این کارت' : '✕ حذف این کارت'}</div></div><div class="btn grn" data-do="b_prep">آماده‌ام</div>`;
   }
   if (B.phase === 'done') {
     const r = B.res && B.res.res[G.me];
@@ -315,7 +317,7 @@ function battleP() {
     const h = B.hand;
     if (!h.length) return bfm + `<div class="ctr" style="flex:1"><div class="pmsg warn">کارتی در دست نداری؛ این راند را می‌بازی</div></div><div class="btn" data-do="b_none">باشه</div>`;
     const i = clamp('bhand', h.length);
-    return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – دک ${fa(B.deckN[G.me])} کارت</div><div class="zoom xl2" data-car="bhand">${wcard(h[i])}${h.length > 1 ? arrs : ''}</div>${dotsH(h.length, i)}${hintH('برای انتخاب پنهان، کارت را به بالا بکش')}<div class="btn" data-do="b_pick">انتخاب این کارت</div>${B.bf && B.bf.id === 'F12' && !B.wild ? '<div class="btn ghost" data-do="b_wild">سوزاندن این کارت و کشیدن کارت تازه (یک بار)</div>' : ''}`;
+    return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – دک ${fa(B.deckN[G.me])} کارت</div><div class="zoom xl2" data-car="bhand">${wcard(h[i])}${h.length > 1 ? arrsF() : ''}</div>${dotsH(h.length, i)}${hintH('برای انتخاب پنهان، کارت را به بالا بکش')}<div class="btn" data-do="b_pick">انتخاب این کارت</div>${B.bf && B.bf.id === 'F12' && !B.wild ? '<div class="btn ghost" data-do="b_wild">سوزاندن این کارت و کشیدن کارت تازه (یک بار)</div>' : ''}`;
   }
   return bfm + `<div class="ctr" style="flex:1;gap:10px"><div class="lbl" style="font-size:16px">کارت‌ها رو شد – مانیتور را ببین</div>${waitFor()}</div>`;
 }

@@ -49,7 +49,7 @@ function acard(id, o = {}) {
   const extra = `${o.seal ? `<span class="seal" style="background:${o.seal}"></span>` : ''}${o.n != null ? `<span class="cl">${fa(o.n)} کارت</span>` : ''}`;
   if (art && md === 'full') return `<div class="ac artfull ${o.cls || ''}" data-k="c-${esc(id)}${o.k || ''}" ${o.attr || ''} style="background-image:url('${artU(art)}')">${extra}</div>`;
   const pw = c.power ? `<div class="adm n${Math.min(6, c.power)}">${'<b></b>'.repeat(Math.min(6, c.power))}</div>${c.txt ? `<div class="ef ef2">${txtH(c.txt)}</div>` : ''}` : `<div class="ef">${txtH(c.txt)}</div>`;
-  return `<div class="ac ${c.ty === 'wound' ? 'wound' : ''} ${o.cls || ''}" data-k="c-${esc(id)}${o.k || ''}" ${o.attr || ''}>${art ? `<img class="aill" src="${artU(art)}">` : ''}${costH(c)}<div class="ty ${TYC[c.ty]}">${TYN[c.ty]}${c.ty === 'magic' ? '' : ''}</div><div class="nmc">${esc(c.name)}</div>${pw}${stripH(c.strip)}${o.seal ? `<span class="seal" style="background:${o.seal}"></span>` : ''}${o.n != null ? `<span class="cl">${fa(o.n)} کارت</span>` : ''}</div>`;
+  return `<div class="ac ${c.ty === 'wound' ? 'wound' : ''} ${o.cls || ''}" data-k="c-${esc(id)}${o.k || ''}" ${o.attr || ''}>${art ? `<img class="aill" src="${artU(art)}">` : ''}${costH(c)}<div class="ty ${TYC[c.ty]}">${TYN[c.ty]}${c.ty === 'magic' ? '' : ''}</div><div class="nmc">${esc(c.name)}</div>${pw}${stripH(c.strip)}${c.ty === 'spell' ? '<div class="spn">بلافاصله اجرا می‌شود و از بازی خارج می‌شود</div>' : ''}${o.seal ? `<span class="seal" style="background:${o.seal}"></span>` : ''}${o.n != null ? `<span class="cl">${fa(o.n)} کارت</span>` : ''}</div>`;
 }
 // wizard card face. tok = -1 defense tokens; o.dagger adds 1 more
 function wcard(id, tok = 0, o = {}) {
