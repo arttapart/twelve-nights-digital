@@ -152,9 +152,16 @@ function setupScr() {
   const curId = G.order[G.cur];
   const gate = cells.map(c => { if (c === '1,1') return '<i class="c">خانهٔ<br>دروازه</i>'; const p = G.players.find(x => x.pos === '0,0|' + c); return `<i>${p ? `<b style="background:${p.color};color:${p.color}"></b>` : 'پورتال'}</i>`; }).join('');
   return `<div class="M MX" data-s="a"><div class="zt" style="padding:0 10px"><h2>چیدمان</h2><span class="sub">همهٔ بُر زدن‌ها و چیدن‌ها خودکار انجام شد</span></div>
+${chalStrip(G)}
 <div class="body" style="align-items:center;justify-content:center;gap:70px"><div class="ctr" style="gap:16px"><div class="sub">دروازهٔ شهر – هر بازیکن یکی از ۸ پورتال را در گوشی انتخاب می‌کند</div><div class="gate">${gate}</div></div>
 <div class="order"><div class="zone" style="gap:12px"><h3>ترتیب بازی (تصادفی)</h3>${G.order.map((id, k) => { const p = G.players[id]; return `<div class="slot" style="border-color:${p.color}"><b class="gold">${fa(k + 1)}</b><span class="dot" style="background:${p.color}"></span>${esc(p.name)}${k === 0 ? '<span class="tag">کلاه جادوگری – نفر اول</span>' : ''}<span class="st ${p.pos ? '' : 'wait'}">${p.pos ? 'خانه انتخاب شد ✓' : id === curId ? 'در حال انتخاب…' : 'در صف'}</span></div>`; }).join('')}</div>
 <div class="zone chk" style="gap:0"><div><span>✓</span> توکن‌های چالش روی شب‌شمار</div><div><span>✓</span> ${fa(RU.acadRow)} کارت آکادمی و ردیف ثابت</div><div><span>✓</span> ${fa(RU.hallSize)} جادوگر تالار</div><div><span>✓</span> دک اهریمن و دستهٔ تایل‌ها</div><div><span>✓</span> ${fa(G.cfg.nights)} شب</div></div></div></div></div>`;
+}
+
+// the challenge tokens chosen for this game, each tagged with the night it sits on (Farshad 2026-11-05)
+function chalStrip(G) {
+  const ns = Object.keys(G.chal).map(Number).sort((a, b) => a - b);
+  return `<div style="display:flex;gap:16px;justify-content:center;padding:18px 10px 0;flex-wrap:wrap">${ns.map(n => { const [name, pts] = CHN[G.chal[n]] || ['؟', 0]; return `<div class="zone" style="align-items:center;gap:8px;padding:12px 18px;min-width:230px;max-width:300px;text-align:center"><span class="tag" style="font-size:18px">شب ${fa(n)}</span><b style="font-size:21px;line-height:1.5">${esc(name)}</b><span style="font-size:19px">${fa(pts)} ${sv('fame')}</span></div>`; }).join('')}</div>`;
 }
 
 // ---------- night ----------
