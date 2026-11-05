@@ -91,7 +91,13 @@ const curP = G => G.players[G.order[G.cur]];
 function log(G, t) { G.log.push({ n: ++G.ev, t }); if (G.log.length > 80) G.log.shift(); }
 function toast(G, t, kind) { G.toasts.push({ n: ++G.ev, t, kind: kind || '' }); if (G.toasts.length > 12) G.toasts.shift(); log(G, t); }
 const cap = (p, r) => p.ups[{ coin: 'capCoin', scroll: 'capScroll', ess: 'capEss' }[r]] ? R.storeUp : R.storeBase;
-const activeItems = p => p.items.slice(0, p.ups.slot2 ? 2 : 1);
+const slotN = p => p.ups.slot2 ? 2 : 1;
+const activeItems = p => p.items.slice(0, slotN(p));
+// choose which magic items sit in the open slots (turn start, or a new item with no free slot)
+function askSlots(G, p, start) {
+  const n = slotN(p);
+  ask(G, p.id, 'itemSlots', { title: start ? 'وسایل جادویی این نوبت' : 'وسیلهٔ جادویی تازه', text: start ? `${n === 1 ? 'یک' : 'دو'} وسیله را برای جایگاه${n === 1 ? '' : 'ها'} انتخاب کن؛ فقط وسایل جایگاه‌ها در این نوبت کار می‌کنند.` : 'جایگاه خالی نداری. اگر می‌خواهی جابه‌جا کنی، وسیلهٔ تازه را در جایگاه بگذار؛ وگرنه همین را تأیید کن.', many: n, slots: true, data: { start: !!start, cur: activeItems(p) }, opts: p.items.map(k => ({ v: k, label: (ITEMS[k] && ITEMS[k].name) || k })) });
+}
 const hasItem = (p, k) => activeItems(p).includes(k);
 
 // ---------- prompts ----------
@@ -158,6 +164,15 @@ function askStart(G) {
   const p = curP(G);
   ask(G, p.id, 'startCell', { title: 'جای شروع', text: 'فیگورت را روی یکی از ۸ پورتال دور دروازهٔ شهر بگذار.', kind: 'cell', opts: Dun.startCells(G).map(n => ({ v: n, label: Dun.cellName(G, n) })) });
 }
+H.itemSlots = (G, pid, v, q) => {
+  const p = P(G, pid), n = Math.min(slotN(p), p.items.length);
+  v = Array.isArray(v) ? v : [v];
+  if (v.length !== n || new Set(v).size !== n || v.some(k => !p.items.includes(k))) return false;
+  p.items = v.concat(p.items.filter(k => !v.includes(k)));
+  log(G, p.name + ' وسایل جایگاه‌ها: ' + v.map(k => (ITEMS[k] && ITEMS[k].name) || k).join('، '));
+  if (q.data.start) turnDraw(G, p);
+  return true;
+};
 H.startCell = (G, pid, v) => { if (!Dun.startCells(G).includes(v)) return false; P(G, pid).pos = v; log(G, P(G, pid).name + ' سر جایش در دروازهٔ شهر ایستاد.'); G.cur++; askStart(G); return true; };
 
 // ---------- turn ----------
@@ -173,12 +188,17 @@ function startTurn(G) {
   const p = curP(G);
   G.turn = { pid: p.id, ev0: G.ev, pool: { coin: 0, scroll: 0, ess: 0, power: 0, step: 0, tele: 0 }, played: [], die: null, dieUsed: false, reroll: 0, freeReroll: false,
     gob: false, swap: false, flags: {}, both: false, ft: [], run: 0, runFrom: null, steps: false, buyDiscard: false, fk: false, phoenix: false, startedAt: G.ev };
+  toast(G, 'نوبت ' + p.name, 'turn');
+  // more magic items than open slots: the player first picks which ones sit in the slots this turn
+  if (p.items.length > slotN(p)) { askSlots(G, p, true); return; }
+  turnDraw(G, p);
+}
+function turnDraw(G, p) {
   let n = R.handSize + (p.ups.draw6 ? 1 : 0);
   if (hasItem(p, 'jam')) n++;
   if (p.curse) { n--; p.curse = 0; log(G, p.name + ' توکن نفرین داشت و ۱ کارت کمتر کشید.'); }
   p.hand = p.keep.concat(p.hand); p.keep = [];
   drawCards(G, p, n);
-  toast(G, 'نوبت ' + p.name, 'turn');
   if (p.pendingFight != null) {
     const d = G.dun.demons.find(x => x.id === p.pendingFight);
     p.pendingFight = null;
@@ -628,7 +648,7 @@ function phoenix(G, p, u) {
 
 const Game = { CHAL_METRIC, HP, housePower, hasHP, newGame, act, answer, fa, HOUSES, UPGRADES, ITEMS, TREASURE_NAME, CHALLENGES, DIE, DIE_NAME, RES, LV_NAME, LV_KEY, REWARD_NAME, card, cap, activeItems, hasItem, hireCost, canPay, curP, isTurn, busy, continueNight };
 // internals shared with the dungeon and battle modules
-Game._ = { hasHP, H, ask, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
+Game._ = { hasHP, H, ask, slotN, askSlots, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
 let Dun, Battle;
 Game.use = (d, b) => { Dun = d; Battle = b; };
 root.Game = Game;

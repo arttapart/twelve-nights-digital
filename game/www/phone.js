@@ -85,7 +85,7 @@ function poolH(perm = true) { const T = S.G.turn, p = me(), q = T.pool; const it
   if (perm) { it.push(`<span>${sv('torch')} ${fa(p.torch)}</span>`); if (p.pick) it.push(`<span>${sv('pick')} ${fa(p.pick)}</span>`); }
   // the stored row is always shown, fixed, above the temporary row
   return presH(p) + (it.length ? `<div class="pool">${it.join('')}</div>` : ''); }
-const NAV = [['hand', 'دست'], ['mywiz', 'جادوگران'], ['acad', 'آکادمی'], ['hall', 'تالار'], ['board', 'تخته']];
+const NAV = [['hand', 'دست'], ['mywiz', 'جادوگران'], ['acad', 'آکادمی'], ['hall', 'تالار'], ['board', 'برد شخصی']];
 const navH = () => `<div class="nav">${NAV.map(([k, t]) => `<div class="tb ${tab === k && !view ? 'on' : ''}" data-tab="${k}">${sv(k)}${t}</div>`).join('')}</div>`;
 const dotsH = (n, i) => n > 1 ? `<div class="dots">${Array.from({ length: Math.min(n, 14) }, (_, k) => `<i class="${k === Math.min(i, 13) ? 'on' : ''}"></i>`).join('')}</div>` : '<div class="dots"></div>';
 // carousel arrows: only towards the side that still has cards (uses the last clamp() call)
@@ -151,7 +151,7 @@ function tabP() {
   } else if (tab === 'mywiz') {
     const w = p.wiz, i = clamp('mywiz', w.length), cnt = {};
     for (const id of w) { const g = wiz(id).g; cnt[g] = (cnt[g] || 0) + 1; }
-    o += `<div class="pmsg gold" style="font-size:14px">جادوگران من – ${fa(w.length)} کارت – ${Object.entries(cnt).map(([g, n]) => GN[g] + ' ' + fa(n)).join(' – ')}</div><div class="zoom xl" data-car="mywiz">${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="lbl" style="text-align:center">فقط برای دیدن و برنامه‌ریزی؛ نبرد در پایان شب‌های نبرد</div>`;
+    o += `<div class="pmsg gold" style="font-size:14px">جادوگران من – ${fa(w.length)} کارت – ${Object.entries(cnt).map(([g, n]) => GN[g] + ' ' + fa(n)).join(' – ')}</div><div class="zoom" data-car="mywiz">${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="lbl" style="text-align:center">فقط برای دیدن و برنامه‌ریزی؛ نبرد در پایان شب‌های نبرد</div>`;
   } else if (tab === 'acad') {
     const L = acadItems(), i = clamp('acad', L.length), it = L[i];
     o += mt ? poolH(false) : top;
@@ -185,7 +185,7 @@ const costInline = cost => Object.entries(cost).map(([k, v]) => k === 'pow' ? fa
 
 function boardP() {
   const G = S.G, p = me(), mt = myTurn();
-  let o = `<div class="subt">${['وضعیت تخته', 'ارتقاها', 'رویدادها'].map((t, k) => `<span class="${sub === k ? 'on' : ''}" data-sub="${k}">${t}</span>`).join('')}</div>`;
+  let o = `<div class="subt">${['وضعیت برد شخصی', 'ارتقاها', 'رویدادها'].map((t, k) => `<span class="${sub === k ? 'on' : ''}" data-sub="${k}">${t}</span>`).join('')}</div>`;
   if (sub === 0) {
     const act2 = p.items.slice(0, p.ups.slot2 ? 2 : 1);
     o += `<div class="pbox"><h5>ذخیره</h5>${presH(p)}</div>
@@ -282,7 +282,19 @@ function fightP() {
 }
 
 // ---- prompts ----
+let slotQ = 0;
+// magic items -> open slots (turn start, or a new item while the slots are full)
+function slotsP(q) {
+  const p = me(), n = q.many;
+  if (slotQ !== q.id) { slotQ = q.id; sel = (q.data.cur || []).slice(0, n); }
+  let o = (S.G.turn && S.G.turn.pid === S.G.me ? poolH(false) : '') + `<div class="pmsg gold">${esc(q.title || '')}</div><div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text || '')}</div>`;
+  o += `<div class="pbox"><h5>جایگاه‌های فعال</h5><div class="octs">${[0, 1].map(k => k >= n ? `<div class="oct lk">${sv('lock')}</div>` : `<div class="oct ${sel[k] ? 'in' : ''}">${sel[k] ? `<span>${ITEMN[sel[k]]}</span>` : ''}</div>`).join('')}</div></div>`;
+  o += `<div class="islist">${q.opts.map(x => `<div class="isl ${sel.includes(x.v) ? 'on' : ''}" data-sel="${encodeURIComponent(JSON.stringify(x.v))}"><b>${esc(ITEMN[x.v] || x.label)}</b><span>${esc(ITEMT[x.v] || '')}</span><i>${sel.includes(x.v) ? 'در جایگاه' : 'بیرون'}</i></div>`).join('')}</div>`;
+  o += `<div style="flex:1"></div><div class="btn ${sel.length === Math.min(n, q.opts.length) ? '' : 'off'}" data-do="many" data-q="${q.id}">تأیید</div><div style="height:20px"></div>`;
+  return o;
+}
 function promptP(q) {
+  if (q.slots) return slotsP(q);
   const pics = q.opts.filter(x => x.card || x.wiz || x.acad || x.tile != null), big = !pics.length && !q.many;
   // the player keeps seeing what they have while answering: stored row + this turn's temporary row
   let o = (S.G.turn && S.G.turn.pid === S.G.me ? poolH(false) : '') + `<div class="pmsg gold">${esc(q.title || '')}</div>${q.text && !big ? `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text)}</div>` : ''}`;
@@ -356,7 +368,7 @@ function bind() {
   R.querySelectorAll('[data-gob]').forEach(e => e.onclick = () => act({ t: 'goblin', what: e.dataset.gob }));
   R.querySelectorAll('[data-up]').forEach(e => e.onclick = () => act({ t: 'upgrade', k: e.dataset.up }));
   R.querySelectorAll('[data-ans]').forEach(e => e.onclick = () => { if (e.classList.contains('off')) return; const v = JSON.parse(decodeURIComponent(e.dataset.ans)); sel = []; ix.pr = 0; act({ t: 'answer', id: +e.dataset.q, v }); });
-  R.querySelectorAll('[data-sel]').forEach(e => e.onclick = () => { const v = JSON.parse(decodeURIComponent(e.dataset.sel)); const q = S.G.prompts.find(x => x.to === S.G.me && x.opts); if (sel.includes(v)) sel = sel.filter(x => x !== v); else if (sel.length < (q.many || 1)) sel.push(v); render(); });
+  R.querySelectorAll('[data-sel]').forEach(e => e.onclick = () => { const v = JSON.parse(decodeURIComponent(e.dataset.sel)); const q = S.G.prompts.find(x => x.to === S.G.me && x.opts); if (sel.includes(v)) sel = sel.filter(x => x !== v); else if (sel.length < (q.many || 1)) sel.push(v); else if (q.slots) { sel.shift(); sel.push(v); } render(); });
   R.querySelectorAll('[data-cell]').forEach(e => e.onclick = () => { sel = [e.dataset.cell]; render(); });
   R.querySelectorAll('[data-mv]').forEach(e => e.onclick = () => act({ t: 'd_move', to: e.dataset.mv, tele: !!e.dataset.tele }));
   R.querySelectorAll('[data-ex]').forEach(e => e.onclick = () => act({ t: 'd_reveal', exit: e.dataset.ex }));
@@ -411,7 +423,7 @@ function doIt(k, e) {
     case 'hire': act({ t: 'hire', src: e.dataset.src, i: +e.dataset.i }); return;
     case 'phoenix': act({ t: 'phoenix', u: +e.dataset.u }); return;
     case 'items': { const it = me().items.slice(); it.push(it.shift()); act({ t: 'items', order: it }); return; }
-    case 'many': { const q = G.prompts.find(x => x.to === G.me && x.opts); const v = sel.slice(); sel = []; act({ t: 'answer', id: q.id, v }); return; }
+    case 'many': { if (e && e.classList && e.classList.contains('off')) return; const q = G.prompts.find(x => x.to === G.me && x.opts); const v = sel.slice(); sel = []; act({ t: 'answer', id: q.id, v }); return; }
     case 'd_rot': act({ t: 'd_rot', dir: 1 }); return;
     case 'd_place': case 'd_pcancel': case 'd_runend': case 'd_fight': case 'f_pay': case 'f_lose': case 'f_stop': case 'f_next': case 'f_mirror': case 'f_luck': act({ t: k }); return;
     case 'b_tog': { const i = ix.prep; prepRm = prepRm.includes(i) ? prepRm.filter(x => x !== i) : prepRm.concat([i]); render(); return; }

@@ -145,9 +145,9 @@ function dunScr() {
   else if (G.dun.portal) { const po = G.dun.portal; o.portal = po.list[po.i] ? po.list[po.i].cells : []; lab = `پرتال – کاشی مقصد ${fa(po.i + 1)} از ${fa(po.list.length)} – انتخاب با گوشی`; }
   else { o.moves = G.moves || []; o.exits = G.exits || []; if (S.ui.off && (S.ui.off[0] || S.ui.off[1])) lab = 'کاشی کناری – برای برگشتن «کاشی من» را در گوشی بزن'; }
   const pool = T.pool;
-  const res = `<div class="dpool">${sv('step')}<b>${fa(T.run > 0 ? 'دویدن' : pool.step)}</b>${pool.tele ? `<span>تله‌پورت ${fa(pool.tele)}</span>` : ''}${sv('torch')}<b>${fa(p.torch)}</b>${sv('pick')}<b>${fa(p.pick)}</b>${sv('pow')}<b>${fa(pool.power)}</b></div>`;
+  const res = `<div class="dpool big"><div>${sv('step')}<b>${fa(T.run > 0 ? 'دویدن' : pool.step)}</b></div>${pool.tele ? `<div><span>تله‌پورت</span><b>${fa(pool.tele)}</b></div>` : ''}<div>${sv('torch')}<b>${fa(p.torch)}</b></div><div>${sv('pick')}<b>${fa(p.pick)}</b></div></div>`;
   return `<div class="M MX" data-s="a">${topH(G, `<span class="tag" style="font-size:22px;padding:6px 18px;background:rgba(79,192,141,.18);color:#9ef0c3;border-color:#4fc08d">مد سیاه‌چال</span>`)}
-<div class="body"><div class="dmap">${mapSvg(G, o)}<div class="dlab">${lab}</div></div><div class="dside"><div class="cur zone"><h4>${NM(p.id)}</h4>${res}<div class="dunon" style="flex:1;display:flex;align-items:center;justify-content:center">${curCard(G)}</div></div>${legend()}</div></div>${pbarH(G)}${waitLine(G)}</div>`;
+<div class="body"><div class="dmap">${mapSvg(G, o)}<div class="dlab">${lab}</div></div><div class="dside"><div class="cur zone"><h4>${NM(p.id)}</h4>${res}</div>${legend()}</div></div>${pbarH(G)}${waitLine(G)}</div>`;
 }
 
 // ---------- demon fight ----------

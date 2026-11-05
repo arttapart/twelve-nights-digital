@@ -247,13 +247,13 @@ function openChest(G, p) {
   _.toast(G, p.name + ' صندوقچه را باز کرد: ' + nm, 'chest');
   G.lastChest = { n: ++G.ev, pid: p.id, tr };
   if (tr === 'wand3' || tr === 'wand4') p.wand = Math.max(p.wand, tr === 'wand3' ? 3 : 4);
-  else if (_.ITEMS[tr]) p.items.push(tr);
+  else if (_.ITEMS[tr]) { p.items.push(tr); if (p.items.length > _.slotN(p)) _.askSlots(G, p, false); }
   else if (tr === 'fame5') _.addFame(G, p, 5, 'گنجینه');
   else if (tr === 'fame3') _.addFame(G, p, 3, 'گنجینه');
   else if (tr === 'm6') p.discard.push({ u: ++G.uid, c: 'm6' });
   else if (tr === 'freeup') {
     const opts = Object.keys(Game.UPGRADES).filter(k => k === 'wand2' ? p.wand < 2 : !p.ups[k]).map(k => ({ v: k, label: Game.UPGRADES[k].name + ' · ' + Game.UPGRADES[k].txt }));
-    if (opts.length) _.ask(G, p.id, 'freeUp', { title: 'ارتقای رایگان', text: 'یک ارتقای تخته را بدون هزینه انجام بده.', opts });
+    if (opts.length) _.ask(G, p.id, 'freeUp', { title: 'ارتقای رایگان', text: 'یک ارتقای برد شخصی را بدون هزینه انجام بده.', opts });
   }
 }
 _.H.freeUp = (G, pid, v) => !_.upgrade(G, _.P(G, pid), v, true);
