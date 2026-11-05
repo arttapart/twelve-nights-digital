@@ -443,7 +443,11 @@ VIEWS.colors = m => {
 
 /* ---------- live preview: the whole game runs in this page ---------- */
 let PV = null;
-function gameData() { const d = clone(W); delete d.texts; delete d.colors; delete d.css; delete d._cardRows; delete d._wizRows; return d; }
+let PVHP = '';   // preview only: give every house its suggested main or alternative power (does not change the data)
+const PREVIEW_ONLY = false;
+function gameData() { const d = clone(W); delete d.texts; delete d.colors; delete d.css; delete d._cardRows; delete d._wizRows;
+  if (PVHP) { const hp = Object.entries(d.rules.housePowers || {}); for (const h of d.rules.houses) { const e = hp.filter(([, v]) => v.house === h.id)[PVHP === 'alt' ? 1 : 0]; if (e) { h.power = e[0]; h.start = clone(e[1].start || {}); } } }
+  return d; }
 function artMap() { const o = {}; for (const p in FILES) o[p] = FILES[p].url; return o; }
 function srcT(name) { return TX.apply(SRC[name], name, W); }
 function inlineCss(name) { let c = srcT(name); if (name === 'www/fonts.css') c = c.replace(/url\(["']?fonts\/([^"')]+)["']?\)/g, (m, f) => `url(data:font/woff2;base64,${FONTS[f] || ''})`); return c; }
@@ -466,9 +470,12 @@ ${bot.replace(/<\/script/g, '<\\/script')}
 window.botStep=botStep;<\/script>`;
 }
 function stopPreview() { if (PV && PV.timer) clearInterval(PV.timer); PV = null; window.__ROOM__ = null; }
+// monitor iframe (1920x1080) scaled to the width of its box
+function fitMon() { const mon = $('pv-mon'); if (!mon || !mon.firstChild) return; const k = mon.clientWidth / 1920; mon.firstChild.style.transform = 'scale(' + k + ')'; mon.style.height = Math.round(1080 * k) + 'px'; }
+addEventListener('resize', fitMon);
 VIEWS.preview = m => {
   m.innerHTML = `<h2>پیش‌نمایش زنده</h2><p class="help">کل بازی با همهٔ تغییرهایت، همین‌جا و بدون شبکه اجرا می‌شود: مانیتور بالا و گوشی‌ها پایین. روی گوشی‌ها مثل بازی واقعی کلیک کن، یا «ربات» را بزن تا خودش بازی کند و به صفحه‌های بعدی برسی. هر بار که چیزی را عوض کردی، «شروع دوباره» را بزن.</p>
-  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
+  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
   <div id="pv-wrap"><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
   const start = () => {
     stopPreview(); const n = +$('pv-n').value;
@@ -480,7 +487,7 @@ VIEWS.preview = m => {
       for (let i = 0; i < n; i++) R.message(fake('pv' + i), { t: 'join', name: 'بازیکن ' + fa(i + 1), house: H[i % H.length].id });
       if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
       R.message(fake('pv0'), { t: 'start', seed: 7 });
-      const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.srcdoc = pageHtml('monitor');
+      const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.srcdoc = pageHtml('monitor'); fitMon();
       const ph = $('pv-ph'); ph.innerHTML = '';
       for (let i = 0; i < n; i++) { const d = document.createElement('div'); d.className = 'phf'; d.innerHTML = `<div class="nm">بازیکن ${fa(i + 1)}</div><iframe data-tok="pv${i}"></iframe>`; ph.appendChild(d); d.querySelector('iframe').srcdoc = pageHtml('phone'); }
       info();
@@ -489,6 +496,7 @@ VIEWS.preview = m => {
   const info = () => { if (!PV) return; const G = PV.R.G; $('pv-st').textContent = G ? 'شب ' + fa(G.night) + ' – ' + ({ start: 'جای شروع', turn: 'نوبت ' + (G.turn ? G.players[G.turn.pid].name : ''), night: 'پایان شب', battle: 'نبرد جادوگران', end: 'پایان بازی' }[G.phase] || G.phase) : ''; };
   let rs = 11; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
   const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) PV.hw.botStep(PV.R.G, rnd); } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
+  $('pv-hp').onchange = e => { PVHP = e.target.value; start(); };
   $('pv-go').onclick = start; $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
   $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) PV.hw.botStep(PV.R.G, rnd); PV.R.broadcast(); info(); };
   $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };

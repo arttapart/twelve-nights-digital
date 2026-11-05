@@ -55,3 +55,8 @@ const inject = `const DEFAULT=${J(DEFAULT)};\nconst SRC=${J(SRC)};\nconst FONTS=
 h = h.replace('/*__FONTFACE__*/', () => edFont).replace('/*__INJECT__*/', () => inject).replace('/*__TX__*/', () => rd('tools/transform.js')).replace('/*__JSZIP__*/', () => rd('editor/jszip.min.js').replace(/<\/script/gi, '<\\/script'));
 fs.writeFileSync(path.join(ED, 'index.html'), h);
 console.log('editor/index.html', (h.length / 1024 / 1024).toFixed(2), 'MB;', TEXTS.length, 'texts,', COLORS.length, 'colours,', FX.length, 'effects,', Object.keys(WEFF).length, 'wizard codes');
+// preview-only page: the same file, opened on the live preview with the editor menu hidden
+const css = '<style>nav{display:none!important}#app{grid-template-columns:1fr!important}#pv-mon{width:100%!important;max-width:1600px}.phf{width:293px!important;height:633px!important}.phf iframe{transform:scale(.75)!important}#pv-ph{display:flex;flex-wrap:wrap;gap:14px}</style>';
+const pv = h.replace("try { tab = localStorage.getItem('tne-tab') || 'cards'; } catch (e) {}", "tab = 'preview';").replace('const PREVIEW_ONLY = false;', 'const PREVIEW_ONLY = true;').replace('<h1>ویرایشگر ۱۲ شب</h1>', '<h1>پیش‌نمایش زندهٔ ۱۲ شب</h1>').replace(/<title>[^<]*<\/title>/, '<title>پیش‌نمایش زندهٔ ۱۲ شب</title>').replace('</head>', css + '</head>');
+fs.writeFileSync(path.join(ED, 'preview.html'), pv);
+console.log('editor/preview.html', (pv.length / 1024 / 1024).toFixed(2), 'MB');
