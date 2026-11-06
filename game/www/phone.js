@@ -42,9 +42,9 @@ function render() {
   let h;
   if (!G) h = lobby();
   else if (G.me == null) h = `<div class="ph"><b style="font-size:26px;color:#f3cf72">۱۲ شب</b></div><div class="ctr" style="flex:1"><div class="pmsg gold">بازی شروع شده و این گوشی بازیکن آن نیست.</div></div>`;
-  else h = game();
+  else { bHandWatch(); h = game(); }
   const mine = G && G.me != null ? G.prompts.find(q => q.to === G.me && q.opts) : null;
-  const sk = !G ? 'lobby' : [G.phase, G.battle ? 'b' + (G.battle.phase || '') : '', G.fight && G.fight.pid === G.me ? 'f' : '', mine ? 'q' + mine.id : '', view || '', myTurn() && S.ui && S.ui.dun ? 'd' : '', tab].join('|');
+  const sk = !G ? 'lobby' : [G.phase, G.battle ? 'b' + (G.battle.phase || '') : '', G.fight && G.fight.pid === G.me ? 'f' : '', DQ || (mine && isDieQ(mine)) ? 'dq' : mine ? 'q' + mine.id : '', view || '', myTurn() && S.ui && S.ui.dun ? 'd' : '', tab].join('|');
   morph(root, P(h + (errMsg ? `<div class="perr">${esc(errMsg)}</div>` : '')), sk);
   rollShow();   // after the patch, so the die on screen is the one that lands
   fitHandGrid();
@@ -61,7 +61,7 @@ const hStart = h => Object.entries(h.start || {}).filter(([k, v]) => v && ST_IC[
 const housesBox = (hs, used) => {
   const any = HOUSES.some(h => HPW[h.power]) && !(S.lobby && S.lobby.hp === false);
   if (!any) { const h = HOUSES.find(x => x.id === hs); return `<div class="hname" style="color:${h.color}">${esc(h.title || h.name)}</div>`; }
-  return `<div class="hlist">${HOUSES.map(h => { const w = HPW[h.power], tk = used.includes(h.id); return `<div class="hrow ${h.id === hs ? 'sel' : ''} ${tk ? 'tk' : ''}" data-house="${h.id}" style="--hc:${h.color}"><i></i><div class="hb"><div class="ht"><b>${esc(h.title || h.name)}</b>${tk ? '<span class="mut">گرفته</span>' : ''}${hStart(h)}</div>${w ? `<div class="hp"><u>${esc(w.name)}:</u> ${esc(w.txt)}</div>` : '<div class="hp mut">بدون قدرت</div>'}</div></div>`; }).join('')}</div>`;
+  return `<div class="hlist">${HOUSES.map(h => { const w = HPW[h.power], tk = used.includes(h.id); return `<div class="hrow ${h.id === hs ? 'sel' : ''} ${tk ? 'tk' : ''}" data-house="${h.id}" style="--hc:${h.color}"><i></i><div class="hb"><div class="ht"><b>${esc(h.title || h.name)}</b>${tk ? `<span class="hby">${esc(((S.lobby.players.find((q, i) => i !== S.you && q.house === h.id)) || {}).name || '')}</span>` : ''}${hStart(h)}</div>${w ? `<div class="hp"><u>${esc(w.name)}:</u> ${esc(w.txt)}</div>` : '<div class="hp mut">بدون قدرت</div>'}</div></div>`; }).join('')}</div>`;
 };
 const hpBox = k => HPW[k] ? `<div class="pbox" style="padding:8px 12px"><h5>قدرت خاندان: ${esc(HPW[k].name)}</h5><div style="font-size:13px;line-height:1.7">${esc(HPW[k].txt)}</div></div>` : '';
 function hpCost(c, p, T) {
@@ -80,7 +80,7 @@ function lobby() {
   const c = HOUSES.find(h => h.id === hs).color;
   let o = `<div class="ph"><div class="hs" style="background:${c}">${esc((name || '؟')[0])}</div><b>${mine ? esc(mine.name) : 'بازیکن تازه'}</b>${S.host ? '<span class="tag" style="margin-inline-start:auto">میزبان</span>' : ''}</div>
 <div><div class="lbl">نام تو</div><input id="nm" class="inp" maxlength="14" value="${esc(name)}" placeholder="نامت را بنویس"></div>
-<div><div class="lbl">رنگ خاندان</div><div class="cols" style="padding:6px 0 14px">${HOUSES.map(h => `<i data-house="${h.id}" style="background:${h.color}" class="${h.id === hs ? 'sel' : used.includes(h.id) ? 'tk' : ''}"></i>`).join('')}</div>${housesBox(hs, used)}</div>
+<div><div class="lbl">رنگ خاندان</div><div class="cols hcols">${HOUSES.map(h => { const by = L.players.find((q, i) => i !== S.you && q.house === h.id); return `<span class="hc"><i data-house="${h.id}" style="background:${h.color}" class="${h.id === hs ? 'sel' : by ? 'tk' : ''}"></i><em style="color:${h.color}">${by ? esc(by.name) : '&nbsp;'}</em></span>`; }).join('')}</div>${housesBox(hs, used)}</div>
 <div class="btn ${mine ? 'ghost' : ''}" data-do="join">${mine ? 'ذخیرهٔ نام و رنگ' : 'ورود به بازی'}</div>`;
   if (mine) {
     o += `<div class="pmsg gold">${fa(L.players.length)} بازیکن وصل شده‌اند${L.players.length < 2 ? ' – دست‌کم ۲ نفر لازم است' : ''}</div>`;
@@ -123,6 +123,8 @@ function game() {
   let body;
   if (G.phase === 'end') body = finalP();
   else if (mine && mine.kind === 'cell') body = startCell(mine);
+  else if (DQ) body = dieQP(DQ.q, true);   // the die of a die question keeps its screen until it has landed
+  else if (mine && isDieQ(mine)) body = dieQP(mine);
   else if (mine) body = promptP(mine);
   else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)} است</div><div class="lbl">ترتیب بازی تصادفی است و روی مانیتور دیده می‌شود</div></div>`;
   else if (G.battle) body = battleP();
@@ -134,6 +136,26 @@ function game() {
   else body = tabP();
   return header() + body;
 }
+// die questions (crystal duel, resource die, battle magic die): the same die screen and the same roll as the power die
+// (Farshad 2026-11-06): tap the die or the button, the die spins, lands on the result, then the game goes on
+const isDieQ = q => q.k === 'duelRoll' || q.k === 'resGo' || (q.k === 'bq' && q.data && q.data.die);
+let DQ = null;   // {q, lv} while the die of a die question is rolling
+function dieQLv(q) { const p = me(), T = S.G.turn; return Math.min(4, p.wand + (q.k === 'resGo' && T && T.pid === p.id && T.flags.dieup ? 1 : 0)); }
+function dieQP(q, hold) {
+  const lv = dieQLv(q);
+  return poolHIf() + `<div class="pmsg gold">${esc(q.title || '')}</div><div class="dieb" data-dq="${q.id}"><div class="lbl" style="font-size:15px">${esc(q.text || '')}</div><div class="lbl" style="font-size:14px">تاس ${DIEN[lv]} – سطح ${fa(lv)}</div><div class="dfaces">${DIEF[lv].map(v => `<b>${dieN(v)}</b>`).join('')}</div>${die3H('؟', { tap: !hold, lv, k: 'q' })}<div class="lbl dhint">${hold ? '&nbsp;' : 'برای انداختن، روی تاس بزن'}</div></div><div class="dbtns ${hold ? 'hold' : ''}"><div class="btn" data-dqgo="${q.id}">${esc((q.opts[0] && q.opts[0].label) || 'انداختن تاس')}</div></div>`;
+}
+const poolHIf = () => S.G.turn && S.G.turn.pid === S.G.me && S.G.phase === 'turn' ? poolH(false) : '';
+function rollDieQ(id) {
+  const q = S.G.prompts.find(x => x.id == id && x.to === S.G.me); if (!q || DQ) return;
+  const lv = dieQLv(q); DQ = { q, lv };
+  const el = document.querySelector('.dieb[data-dq] .die3'); if (el) { DIEBUSY = true; die3Spin(el, lv); }
+  if (typeof SFX !== 'undefined') SFX.play('dice');
+  render();
+  act({ t: 'answer', id: q.id, v: q.opts[0].v });
+  // safety: if no result comes back the screen frees itself
+  setTimeout(() => { if (DQ && DQ.q === q) { DQ = null; DIEBUSY = false; render(); } }, 6000);
+}
 // a die rolled by this player: the die on the dice screen lands on the result; otherwise the same die as an overlay
 let rollSeen = null;
 const dieHtml = d => d.vals.map((v, i) => `<span class="${i < d.acc ? 'okd' : ''}">${dieN(v)}</span>`).join(' + ');
@@ -142,6 +164,7 @@ function rollShow() {
   if (rollSeen === null) { rollSeen = r ? r.n : 0; return; }   // do not replay an old roll after a reload
   if (!r) return;
   if (r.n <= rollSeen) return; rollSeen = r.n;
+  if (r.pid === S.G.me && DQ) { const el = document.querySelector('.dieb .die3'), q = DQ.q; if (el) { die3Land(el, (r.vals || []).map(dieN).join(' + '), r.lv, () => setTimeout(() => { if (DQ && DQ.q === q) { DQ = null; DIEBUSY = false; render(); } }, 1100)); return; } }
   if (S.G.phase === 'night' && !S.G.battle) return;   // last turn's roll is not replayed when the night starts
   if (r.pid !== S.G.me) return;
   const el = document.querySelector('.dieb .die3'), T = S.G.turn;
@@ -388,14 +411,37 @@ function battleP() {
     return `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="display:flex;gap:10px;align-items:center">${r && r.total ? '+' + fa(r.total) : '۰'} ${sv('fame')}</div><div style="font-size:17px;font-weight:800;text-align:center;line-height:1.8">${r ? fa(r.tokens) + ' راند بردی' + (r.bonus ? '<br>جایزهٔ بیشترین توکن: ' + fa(r.bonus) + '+' : '') : ''}</div></div>${B.ack[G.me] ? '<div class="pmsg">منتظر بقیه…</div>' : '<div class="btn" data-do="b_next">باشه</div>'}<div style="height:30px"></div>`;
   }
   if (B.phase === 'pick') {
-    if ('myPick' in B) return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – انتخاب کردی</div><div class="zoom xl2">${B.myPick ? wcard(B.myPick) : '<div class="lbl">بدون کارت</div>'}</div><div class="lbl" style="text-align:center">منتظر بقیه: ${G.order.filter(id => !B.picked[id]).map(id => esc(G.players[id].name)).join('، ') || '—'}</div>${B.myPick && !B.r1top ? '<div class="btn ghost" data-do="b_unpick">تغییر انتخاب</div>' : ''}`;
+    // after the pick the sent card is gone from the hand: the hand shows what is left (Farshad 2026-11-06)
+    if ('myPick' in B) return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – کارتت به مانیتور رفت</div>${bHandH(B)}<div class="lbl" style="text-align:center">منتظر بقیه: ${G.order.filter(id => !B.picked[id]).map(id => esc(G.players[id].name)).join('، ')}</div><div style="height:16px"></div>`;
     const h = B.hand;
     if (!h.length) return bfm + `<div class="ctr" style="flex:1"><div class="pmsg warn">کارتی در دست نداری؛ این راند را می‌بازی</div></div><div class="btn" data-do="b_none">باشه</div>`;
     const i = clamp('bhand', h.length);
-    return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – دک ${fa(B.deckN[G.me])} کارت</div><div class="zoom xl2" data-car="bhand">${wcard(h[i], 0, { k: '-' + i })}${h.length > 1 ? arrsF() : ''}</div>${dotsH(h.length, i)}${hintH('برای انتخاب پنهان، کارت را به بالا بکش')}<div class="btn" data-do="b_pick">انتخاب این کارت</div>${B.bf && B.bf.id === 'F12' && !B.wild ? '<div class="btn ghost" data-do="b_wild">سوزاندن این کارت و کشیدن کارت تازه (یک بار)</div>' : ''}`;
+    return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – دک ${fa(B.deckN[G.me])} کارت</div><div class="zoom xl2 ${NEWB && h[i] === NEWB ? 'bnew' : ''}" data-car="bhand">${wcard(h[i], 0, { k: '-' + i })}${h.length > 1 ? arrsF() : ''}</div>${dotsH(h.length, i)}${hintH('برای انتخاب پنهان، کارت را به بالا بکش')}<div class="btn" data-do="b_pick">انتخاب این کارت</div>${B.bf && B.bf.id === 'F12' && !B.wild ? '<div class="btn ghost" data-do="b_wild">سوزاندن این کارت و کشیدن کارت تازه (یک بار)</div>' : ''}`;
   }
-  return bfm + `<div class="ctr" style="flex:1;gap:10px"><div class="lbl" style="font-size:16px">کارت‌ها رو شد – مانیتور را ببین</div>${waitFor()}</div>`;
+  return bfm + `<div class="pmsg" style="font-size:14px">کارت‌ها رو شد – مانیتور را ببین</div>${bHandH(B)}${waitFor()}<div style="height:16px"></div>`;
 }
+// the battle hand outside the pick (only to look at). A card drawn at the end of a round slides in with a sound.
+let bHandSeen = null;
+function bHandH(B) {
+  const h = B.hand || []; if (!h.length) return '<div class="ctr" style="flex:1"><div class="lbl">دستت خالی است</div></div>';
+  const i = clamp('bview', h.length);
+  return `<div class="lbl" style="text-align:center;font-size:13px">دست تو (${fa(h.length)} کارت)</div><div class="zoom xl2 bview ${NEWB && h[i] === NEWB ? 'bnew' : ''}" data-car="bview">${wcard(h[i], 0, { k: '-v' + h[i] })}${h.length > 1 ? arrsF() : ''}</div>${dotsH(h.length, i)}`;
+}
+function bHandWatch() {
+  const B = S.G && S.G.battle; if (!B || !B.hand || B.phase === 'prep') { bHandSeen = null; return; }
+  const key = B.n + ':' + B.round, now = B.hand.slice();
+  if (bHandSeen && bHandSeen.key !== key) {
+    const fresh = now.filter(id => !bHandSeen.ids.includes(id));
+    if (fresh.length && bHandSeen.ids.length < now.length) {
+      // show the new card and let it slide in
+      const k = now.lastIndexOf(fresh[fresh.length - 1]); ix.bhand = k; ix.bview = k; NEWB = fresh[fresh.length - 1];
+      if (typeof SFX !== 'undefined') SFX.play('card');
+      setTimeout(() => { NEWB = null; }, 1600);
+    }
+  }
+  bHandSeen = { key, ids: now };
+}
+let NEWB = null;
 function finalP() {
   const G = S.G, F = G.final, r = F.rows.find(x => x.id === G.me), rank = F.rows.indexOf(r) + 1;
   return `<div class="ctr" style="gap:4px;padding:14px 0"><div class="bigr">${fa(r.total)}</div><div style="font-weight:800">${F.winners.includes(G.me) ? 'استاد اعظم سحر! 🏆' : 'نفر ' + fa(rank)}</div></div><div class="pbox"><div class="kv">امتیازشمار<b>${fa(r.during)}</b></div><div class="kv">کارت‌های آکادمی<b>${fa(r.cards)}</b></div><div class="kv">زخم<b style="color:#ff8a7a">${r.wounds ? fa(r.wounds) + '-' : '۰'}</b></div><div class="kv">جوهره<b>${fa(r.ess)}</b></div><div class="kv" style="border:0">سکه و طومار (هر ۲ = ۱)<b>${fa(r.cs)}</b></div></div><div style="flex:1"></div>${S.host ? '<div class="btn" data-do="newgame">بازی تازه</div>' : ''}`;
@@ -430,7 +476,8 @@ function bind() {
   R.querySelectorAll('[data-pg]').forEach(e => e.onclick = () => act({ t: 'd_pgo', n: e.dataset.pg }));
   R.querySelectorAll('[data-pn]').forEach(e => e.onclick = () => act({ t: 'd_pnext', dir: +e.dataset.pn }));
   R.querySelectorAll('[data-off]').forEach(e => e.onclick = () => { const [a, b] = e.dataset.off.split(',').map(Number); const o = (S.ui && S.ui.off) || [0, 0]; sendUI({ off: a === 0 && b === 0 ? [0, 0] : [o[0] + a, o[1] + b] }); });
-  R.querySelectorAll('.die3[data-tap]').forEach(e => e.onclick = () => { if (!(e._d3 && e._d3.on)) doIt('roll', e); });
+  R.querySelectorAll('.die3[data-tap]').forEach(e => e.onclick = () => { if (e._d3 && e._d3.on) return; const dq = e.closest('[data-dq]'); if (dq) rollDieQ(dq.dataset.dq); else doIt('roll', e); });
+  R.querySelectorAll('[data-dqgo]').forEach(e => e.onclick = () => rollDieQ(e.dataset.dqgo));
   R.querySelectorAll('[data-do]').forEach(e => e.onclick = () => { if (e.classList.contains('off') && !['start'].includes(e.dataset.do)) return; doIt(e.dataset.do, e); });
   // swipes on carousels: left/right to browse, up to play
   R.querySelectorAll('[data-car]').forEach(el => {

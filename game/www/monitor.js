@@ -377,8 +377,10 @@ function overlays() {
   // duel rolls land straight in the duel table (all players roll at once, big overlays would cover each other)
   if (rr && rr.n > seen.die && (G.duelPend || /^دوئل/.test(rr.label || '') || (rr.bt && G.battle))) { seen.die = rr.n; SFX.play('dice'); }
   if (rr && rr.n > seen.die) { seen.die = rr.n; SFX.play('dice'); setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
-  if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 9000); }
-  if (live('duel') && G.duel) {
+  // the duel result stays only while the winner picks the prize, then 3.5 s more at most (it stayed 9 s over other events)
+  if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 3500); }
+  if (G.duel && G.duel.n === seen.duel && G.prompts.some(q => q.k === 'duelPrize') && (timers.duel || 0) - Date.now() < 2500) show('duel', 3500);
+  if (live('duel') && G.duel && !G.duelPend) {
     const D2 = G.duel;
     o += `<div class="ovl"><div class="zone ctr" style="gap:20px;padding:34px 50px"><h2>دوئل چالش کریستال</h2><table class="tbl" style="width:1100px"><tr><th></th><th>پرتاب ۱</th><th>پرتاب ۲</th><th>پرتاب ۳</th><th>جمع</th></tr>${D2.res.map(r => `<tr class="${D2.winner === r.id ? 'win' : ''}"><td><span class="nmd"><i style="background:${H(r.id)}"></i>${NM(r.id)}</span></td>${r.rolls.map(x => `<td><span class="die6">${fa(x)}</span></td>`).join('')}<td style="font-size:34px">${fa(r.sum)}${D2.winner === r.id ? ' <span class="tag">برنده</span>' : ''}</td></tr>`).join('')}</table><div class="sub">${D2.winner == null ? 'مساوی؛ کسی جایزه نمی‌گیرد' : 'برنده جایزه‌اش را در گوشی انتخاب می‌کند'}</div></div></div>`;
   }
