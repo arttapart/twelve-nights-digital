@@ -20,7 +20,18 @@ const api = connect('phone', (m, u) => {
 });
 const act = a => api.send({ t: 'act', a });
 let dunAway = false;
-let handGrid = true;   // hand tab opens on an overview of all hand cards; tapping one zooms it (Farshad 2026-11-05)   // in dungeon mode the player opened a tab from the bottom menu
+let handGrid = true;
+// hand overview: 3 cards per row, sized so that 3 rows of 3 fit in the free space
+function fitHandGrid() {
+  const g = root.querySelector('.hgrid'); if (!g) return;
+  const cs = [...g.querySelectorAll('.hgc>.ac')]; if (!cs.length) return;
+  for (const c of cs) c.style.zoom = .05;   // shrink first so the grid's height is the free space, not its content
+  const gap = 8, W = g.clientWidth, H = g.clientHeight;
+  let z = (W - 2 * gap) / 3 / 138; if (H > 60) z = Math.min(z, (H - 2 * gap - 22) / 3 / 206);
+  z = Math.max(.3, z);
+  for (const c of cs) c.style.zoom = z.toFixed(3);
+  try { fitCards(g); } catch (e) {}
+}   // hand tab opens on an overview of all hand cards; tapping one zooms it (Farshad 2026-11-05)   // in dungeon mode the player opened a tab from the bottom menu
 const me = () => S.G.players[S.G.me];
 const myTurn = () => { const G = S.G; return G && G.phase === 'turn' && G.turn && G.turn.pid === G.me; };
 const P = x => `<div class="P" data-s="a">${x}</div>`;
@@ -36,6 +47,7 @@ function render() {
   const sk = !G ? 'lobby' : [G.phase, G.battle ? 'b' + (G.battle.phase || '') : '', G.fight && G.fight.pid === G.me ? 'f' : '', mine ? 'q' + mine.id : '', view || '', myTurn() && S.ui && S.ui.dun ? 'd' : '', tab].join('|');
   rollShow();
   morph(root, P(h + (errMsg ? `<div class="perr">${esc(errMsg)}</div>` : '')), sk);
+  fitHandGrid();
   bind();
 }
 
@@ -133,10 +145,10 @@ function tabP() {
     o += mt ? poolH(false) : top + presH(p);
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
     if (h.length && handGrid) {
-      o += `<div class="hgrid">${h.map((x, j) => `<div class="hgc" data-hg="${j}">${acard(x.c)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(h.length)} کارت در دست – برای دیدن بزرگ روی کارت بزن</div><div style="flex:1"></div>`;
+      o += `<div class="hgrid">${h.map((x, j) => `<div class="hgc" data-hg="${j}">${acard(x.c)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(h.length)} کارت در دست – برای دیدن بزرگ روی کارت بزن</div>`;
     } else if (h.length) {
       const c = card(h[i].c);
-      o += `<div class="zoom" data-car="hand">${acard(h[i].c)}${arrsF()}</div>${dotsH(h.length, i)}`;
+      o += `<div class="zoom" data-car="hand">${acard(h[i].c, { k: '-' + h[i].u })}${arrsF()}</div>${dotsH(h.length, i)}`;
       if (mt) {
         const btns = [];
         // after «both halves of the next card»: one button that plays the main part and the dungeon strip together
@@ -158,13 +170,13 @@ function tabP() {
   } else if (tab === 'mywiz') {
     const w = p.wiz, i = clamp('mywiz', w.length), cnt = {};
     for (const id of w) { const g = wiz(id).g; cnt[g] = (cnt[g] || 0) + 1; }
-    o += `<div class="pmsg gold" style="font-size:14px">جادوگران من – ${fa(w.length)} کارت – ${Object.entries(cnt).map(([g, n]) => GN[g] + ' ' + fa(n)).join(' – ')}</div><div class="zoom" data-car="mywiz">${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="lbl" style="text-align:center">فقط برای دیدن و برنامه‌ریزی؛ نبرد در پایان شب‌های نبرد</div>`;
+    o += `<div class="pmsg gold" style="font-size:14px">جادوگران من – ${fa(w.length)} کارت – ${Object.entries(cnt).map(([g, n]) => GN[g] + ' ' + fa(n)).join(' – ')}</div><div class="zoom" data-car="mywiz">${wcard(w[i], 0, { k: '-' + i })}${arrsF()}</div>${dotsH(w.length, i)}<div class="lbl" style="text-align:center">فقط برای دیدن و برنامه‌ریزی؛ نبرد در پایان شب‌های نبرد</div>`;
   } else if (tab === 'acad') {
     const L = acadItems(), i = clamp('acad', L.length), it = L[i];
     o += mt ? poolH(false) : top;
     if (it) {
       const c = card(it.id), seal = it.src === 'row' && G.acad.seal[it.i];
-      o += `<div class="lbl" style="text-align:center">${it.src === 'fixed' ? 'ردیف ثابت – ' + fa(G.acad.fixed[it.id]) + ' کارت مانده' : it.src === 'discard' ? 'سوخته‌های آکادمی' : 'آکادمی – کارت ' + fa(it.i + 1) + ' از ' + fa(G.acad.row.length)}${seal ? ' – مهر ' + esc(G.players[seal.pid].name) : ''}</div><div class="zoom" data-car="acad">${acard(it.id)}${arrsF()}</div>${dotsH(L.length, i)}`;
+      o += `<div class="lbl" style="text-align:center">${it.src === 'fixed' ? 'ردیف ثابت – ' + fa(G.acad.fixed[it.id]) + ' کارت مانده' : it.src === 'discard' ? 'سوخته‌های آکادمی' : 'آکادمی – کارت ' + fa(it.i + 1) + ' از ' + fa(G.acad.row.length)}${seal ? ' – مهر ' + esc(G.players[seal.pid].name) : ''}</div><div class="zoom" data-car="acad">${acard(it.id, { k: '-' + i })}${arrsF()}</div>${dotsH(L.length, i)}`;
       if (mt && c.ty !== 'crystal') {
         const bc = hpCost(c, p, T);
         o += `<div class="btn ${canPayC(bc) ? '' : 'off'}" data-do="buy">خرید ${costInline(bc)}${bc !== c.cost ? ' (تخفیف خاندان)' : ''}</div>`;
@@ -267,7 +279,7 @@ function dunP() {
   // only the dungeon resources: steps, torch, pickaxe (shown even at 0)
   o += `<div class="pool dres"><span>${sv('step')} ${T.run > 0 ? 'دویدن' : fa(T.pool.step || 0)}</span><span>${sv('torch')} ${fa(p.torch || 0)}</span><span>${sv('pick')} ${fa(p.pick || 0)}</span></div>`;
   // the map fills the screen; the view arrows sit on its four sides
-  o += `<div class="pmap big">${mapSvg(G, { focus: f, moves: G.moves, exits: G.exits, hit: true, me: p.id, pad: .2 })}${[['u', '▲', -1, 0], ['l', '◀', 0, 1], ['r', '▶', 0, -1], ['d', '▼', 1, 0]].map(([c, t, a, b]) => `<i class="mvo ${c}" data-off="${a},${b}">${t}</i>`).join('')}<b class="mvo me" data-off="0,0">کاشی من</b></div>`;
+  o += `<div class="pmap big">${mapSvg(G, { focus: f, moves: G.moves, exits: G.exits, hit: true, me: p.id, pad: .2, blinkMe: true })}${[['u', '▲', -1, 0], ['l', '◀', 0, -1], ['r', '▶', 0, 1], ['d', '▼', 1, 0]].map(([c, t, a, b]) => `<i class="mvo ${c}" data-off="${a},${b}">${t}</i>`).join('')}<b class="mvo me" data-off="0,0">کاشی من</b></div>`;
   if (T.run > 0) o += `<div class="btn ghost" data-do="d_runend">پایان دویدن (${fa(T.run)} راهرو مانده)</div>`;
   if (T.forced != null) o += `<div class="btn red" data-do="d_fight">شروع نبرد با اهریمن</div>`;
   return o + navH();
@@ -305,20 +317,22 @@ function promptP(q) {
   const pics = q.opts.filter(x => x.card || x.wiz || x.acad || x.tile != null), big = !pics.length && !q.many;
   // the player keeps seeing what they have while answering: stored row + this turn's temporary row
   let o = (S.G.turn && S.G.turn.pid === S.G.me ? poolH(false) : '') + `<div class="pmsg gold">${esc(q.title || '')}</div>${q.text && !big ? `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text)}</div>` : ''}`;
+  // unknown demon: show its cell blinking on the tile, so each question is clearly about one cell
+  if (q.k === 'qDemon' && q.data && q.data.n) return o + `<div class="lbl" style="text-align:center;font-size:15px;color:#ece6ff">${esc(q.text || '')}</div><div class="pmap big">${mapSvg(S.G, { focus: tileOf(q.data.n).split(',').map(Number), mark: [q.data.n], pad: .15 })}</div>` + q.opts.map((x, k) => `<div class="btn ${k ? 'ghost' : ''}" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label)}</div>`).join('') + '<div style="height:14px"></div>';
   const plain = q.opts.filter(x => !(x.card || x.wiz || x.acad || x.tile != null));
   if (q.many) {
     o += `<div class="pgrid">${pics.map(x => `<div class="pg ${sel.includes(x.v) ? 'on' : ''}" data-sel="${encodeURIComponent(JSON.stringify(x.v))}">${optFace(x)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(sel.length)} از ${fa(q.many)} انتخاب شد</div><div class="btn" data-do="many" data-q="${q.id}">تأیید</div>`;
   } else if (pics.length) {
     const i = clamp('pr', pics.length), x = pics[i];
-    o += `<div class="zoom ${x.wiz ? 'xl2' : ''}" data-car="pr">${optFace(x)}${pics.length > 1 ? arrsF() : ''}</div>${dotsH(pics.length, i)}${x.grp ? `<div class="lbl" style="text-align:center">از ${esc(x.grp)}</div>` : ''}<div class="btn" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label || 'انتخاب این')}</div>`;
+    o += `<div class="zoom ${x.wiz ? 'xl2' : ''}" data-car="pr">${optFace(x, '-' + i)}${pics.length > 1 ? arrsF() : ''}</div>${dotsH(pics.length, i)}${x.grp ? `<div class="lbl" style="text-align:center">از ${esc(x.grp)}</div>` : ''}<div class="btn" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label || 'انتخاب این')}</div>`;
   } else o += q.text ? `<div class="ctr" style="flex:1"><div class="qbig">${esc(q.text)}</div></div>` : '<div style="flex:1"></div>';
   o += plain.map((x, k) => `<div class="btn ${pics.length || k > 0 ? 'ghost' : ''}" data-ans="${encodeURIComponent(JSON.stringify(x.v))}" data-q="${q.id}">${esc(x.label)}</div>`).join('');
   return o + (pics.length && !q.many ? '' : '<div style="height:20px"></div>');
 }
-function optFace(x) {
-  if (x.card) return acard(x.card);
-  if (x.acad) return acard(x.acad);
-  if (x.wiz) return wcard(x.wiz, x.tok || 0);
+function optFace(x, k) {
+  if (x.card) return acard(x.card, { k });
+  if (x.acad) return acard(x.acad, { k });
+  if (x.wiz) return wcard(x.wiz, x.tok || 0, { k });
   if (x.tile != null) return `<div class="tbig" style="width:100%">${tileCard(x.tile, 0)}</div>`;
   return esc(x.label);
 }
@@ -337,7 +351,7 @@ function battleP() {
     if (B.ready[G.me]) return bfm + `<div class="ctr" style="flex:1;gap:12px"><div class="bigr gold" style="font-size:34px">آماده‌ای ✓</div><div class="lbl">منتظر بقیهٔ بازیکنان…</div></div><div class="btn ghost" data-do="b_unready">تغییر حذف‌ها</div>`;
     if (!prepRm) prepRm = [];
     const w = p.wiz, i = clamp('prep', w.length), rm = prepRm.includes(i), keep = w.length - prepRm.length;
-    return bfm + `<div class="pmsg gold" style="font-size:14px">${fa(prepRm.length)} حذف – ${fa(keep)} می‌ماند${keep < 6 ? ' – کمتر از ۶ کارت، در راندهای آخر کارت نداری' : ''}</div><div class="zoom ${rm ? 'del' : ''} xl2" data-car="prep">${rm ? '<span class="xb">✕ حذف شده</span>' : ''}${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="brow"><div class="btn ghost" data-do="b_tog">${rm ? '↩ برگرداندن این کارت' : '✕ حذف این کارت'}</div></div><div class="btn grn" data-do="b_prep">آماده‌ام</div>`;
+    return bfm + `<div class="pmsg gold" style="font-size:14px">${fa(prepRm.length)} حذف – ${fa(keep)} می‌ماند${keep < 6 ? ' – کمتر از ۶ کارت، در راندهای آخر کارت نداری' : ''}</div><div class="zoom ${rm ? 'del' : ''} xl2" data-car="prep">${rm ? '<span class="xb">✕ حذف شده</span>' : ''}${wcard(w[i], 0, { k: '-' + i })}${arrsF()}</div>${dotsH(w.length, i)}<div class="brow"><div class="btn ghost" data-do="b_tog">${rm ? '↩ برگرداندن این کارت' : '✕ حذف این کارت'}</div></div><div class="btn grn" data-do="b_prep">آماده‌ام</div>`;
   }
   if (B.phase === 'r6') {
     const L = B.last, win = L && L.winner === G.me;
@@ -352,7 +366,7 @@ function battleP() {
     const h = B.hand;
     if (!h.length) return bfm + `<div class="ctr" style="flex:1"><div class="pmsg warn">کارتی در دست نداری؛ این راند را می‌بازی</div></div><div class="btn" data-do="b_none">باشه</div>`;
     const i = clamp('bhand', h.length);
-    return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – دک ${fa(B.deckN[G.me])} کارت</div><div class="zoom xl2" data-car="bhand">${wcard(h[i])}${h.length > 1 ? arrsF() : ''}</div>${dotsH(h.length, i)}${hintH('برای انتخاب پنهان، کارت را به بالا بکش')}<div class="btn" data-do="b_pick">انتخاب این کارت</div>${B.bf && B.bf.id === 'F12' && !B.wild ? '<div class="btn ghost" data-do="b_wild">سوزاندن این کارت و کشیدن کارت تازه (یک بار)</div>' : ''}`;
+    return bfm + `<div class="pmsg gold" style="font-size:14px">راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)} – دک ${fa(B.deckN[G.me])} کارت</div><div class="zoom xl2" data-car="bhand">${wcard(h[i], 0, { k: '-' + i })}${h.length > 1 ? arrsF() : ''}</div>${dotsH(h.length, i)}${hintH('برای انتخاب پنهان، کارت را به بالا بکش')}<div class="btn" data-do="b_pick">انتخاب این کارت</div>${B.bf && B.bf.id === 'F12' && !B.wild ? '<div class="btn ghost" data-do="b_wild">سوزاندن این کارت و کشیدن کارت تازه (یک بار)</div>' : ''}`;
   }
   return bfm + `<div class="ctr" style="flex:1;gap:10px"><div class="lbl" style="font-size:16px">کارت‌ها رو شد – مانیتور را ببین</div>${waitFor()}</div>`;
 }

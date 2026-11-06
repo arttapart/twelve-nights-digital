@@ -73,8 +73,13 @@ const TS = 250;
 const parseN = n => { const [a, b] = n.split('|'); return [a.split(',').map(Number), b.split(',').map(Number)]; };
 function nodeXY(n) { const [pos, c] = parseN(n), k = TS / TL.S, q = TL.ctr(c); return [pos[1] * TS + q[0] * k, pos[0] * TS + q[1] * k]; }
 const tileOf = n => n.split('|')[0];
-function demTok(x, y, c, r) { return `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#1a0a0a" stroke-width="2.5"/>${TL.icon('daemon-skull', x, y + .5, r * 1.45, '#1a0a0a')}`; }
-function figure(x, y, c, me, id) { return `<g class="fig"${id != null ? ` data-fig="${id}"` : ''} style="transform:translate(${x}px,${y}px)"><g class="figin"><circle r="17" fill="${c}" stroke="#000" stroke-width="4"/><circle r="17" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/>${me ? `<circle r="24" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>` : ''}</g><circle class="figring" r="17" fill="none" stroke="${c}" stroke-width="3"/></g>`; }
+function demTok(x, y, c, r, lv) { const art = ART.pieces && lv && ART.pieces['dem' + lv]; if (art) return `<image href="${artU(art)}" x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}"/>`; return `<circle cx="${x}" cy="${y}" r="${r}" fill="${c}" stroke="#1a0a0a" stroke-width="2.5"/>${TL.icon('daemon-skull', x, y + .5, r * 1.45, '#1a0a0a')}`; }
+// a player's figure; art from the editor (art.pieces['fig_<house>']) replaces the drawn disc; blink = the phone owner's own figure
+function figure(x, y, c, me, id, blink, house) {
+  const art = ART.pieces && house && ART.pieces['fig_' + house];
+  const body = art ? `<image href="${artU(art)}" x="-22" y="-22" width="44" height="44"/>` : `<circle r="17" fill="${c}" stroke="#000" stroke-width="4"/><circle r="17" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/>`;
+  return `<g class="fig"${id != null ? ` data-fig="${id}"` : ''} style="transform:translate(${x}px,${y}px)"><g class="figin"><g class="${blink ? 'meblink' : ''}">${body}${me ? `<circle r="24" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>` : ''}</g>${blink ? `<circle class="mepulse" r="22" fill="none" stroke="#fff" stroke-width="3"/>` : ''}</g><circle class="figring" r="17" fill="none" stroke="${c}" stroke-width="3"/></g>`;
+}
 // o: {focus:[R,C], moves:[...], exits:[...], portal:{cells}, place, arrows, me, hit (phone: add tap targets)}
 function mapSvg(G, o = {}) {
   const dn = G.dun, k = TS / TL.S;
@@ -96,22 +101,24 @@ function mapSvg(G, o = {}) {
   const cr = TL.RC * k;
   for (const n in dn.loot) {
     const [x, y] = nodeXY(n), L = dn.loot[n], ic = L.chest ? null : L.coin ? 'coin' : L.scroll ? 'scr' : 'ess', two = L.coin === 2 || L.scroll === 2;
-    if (L.chest) d += `<g transform="translate(${x - cr * .62},${y - cr * .42})"><rect width="${cr * 1.24}" height="${cr * .84}" rx="${cr * .14}" fill="#7a4b25" stroke="#f3cf72" stroke-width="2.5"/><rect y="${cr * .3}" width="${cr * 1.24}" height="${cr * .14}" fill="#f3cf72"/><rect x="${cr * .52}" y="${cr * .24}" width="${cr * .2}" height="${cr * .28}" rx="2" fill="#2a1608" stroke="#f3cf72" stroke-width="1.5"/></g>`;
+    if (L.chest && ART.pieces && ART.pieces.chest) d += `<image href="${artU(ART.pieces.chest)}" x="${x - cr * .8}" y="${y - cr * .8}" width="${cr * 1.6}" height="${cr * 1.6}"/>`;
+    else if (L.chest) d += `<g transform="translate(${x - cr * .62},${y - cr * .42})"><rect width="${cr * 1.24}" height="${cr * .84}" rx="${cr * .14}" fill="#7a4b25" stroke="#f3cf72" stroke-width="2.5"/><rect y="${cr * .3}" width="${cr * 1.24}" height="${cr * .14}" fill="#f3cf72"/><rect x="${cr * .52}" y="${cr * .24}" width="${cr * .2}" height="${cr * .28}" rx="2" fill="#2a1608" stroke="#f3cf72" stroke-width="1.5"/></g>`;
     else { const z = two ? cr * .95 : cr * 1.25; d += two ? `<use href="#i-${ic}" x="${x - z + 2}" y="${y - z / 2}" width="${z}" height="${z}"/><use href="#i-${ic}" x="${x - 2}" y="${y - z / 2}" width="${z}" height="${z}"/>` : `<use href="#i-${ic}" x="${x - z / 2}" y="${y - z / 2}" width="${z}" height="${z}"/>`; }
   }
   const ring = (n, c, cls) => { const [x, y] = nodeXY(n); return `<circle class="${cls || ''}" cx="${x}" cy="${y}" r="${TL.RC * k + 5}" fill="none" stroke="${c}" stroke-width="2.5"/>`; };
   for (const m of o.moves || []) { d += ring(m.to, m.no ? '#6f6a92' : m.tele ? '#7fc0ff' : '#7ef0b5', m.no ? '' : 'blk'); if (o.hit && !m.no) { const [x, y] = nodeXY(m.to); hit += `<circle class="hit" data-mv="${m.to}" data-tele="${m.tele ? 1 : ''}" cx="${x}" cy="${y}" r="${TL.RC * k + 12}" fill="transparent"/>`; } }
+  if (o.mark) for (const n of o.mark) d += ring(n, '#ff5a45', 'blk') + ring(n, '#ff5a45', 'blk mk2');
   if (o.portal) for (const n of o.portal) { d += ring(n, '#c79bff', 'blk'); if (o.hit) { const [x, y] = nodeXY(n); hit += `<circle class="hit" data-pg="${n}" cx="${x}" cy="${y}" r="${TL.RC * k + 12}" fill="transparent"/>`; } }
   // demons: a token inside the cell circle; it slides to its new cell when it moves
   const dAt = {}, pAt = {};
   for (const p of G.players) if (p.pos) pAt[p.pos] = 1;
   for (const dm of dn.demons) (dAt[dm.node] = dAt[dm.node] || []).push(dm);
-  for (const n in dAt) { const [x, y] = nodeXY(n), L = dAt[n], sh = pAt[n]; L.forEach((dm, i) => { const dx = (i - (L.length - 1) / 2) * cr * .9 + (sh ? cr * .55 : 0), dy = sh ? -cr * .5 : 0, r = L.length > 1 || sh ? cr * .48 : cr * .78; d += `<g class="fig" data-fig="d${dm.id}" style="transform:translate(${x + dx}px,${y + dy}px)">${demTok(0, 0, LVC[dm.lv], r)}</g>`; }); }
+  for (const n in dAt) { const [x, y] = nodeXY(n), L = dAt[n], sh = pAt[n]; L.forEach((dm, i) => { const dx = (i - (L.length - 1) / 2) * cr * .9 + (sh ? cr * .55 : 0), dy = sh ? -cr * .5 : 0, r = L.length > 1 || sh ? cr * .48 : cr * .78; d += `<g class="fig" data-fig="d${dm.id}" style="transform:translate(${x + dx}px,${y + dy}px)">${demTok(0, 0, LVC[dm.lv], r, dm.lv)}</g>`; }); }
   if (o.arrows) for (const a of o.arrows) { if (!a.from || !a.to || a.from === a.to) continue; const [x1, y1] = nodeXY(a.from), [x2, y2] = nodeXY(a.to); d += `<line x1="${x1}" y1="${y1}" x2="${x2 + (x1 - x2) * .28}" y2="${y2 + (y1 - y2) * .28}" stroke="#ff5a45" stroke-width="7" marker-end="url(#ah)"/>`; }
   // figures (spread when sharing a cell)
   const at = {};
   for (const p of G.players) if (p.pos) (at[p.pos] = at[p.pos] || []).push(p);
-  for (const n in at) { const [x, y] = nodeXY(n), L = at[n]; L.forEach((p, i) => { const dx = (i - (L.length - 1) / 2) * 22; d += figure(x + dx, y + (L.length > 1 ? 10 : 0), p.color, p.id === o.me, p.id); }); }
+  for (const n in at) { const [x, y] = nodeXY(n), L = at[n]; L.forEach((p, i) => { const dx = (i - (L.length - 1) / 2) * 22; d += figure(x + dx, y + (L.length > 1 ? 10 : 0), p.color, p.id === o.me, p.id, o.blinkMe && p.id === o.me, p.house); }); }
   // view box
   let vb;
   if (o.focus) {
@@ -201,7 +208,9 @@ function aEnter(el, ctx) {
   const par = el.parentElement;
   if (!sx && par && par.classList.contains('rowc') && el.dataset && el.dataset.k) { const dk = par.querySelector('.deck'); if (dk) { const r0 = dk.getBoundingClientRect(), r1 = el.getBoundingClientRect(), sc = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (sc || 1); el.animate([{ opacity: 1, transform: `translateX(${dx}px) rotateY(180deg) scale(.9)` }, { opacity: 1, transform: `translateX(${dx * .5}px) rotateY(90deg) scale(1.05)`, offset: .45 }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 850, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'backwards' }); return; } }
   if (!sx && el.parentElement && el.parentElement.classList.contains('curc')) { el.animate([{ opacity: 0, transform: 'translateY(-160px) scale(.55) rotate(-6deg)' }, { opacity: 1, transform: 'translateY(8px) scale(1.06)', offset: .7 }, { opacity: 1, transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)' }); return; }
-  el.animate([{ opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(10px) scale(.95)' }, { opacity: 1, transform: 'none' }], { duration: sx ? 280 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
+  // keep the card's own CSS transform (zoomed carousel cards are scaled) under the slide
+  const b0 = sx ? getComputedStyle(el).transform : 'none', bt = b0 && b0 !== 'none' ? b0 + ' ' : '';
+  el.animate([{ opacity: 0, transform: sx ? `${bt}translateX(${sx}px) scale(.94)` : 'translateY(10px) scale(.95)' }, { opacity: 1, transform: sx && bt ? b0 : 'none' }], { duration: sx ? 280 : 320, easing: 'cubic-bezier(.2,.8,.2,1)' });
 }
 function aLeave(el, ctx) {
   if (!ANIM.on || !el.animate || !el.offsetParent || ctx.n > 40) { el.remove(); return; }
@@ -212,7 +221,8 @@ function aLeave(el, ctx) {
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
   const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? 70 : -70) : 0;
   const inRow = el.parentElement && el.parentElement.classList.contains('rowc');
-  const a = el.animate(inRow ? [{ opacity: 1, transform: 'none', filter: 'brightness(1)' }, { opacity: 1, transform: 'translateY(-30px) scale(1.08)', filter: 'brightness(1.6)', offset: .35 }, { opacity: 0, transform: 'translateY(-90px) scale(.7)', filter: 'brightness(1)' }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: sx ? `translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: inRow ? 650 : 260, easing: 'ease-in' });
+  const lb = getComputedStyle(el).transform || 'none';
+  const a = el.animate(inRow ? [{ opacity: 1, transform: 'none', filter: 'brightness(1)' }, { opacity: 1, transform: 'translateY(-30px) scale(1.08)', filter: 'brightness(1.6)', offset: .35 }, { opacity: 0, transform: 'translateY(-90px) scale(.7)', filter: 'brightness(1)' }] : [{ opacity: 1, transform: sx && lb !== 'none' ? lb : 'none' }, { opacity: 0, transform: sx ? `${lb !== 'none' ? lb + ' ' : ''}translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: inRow ? 650 : 260, easing: 'ease-in' });
   a.onfinish = () => el.remove(); setTimeout(() => el.remove(), inRow ? 1000 : 600);
 }
 function aPop(el, ctx) {

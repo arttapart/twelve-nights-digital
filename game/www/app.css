@@ -178,7 +178,11 @@ input.inp:focus{border-color:#f3cf72}
 .tmrow{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:14px}.tmrow .inp{width:90px;text-align:center}
 /* a disabled button always looks disabled, whatever its colour */
 .btn.off.grn,.btn.off.red,.btn.off.ghost{background:rgba(255,255,255,.05)!important;color:#6f6a92!important;border:1.5px dashed #3c3d66!important;box-shadow:none!important}
-.hgrid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:6px 0}
+.hgrid{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,auto);justify-content:center;align-content:start;gap:8px;padding:4px 0;overflow:hidden}
 .hgc{cursor:pointer;border-radius:10px;transition:transform .2s}.hgc:active{transform:scale(.96)}
-.hgc>.ac{zoom:.58;box-shadow:0 4px 14px rgba(0,0,0,.45)}
+.hgc>.ac{box-shadow:0 4px 14px rgba(0,0,0,.45)}
 .btn.gold2{background:linear-gradient(#ffe39a,#c9962e);color:#2a1a00;box-shadow:0 0 0 2px #4fc08d,0 4px 16px rgba(79,192,141,.45)}
+
+.meblink{animation:meb 1s ease-in-out infinite}@keyframes meb{50%{opacity:.3}}
+.mepulse{transform-box:fill-box;transform-origin:center;animation:mep 1.4s ease-out infinite}@keyframes mep{from{transform:scale(.8);opacity:.9}to{transform:scale(1.9);opacity:0}}
+circle.mk2{stroke-width:7;animation:blk 1s ease-in-out infinite}

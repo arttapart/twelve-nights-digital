@@ -141,7 +141,10 @@ function dunScr() {
   const G = S.G, T = G.turn, p = G.players[T.pid], f = focusTile(S);
   const o = { focus: f, me: p.id };
   let lab = 'کاشی ' + NM(p.id);
-  if (G.dun.place) lab = 'تایل تازه – با گوشی بچرخان و تأیید کن';
+  const qd = G.prompts.find(q => q.k === 'qDemon' && q.data);
+  if (qd) { o.mark = [qd.data.n]; lab = 'اهریمن نامعلوم – ' + NM(qd.to) + ' سطح اهریمن خانهٔ چشمک‌زن را در گوشی انتخاب می‌کند'; }
+  else if (G.dun.place) lab = 'تایل تازه – با گوشی بچرخان و تأیید کن';
+  if (qd || G.dun.place) {}
   else if (G.dun.portal) { const po = G.dun.portal; o.portal = po.list[po.i] ? po.list[po.i].cells : []; lab = `پرتال – کاشی مقصد ${fa(po.i + 1)} از ${fa(po.list.length)} – انتخاب با گوشی`; }
   else { o.moves = G.moves || []; o.exits = G.exits || []; if (S.ui.off && (S.ui.off[0] || S.ui.off[1])) lab = 'کاشی کناری – برای برگشتن «کاشی من» را در گوشی بزن'; }
   const pool = T.pool;

@@ -33,7 +33,7 @@ function Room(mods, env) {
       if (p.id !== pid) { p.deck = []; p.hand = []; p.discard = p.discard.slice(-1); p.keep = []; }
       else { p.deckList = p.deck.map(x => x.c).sort(); p.deck = []; }
     }
-    v.prompts = G.prompts.map(q => q.to === pid ? q : { id: q.id, to: q.to, k: q.k, title: q.title });
+    v.prompts = G.prompts.map(q => q.to === pid ? q : Object.assign({ id: q.id, to: q.to, k: q.k, title: q.title }, q.k === 'qDemon' ? { data: q.data } : {}));
     v.battle = G.battle ? WB.view(G, pid) : null;
     if (G.turn) { const p = G.players[G.turn.pid]; v.moves = Dun.moveOptions(G, p); v.exits = Dun.openExits(G, p); }
     v.me = pid;

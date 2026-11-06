@@ -193,14 +193,16 @@ function placeTile(G, p) {
   const r = pl.rots[pl.ri % pl.rots.length], k = gk(pl.pos);
   G.dun.grid[k] = { t: pl.t, r }; G.dun.order.push(k); G.dun._g = null;
   const t = D.tiles[pl.t];
-  // put what the tile shows on its cells
+  // put what the tile shows on its cells; every unknown (?) demon gets its own question, its cell marked on the map
+  const qs = [];
   for (const ck in t.cells) {
     const v = t.cells[ck], c = rotCell(ck.split(',').map(Number), r), n = key(pl.pos, c);
     if (D.rules.loot[v]) G.dun.loot[n] = Object.assign({}, D.rules.loot[v]);
     else if (v === 'T') G.dun.loot[n] = { chest: 1 };
     else if (_.DEMON_LV[v]) G.dun.demons.push({ id: ++G.dun.did, node: n, lv: _.DEMON_LV[v] });
-    else if (v === 'Q') _.ask(G, p.id, 'qDemon', { title: 'اهریمن نامعلوم', text: 'سطح اهریمن این خانه را تو تعیین می‌کنی.', opts: [1, 2, 3].map(l => ({ v: l, label: 'اهریمن ' + _.LV_NAME[l] })), data: { n } });
+    else if (v === 'Q') qs.push(n);
   }
+  qs.forEach((n, j) => _.ask(G, p.id, 'qDemon', { title: 'اهریمن نامعلوم' + (qs.length > 1 ? ' ' + fa(j + 1) + ' از ' + fa(qs.length) : ''), text: (qs.length > 1 ? 'این تایل ' + fa(qs.length) + ' اهریمن نامعلوم دارد. ' : '') + 'سطح اهریمن خانهٔ چشمک‌زن را تو تعیین می‌کنی.', opts: [1, 2, 3].map(l => ({ v: l, label: 'اهریمن ' + _.LV_NAME[l] })), data: { n } }));
   G.dun.place = null;
   _.log(G, p.name + ' تایل «' + t.name + '» را گذاشت.');
   // the figure walks into the new tile's cell linked to the exit it came through

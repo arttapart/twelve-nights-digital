@@ -387,6 +387,7 @@ function slotsFor() {
   S.push(['پس‌زمینه‌ها و فونت‌ها', [['bg', 'monitor', 'پس‌زمینهٔ مانیتور', 'image', '۱۹۲۰×۱۰۸۰'], ['bg', 'phone', 'پس‌زمینهٔ گوشی', 'image', '۳۹۰×۸۴۴'], ['fonts', 'body', 'فونت متن (جای وزیرمتن)', 'font'], ['fonts', 'title', 'فونت تیتر (جای لاله‌زار)', 'font'], ['app', 'icon', 'آیکون برنامه (ویندوز و اندروید)', 'image', 'مربع، دست‌کم ۵۱۲×۵۱۲']]]);
   S.push(['پشت کارت‌ها', [['backs', 'academy', 'پشت کارت آکادمی', 'image'], ['backs', 'wizard', 'پشت کارت جادوگر', 'image'], ['backs', 'demon', 'پشت کارت اهریمن', 'image']]]);
   S.push(['آیکون‌ها', ICONS.map(([k, n]) => ['icons', k, n, 'image', 'مربع'])]);
+  S.push(['مهره‌ها و توکن‌های سیاه‌چال', W.rules.houses.map(h => ['pieces', 'fig_' + h.id, 'مهرهٔ جادوگر ' + (h.name || h.id), 'image', 'مربع، پس‌زمینهٔ شفاف']).concat([1, 2, 3].map(l => ['pieces', 'dem' + l, 'توکن اهریمن ' + ['زرد', 'نارنجی', 'قرمز'][l - 1], 'image', 'مربع، پس‌زمینهٔ شفاف']), [['pieces', 'chest', 'صندوقچه', 'image', 'مربع، پس‌زمینهٔ شفاف']])]);
   S.push(['کارت‌های آکادمی', Object.values(W.cards).map(c => ['cards', c.id, c.name + ' ' + (c.code || ''), 'image', '۱۳۸×۲۰۶ یا بزرگ‌تر با همین نسبت'])]);
   S.push(['جادوگران', Object.values(W.wizards).map(w => ['wizards', w.id, 'جادوگر ' + w.id, 'image'])]);
   S.push(['کارت‌های اهریمن', W.demons.map((d, i) => ['demons', String(i), 'اهریمن ' + fa(i + 1), 'image'])]);

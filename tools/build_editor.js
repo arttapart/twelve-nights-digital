@@ -42,7 +42,7 @@ for (const line of md.split('\n')) {
   else BFEFF[m[1]] = cells[1];
 }
 for (const b of DEFAULT.battlefield) if (!BFEFF[b.eff[0]]) BFEFF[b.eff[0]] = b.txt;
-const ICONS = [['coin', 'سکه'], ['scr', 'طومار'], ['ess', 'جوهرهٔ تاریک'], ['pow', 'قدرت'], ['fame', 'امتیاز شهرت'], ['hunt', 'توکن شکار'], ['step', 'گام'], ['torch', 'مشعل'], ['pick', 'کلنگ'], ['hand', 'دست (زبانه)'], ['acad', 'آکادمی (زبانه)'], ['hall', 'تالار (زبانه)'], ['mywiz', 'جادوگران من (زبانه)'], ['lock', 'قفل'], ['board', 'تخته (زبانه)'], ['die', 'تاس'], ['dun', 'سیاه‌چال'], ['gob', 'گوبلین']];
+const ICONS = [['coin', 'سکه'], ['scr', 'طومار'], ['ess', 'جوهرهٔ تاریک'], ['pow', 'قدرت'], ['fame', 'امتیاز شهرت'], ['hunt', 'توکن شکار'], ['step', 'گام'], ['torch', 'مشعل'], ['pick', 'کلنگ'], ['hand', 'دست (زبانه)'], ['acad', 'آکادمی (زبانه)'], ['hall', 'تالار (زبانه)'], ['mywiz', 'جادوگران من (زبانه)'], ['lock', 'قفل'], ['board', 'برد شخصی (زبانه)'], ['die', 'تاس'], ['dun', 'سیاه‌چال'], ['gob', 'گوبلین']];
 // fonts
 const ff = (fam, f, w) => `@font-face{font-family:${fam};src:url(data:font/woff2;base64,${FONTS[f]}) format('woff2');font-weight:${w}}`;
 const edFont = ff('V', 'Vazirmatn-FD-Regular.woff2', 400) + ff('V', 'Vazirmatn-FD-Bold.woff2', 700) + ff('V', 'Vazirmatn-FD-Black.woff2', 900);
