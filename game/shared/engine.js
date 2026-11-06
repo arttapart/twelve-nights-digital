@@ -522,7 +522,7 @@ function finishTurn(G, p) {
   for (const k in G.acad.seal) { const s = G.acad.seal[k]; if (s.pid === p.id) { s.cnt++; if (s.cnt >= 2) delete G.acad.seal[k]; } }
   log(G, p.name + ' نوبتش را تمام کرد.' + (lost.length ? ' از بین رفت: ' + lost.join('، ') : ''));
   // 2-player game: the rightmost hall wizard leaves, the row shifts and a new wizard is revealed
-  if (G.players.length === 2 && G.hall.row.length) { const w = G.hall.row.shift(); G.hall.gone.push(w.id); refillHall(G); log(G, 'بازی دونفره: جادوگر ' + w.id + ' از تالار حذف شد و جادوگر تازه رو شد.'); }
+  if (G.players.length === 2 && G.hall.row.length) { G.hallShift = (G.hallShift || 0) + 1; const w = G.hall.row.shift(); G.hall.gone.push(w.id); refillHall(G); log(G, 'بازی دونفره: جادوگر ' + w.id + ' از تالار حذف شد و جادوگر تازه رو شد.'); }
   G.turn = null;
   G.cur++;
   if (G.cur >= G.order.length) endNight(G); else startTurn(G);
@@ -533,8 +533,11 @@ function finishTurn(G, p) {
 // so the monitor can show it and tick it off. Each demon of the raid is its own step.
 function endNight(G) {
   G.phase = 'night'; G.nightMoves = [];
-  const steps = G.dun.demons.slice().map(d => ({ k: 'mv', id: d.id, lv: d.lv, t: 'هجوم شبانه: اهریمن ' + LV_NAME[d.lv] + ' یک راهرو پیش می‌رود' }));
+  // night raid: one sub-step per demon, then the «هجوم شبانه» item itself is ticked once every demon moved and breaches are done (Farshad 2026-11-06)
+  const dms = G.dun.demons.slice();
+  const steps = dms.map((d, j) => ({ k: 'mv', id: d.id, lv: d.lv, t: 'اهریمن ' + LV_NAME[d.lv] + (dms.length > 1 ? ' (' + fa(j + 1) + ' از ' + fa(dms.length) + ')' : '') + ' یک راهرو پیش می‌رود' }));
   if (!steps.length) steps.push({ k: 'mv0', t: 'هجوم شبانه: اهریمنی در سیاه‌چال نیست' });
+  else steps.push({ k: 'raid', t: 'هجوم شبانه' });
   const ck = G.chal[G.night];
   if (ck) steps.push({ k: 'chal', t: 'توکن چالش شب ' + fa(G.night) + ': ' + CHALLENGES[ck].name });
   if (G.battleNights.includes(G.night)) steps.push({ k: 'battle', t: 'نبرد جادوگران' });
@@ -546,12 +549,15 @@ function endNight(G) {
   }
   G.nightQ = { n: G.night, steps, i: 0, at: null };
 }
-const NIGHT_MS = { mv: 3200, mv0: 2200, chal: 7000, battle: 900, acad: 3400, hall: 3200, hat: 3200, final: 0 };
+const NIGHT_MS = { mv: 3600, mv0: 2200, raid: 1800, chal: 7000, battle: 900, acad: 6000, hall: 3400, hat: 3200, final: 0 };
 function nightStep(G, s) {
   if (s.k === 'mv') {
     const m = Dun.nightMoveOne(G, s.id);
     s.m = m; s.d = !m ? 'دیگر در سیاه‌چال نیست' : m.breach ? 'به دروازهٔ شهر رسید – رخنه!' : 'یک راهرو پیش رفت';
     log(G, 'هجوم شبانه: اهریمن ' + LV_NAME[s.lv] + ' ' + s.d);
+  } else if (s.k === 'raid') {
+    const mv = G.nightQ.steps.filter(x => x.k === 'mv' && x.m), br = mv.filter(x => x.m.breach).length;
+    s.d = fa(mv.length) + ' اهریمن حرکت کرد' + (br ? ' – ' + fa(br) + ' رخنه' : ' – بدون رخنه');
   } else if (s.k === 'chal') { scoreChallenge(G, G.chal[G.night]); const C = G.chalResult; s.d = C && C.winners && C.winners.length ? 'برنده: ' + C.winners.map(i => P(G, i).name).join('، ') : ''; }
   else if (s.k === 'battle') Battle.start(G);
   else if (s.k === 'final') finalScore(G);
@@ -616,7 +622,7 @@ function tick(G, now, force) {
       if (Q.i < Q.steps.length) {
         const s = Q.steps[Q.i]; Q.cur = Q.i;
         // first the step is shown as "in progress" (a demon's tile is shown big), then it runs and is ticked off
-        if (!s.on && !force) { s.on = true; Q.at = now + (s.k === 'mv' ? 1400 : 700); }
+        if (!s.on && !force) { s.on = true; Q.at = now + (s.k === 'mv' ? 1800 : s.k === 'acad' ? 1500 : 700); }
         else { s.on = true; nightStep(G, s); Q.i++; Q.at = force ? 0 : now + (NIGHT_MS[s.k] || 2000); }
       }
       else if (G.phase === 'night') startNextNight(G);

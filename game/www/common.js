@@ -113,7 +113,9 @@ function mapSvg(G, o = {}) {
   const dAt = {}, pAt = {};
   for (const p of G.players) if (p.pos) pAt[p.pos] = 1;
   for (const dm of dn.demons) (dAt[dm.node] = dAt[dm.node] || []).push(dm);
-  for (const n in dAt) { const [x, y] = nodeXY(n), L = dAt[n], sh = pAt[n]; L.forEach((dm, i) => { const dx = (i - (L.length - 1) / 2) * cr * .9 + (sh ? cr * .55 : 0), dy = sh ? -cr * .5 : 0, r = L.length > 1 || sh ? cr * .48 : cr * .78; d += `<g class="fig" data-fig="d${dm.id}" style="transform:translate(${x + dx}px,${y + dy}px)">${demTok(0, 0, LVC[dm.lv], r, dm.lv)}</g>`; }); }
+  for (const g of o.ghost || []) (dAt[g.node] = dAt[g.node] || []).push(Object.assign({ ghost: true }, g));
+  for (const n of o.hl || []) d += ring(n, '#f3cf72', 'blk');
+  for (const n in dAt) { const [x, y] = nodeXY(n), L = dAt[n], sh = pAt[n]; L.forEach((dm, i) => { const dx = (i - (L.length - 1) / 2) * cr * .9 + (sh ? cr * .55 : 0), dy = sh ? -cr * .5 : 0, r = L.length > 1 || sh ? cr * .48 : cr * .78; d += `<g class="fig${dm.ghost ? ' dghost' : ''}" data-fig="d${dm.id}" style="transform:translate(${x + dx}px,${y + dy}px)">${demTok(0, 0, LVC[dm.lv], r, dm.lv)}</g>`; }); }
   if (o.arrows) for (const a of o.arrows) { if (!a.from || !a.to || a.from === a.to) continue; const [x1, y1] = nodeXY(a.from), [x2, y2] = nodeXY(a.to); d += `<line x1="${x1}" y1="${y1}" x2="${x2 + (x1 - x2) * .28}" y2="${y2 + (y1 - y2) * .28}" stroke="#ff5a45" stroke-width="7" marker-end="url(#ah)"/>`; }
   // figures (spread when sharing a cell)
   const at = {};
@@ -206,7 +208,7 @@ function aEnter(el, ctx) {
   const car = el.parentElement && el.parentElement.closest && el.parentElement.closest('[data-car]');
   const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? -70 : 70) : 0;
   const par = el.parentElement;
-  if (!sx && par && par.classList.contains('rowc') && el.dataset && el.dataset.k) { const dk = par.querySelector('.deck'); if (dk) { const r0 = dk.getBoundingClientRect(), r1 = el.getBoundingClientRect(), sc = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (sc || 1); el.animate([{ opacity: 1, transform: `translateX(${dx}px) rotateY(180deg) scale(.9)` }, { opacity: 1, transform: `translateX(${dx * .5}px) rotateY(90deg) scale(1.05)`, offset: .45 }, { opacity: 1, transform: 'none' }], { duration: 900, delay: 850, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'backwards' }); return; } }
+  if (!sx && par && par.classList.contains('rowc') && el.dataset && el.dataset.k) { const dk = par.querySelector('.deck'); if (dk) { const r0 = dk.getBoundingClientRect(), r1 = el.getBoundingClientRect(), sc = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (sc || 1); el.animate([{ opacity: 1, transform: `translateX(${dx}px) rotateY(180deg) scale(.9)` }, { opacity: 1, transform: `translateX(${dx * .5}px) rotateY(90deg) scale(1.05)`, offset: .45 }, { opacity: 1, transform: 'none' }], { duration: ANIM.slow ? 1400 : 900, delay: ANIM.slow ? 3000 : 850, easing: 'cubic-bezier(.3,.7,.3,1)', fill: 'backwards' }); return; } }
   if (!sx && el.parentElement && el.parentElement.classList.contains('curc')) { el.animate([{ opacity: 0, transform: 'translateY(-160px) scale(.55) rotate(-6deg)' }, { opacity: 1, transform: 'translateY(8px) scale(1.06)', offset: .7 }, { opacity: 1, transform: 'none' }], { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)' }); return; }
   // keep the card's own CSS transform (zoomed carousel cards are scaled) under the slide
   const b0 = sx ? getComputedStyle(el).transform : 'none', bt = b0 && b0 !== 'none' ? b0 + ' ' : '';
@@ -222,6 +224,8 @@ function aLeave(el, ctx) {
   const sx = car && ANIM.swipe ? (ANIM.swipe > 0 ? 70 : -70) : 0;
   const inRow = el.parentElement && el.parentElement.classList.contains('rowc');
   const lb = getComputedStyle(el).transform || 'none';
+  // calm version (night academy, 2-player hall): the card glows like embers and fades away in place
+  if (inRow && ANIM.slow) { const a2 = el.animate([{ opacity: 1, filter: 'brightness(1) sepia(0)', transform: 'none' }, { opacity: 1, filter: 'brightness(1.5) sepia(.8) saturate(2.2) hue-rotate(-20deg)', transform: 'scale(1.04)', offset: .35 }, { opacity: 0, filter: 'brightness(.4) sepia(1) blur(3px)', transform: 'scale(.92) translateY(-14px)' }], { duration: 1500, easing: 'ease-in-out' }); a2.onfinish = () => el.remove(); setTimeout(() => el.remove(), 1700); return; }
   const a = el.animate(inRow ? [{ opacity: 1, transform: 'none', filter: 'brightness(1)' }, { opacity: 1, transform: 'translateY(-30px) scale(1.08)', filter: 'brightness(1.6)', offset: .35 }, { opacity: 0, transform: 'translateY(-90px) scale(.7)', filter: 'brightness(1)' }] : [{ opacity: 1, transform: sx && lb !== 'none' ? lb : 'none' }, { opacity: 0, transform: sx ? `${lb !== 'none' ? lb + ' ' : ''}translateX(${sx}px) scale(.94)` : 'translateY(-12px) scale(.9)' }], { duration: inRow ? 650 : 260, easing: 'ease-in' });
   a.onfinish = () => el.remove(); setTimeout(() => el.remove(), inRow ? 1000 : 600);
 }
@@ -282,7 +286,7 @@ function morph0(root, html, screenKey) {
     if (!el.isConnected || el._ghost || !el.animate) continue;
     const r1 = el.getBoundingClientRect(), s = el.offsetWidth ? r1.width / el.offsetWidth : 1, dx = (r0.left - r1.left) / (s || 1), dy = (r0.top - r1.top) / (s || 1);
     const inRow = el.parentElement && el.parentElement.classList.contains('rowc');
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], inRow ? { duration: 650, delay: 350, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'backwards' } : { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], inRow ? { duration: ANIM.slow ? 1300 : 650, delay: ANIM.slow ? 1600 : 350, easing: 'cubic-bezier(.4,0,.2,1)', fill: 'backwards' } : { duration: 360, easing: 'cubic-bezier(.2,.8,.2,1)' });
   }
   ANIM.swipe = 0; ANIM.dir = 0;
 }

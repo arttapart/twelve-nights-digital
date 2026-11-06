@@ -138,6 +138,7 @@ function rollShow() {
   if (rollSeen === null) { rollSeen = r ? r.n : 0; return; }   // do not replay an old roll after a reload
   if (!r) return;
   if (r.n <= rollSeen) return; rollSeen = r.n;
+  if (S.G.phase === 'night' && !S.G.battle) return;   // last turn's roll is not replayed when the night starts
   if (r.pid !== S.G.me) return;
   const cube = document.querySelector('.die3 .cube');
   if (cube) die3Fx(cube, r); else dieFx(document.body, r, 'ph');

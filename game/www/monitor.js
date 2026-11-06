@@ -20,7 +20,7 @@ const api = connect('monitor', (m, up) => {
   render();
 });
 
-let CURK = '';
+let CURK = '', HALLPREV = null;   // HALLPREV: the hall row just before a 2-player shift, shown for a moment
 window.CLOCK_SFX = true;   // only the monitor ticks in the last seconds of a turn
 function render() {
   const G = S.G;
@@ -34,7 +34,19 @@ function render() {
   else if (S.ui && S.ui.dun && G.turn) { h = dunScr(); k = 'dun'; }
   else { h = mainScr(); k = 'main'; }
   CURK = k;
+  // calm row animations: the academy at night, and the hall when a 2-player turn removes its rightmost wizard
+  const hs = G.hallShift || 0, shift = seen.hs != null && hs > seen.hs; seen.hs = hs;
+  const rowNow = G.hall.row.map(w => ({ id: w.id, tok: w.tok }));
+  if (shift && k === 'main' && (stage._sk !== 'main' || HALLPREV)) {
+    // the screen was just swapped (e.g. from the dungeon view): show the old hall row first, then play the calm shift
+    if (!HALLPREV) { HALLPREV = seen.hallRow || rowNow; h = mainScr(); }
+    morph(stage, h + overlays(), k); seen.hallRow = rowNow;
+    setTimeout(() => { HALLPREV = null; ANIM.slow = true; try { morph(stage, mainScr() + overlays(), 'main'); } finally { ANIM.slow = false; } }, 900);
+    return;
+  }
+  ANIM.slow = k === 'night' || shift; seen.hallRow = rowNow;
   morph(stage, h + overlays(), k);
+  ANIM.slow = false;
   fitCur(); requestAnimationFrame(fitCur); setTimeout(fitCur, 120);
 }
 
@@ -119,7 +131,7 @@ function mainScr() {
   const seals = G.acad.seal;
   const seen = {}; const row = G.acad.row.map((id, i) => acard(id, { cls: i === acadI ? 'view' : '', seal: seals[i] ? H(seals[i].pid) : null, k: '-' + (seen[id] = (seen[id] || 0) + 1) })).join('');
   const fixed = Object.keys(G.acad.fixed).map((id, k) => `<div class="stk"><span class="cl">${fa(G.acad.fixed[id])} کارت</span>${acard(id, { cls: G.acad.row.length + k === acadI ? 'view' : '' })}</div>`).join('');
-  const hall = G.hall.row.map((w, i) => wcard(w.id, w.tok, { cls: i === hallI ? 'view' : '' })).join('');
+  const hall = (HALLPREV || G.hall.row).map((w, i) => wcard(w.id, w.tok, { cls: i === hallI ? 'view' : '' })).join('');
   return `<div class="M" data-s="a">${topH(G)}
 <div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone"><div class="curh"><h4>کارت در حال اجرا</h4>${spendH(G)}</div><div class="curc">${curCard(G)}</div></div></div>
 <div class="zone zA"><div class="zt"><h3>آکادمی سحرستان</h3><span>دک: ${fa(G.acad.deckN)} کارت – سوخته: ${fa(G.acad.discard.length)}</span></div><div class="rowc">${fixed}<div class="sep"></div>${row}<div class="deck">دک آکادمی</div></div></div>
@@ -199,29 +211,41 @@ function nightScr() {
   const G = S.G, Q = G.nightQ;
   const br = G.lastBreach && seen.breach === G.lastBreach.n && Date.now() - (timers.breachAt || 0) < 15000 ? G.lastBreach : null;
   // the night as a checklist: done steps are ticked with what happened, the current one glows
-  const list = Q ? Q.steps.map((st, i) => { const cls = st.done ? 'ok' : st.on ? 'on' : ''; return `<div class="nstep ${cls}"><i>${st.done ? '✓' : st.on ? '◆' : ''}</i><div><b>${esc(st.t)}</b>${st.done && st.d ? `<span>${esc(st.d)}</span>` : ''}</div></div>`; }).join('') : '';
+  const one = (st, sub) => { const cls = st.done ? 'ok' : st.on ? 'on' : ''; return `<div class="nstep ${cls} ${sub ? 'sub' : ''}"><i>${st.done ? '✓' : st.on ? '◆' : ''}</i><div><b>${esc(st.t)}</b>${st.done && st.d ? `<span>${esc(st.d)}</span>` : ''}</div></div>`; };
+  let list = '';
+  if (Q) {
+    const raid = Q.steps.find(x => x.k === 'raid'), mvs = Q.steps.filter(x => x.k === 'mv');
+    // the «هجوم شبانه» item stays in progress while its demons move, and is ticked when the raid step itself runs
+    if (raid) list += one(Object.assign({}, raid, { on: raid.on || mvs.some(x => x.on) }));
+    for (const st of Q.steps) if (st.k !== 'raid') list += one(st, st.k === 'mv');
+  }
   // a demon's raid step: its tile big on the map, the token slides along the corridor
   const cur = Q && Q.cur != null ? Q.steps[Q.cur] : null;
   // the left window shows what the current step does, with its own animation
   let map, det = '';
   if (cur && cur.k === 'mv') {
     const dm = G.dun.demons.find(x => x.id === cur.id), node = cur.m ? cur.m.from : dm ? dm.node : null;
-    map = node ? mapSvg(G, { focus: tileOf(node).split(',').map(Number), pad: .3, arrows: cur.done && cur.m ? [cur.m] : [] }) : mapSvg(G, { arrows: G.nightMoves });
-  } else if (cur) det = nightDet(G, cur, Q.cur);
+    const ghost = cur.done && cur.m && cur.m.breach ? [{ id: cur.id, lv: cur.lv, node: cur.m.to }] : [];
+    const hl = !cur.done && dm ? [dm.node] : [];
+    map = node ? mapSvg(G, { focus: tileOf(node).split(',').map(Number), pad: .3, arrows: cur.done && cur.m ? [cur.m] : [], ghost, hl }) : mapSvg(G, { arrows: G.nightMoves });
+  } else if (cur && cur.k === 'raid') map = mapSvg(G, { arrows: G.nightMoves });
+  else if (cur) det = nightDet(G, cur, Q.cur);
   else map = mapSvg(G, { arrows: G.nightMoves });
   return `<div class="M MX" data-s="a">${topH(G, `<span class="tag" style="font-size:22px;padding:6px 18px">پایان شب ${fa(G.night)}</span>`)}<div class="body">
 <div class="nlist zone"><h4>اقدامات پایان شب</h4>${list}</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – ${br.mode === 'all' ? 'همه ۱ زخم گرفتند؛ ۱ امتیاز کم شد: <b>' + (br.fameLost || []).map(NM).join('، ') + '</b>' : 'کمترین توکن شکار: <b>' + br.hit.map(NM).join('، ') + '</b>'}</div>` : ''}${det ? det : `<div class="dmap">${map}</div>`}</div></div>${pbarH(G)}${waitLine(G)}</div>`;
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – ${br.mode === 'all' ? 'همه ۱ زخم گرفتند؛ ۱ امتیاز کم شد: <b>' + (br.fameLost || []).map(NM).join('، ') + '</b>' : 'کمترین توکن شکار: <b>' + br.hit.map(NM).join('، ') + '</b>'}</div>` : ''}${det ? det : `<div class="dmap nmv">${map}</div>`}</div></div>${pbarH(G)}${waitLine(G)}</div>`;
 }
 function nightDet(G, st, i) {
-  const k = 'nd-' + G.night + '-' + i + (st.done ? 'd' : 'o');
+  const k = 'nd-' + G.night + '-' + i + (st.k === 'acad' || st.k === 'hall' ? '' : st.done ? 'd' : 'o');
   const box = (title, body, cls) => `<div class="ndet zone ${cls || ''}" data-k="${k}"><h2>${title}</h2>${body}${st.done && st.d ? `<div class="ndd">${esc(st.d)}</div>` : ''}</div>`;
   if (st.k === 'mv0') return box('هجوم شبانه', `<div class="ndbig">اهریمنی در سیاه‌چال نیست</div><div class="dmap" style="flex:1;width:100%">${mapSvg(G, {})}</div>`);
   if (st.k === 'chal') return G.chalResult && st.done ? `<div class="ndet zone" data-k="${k}">${chalH(G.chalResult)}</div>` : box('توکن چالش شب ' + fa(G.night), `<div class="ndbig">${esc(st.t)}</div>`);
   if (st.k === 'acad') {
-    // before: the cards about to burn glow at the right end of the row; after: they burn to ash
-    const ids = st.done ? (st.ids || []) : G.acad.row.filter((_, j) => !G.acad.seal[j]).slice(0, G.players.length === 2 ? 2 : 1);
-    return box('آکادمی سحرستان', `<div class="ndcards">${ids.map(id => `<div class="ndc ${st.done ? 'burnt' : 'toburn'}">${acard(id)}</div>`).join('') || '<div class="ndbig">کارتی نسوخت</div>'}</div>`);
+    // the academy row as on the main screen: before, the card(s) about to burn glow at the right end;
+    // after, they fade away, the row slides one place to the right and a new card comes from the deck (slow, see ANIM.slow)
+    const nb = G.players.length === 2 ? 2 : 1, burn = []; if (!st.done) { for (let j = 0; j < G.acad.row.length && burn.length < nb; j++) if (!G.acad.seal[j]) burn.push(j); }
+    const seen2 = {}; const row = G.acad.row.map((id, j) => acard(id, { cls: burn.includes(j) ? 'toburn' : '', seal: G.acad.seal[j] ? H(G.acad.seal[j].pid) : null, k: '-' + (seen2[id] = (seen2[id] || 0) + 1) })).join('');
+    return box('آکادمی سحرستان', `<div class="ndrow zA"><div class="rowc">${row}<div class="deck">دک آکادمی</div></div></div>`);
   }
   if (st.k === 'hall') {
     const ws = st.done ? st.ws || [] : G.hall.row.map(w => ({ id: w.id, tok: w.tok || 0 }));
@@ -286,6 +310,8 @@ function overlays() {
   if (live('toast') && timers.toastT && CURK !== 'main') o += `<div class="mtoast k-${timers.toastT.kind}">${esc(timers.toastT.t)}</div>`;
   // every die a player rolls: spinning faces on the big screen, then the result
   const rr = G.roll;
+  // a roll from the last turn is not replayed when the night starts (Farshad 2026-11-06)
+  if (rr && rr.n > seen.die && G.phase === 'night' && !G.battle) seen.die = rr.n;
   if (rr && rr.n > seen.die) { seen.die = rr.n; SFX.play('dice'); setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
   if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 9000); }
   if (live('duel') && G.duel) {

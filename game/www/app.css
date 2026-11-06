@@ -246,3 +246,15 @@ circle.mk2{stroke-width:7;animation:blk 1s ease-in-out infinite}
 /* the join screen scrolls when the house list is long */
 body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touch}
 .P:has(.hlist)>*{flex-shrink:0}
+/* night: demon steps nested under «هجوم شبانه», slower demon slide, breached demon fades at the gate */
+.nstep.sub{margin-inline-start:22px;padding-block:6px}
+.nstep.sub b{font-size:.92em}
+.nmv .fig{transition:transform 1.5s cubic-bezier(.45,0,.25,1)}
+.fig.dghost{animation:dGhost 1s ease-in 1.6s both}
+@keyframes dGhost{to{opacity:0}}
+.ndrow{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:10px 0;background:none;border:0}
+.ndrow .rowc{justify-content:center}
+.ndrow .ac.toburn{box-shadow:0 0 0 3px #ff8a3c,0 0 28px rgba(255,120,40,.7);animation:tb 1.6s ease-in-out infinite}
+@keyframes tb{50%{box-shadow:0 0 0 3px #ffb070,0 0 44px rgba(255,140,60,.95)}}
+.ndet:has(.ndrow){position:relative}
+.ndet:has(.ndrow) .ndd{position:absolute;bottom:22px;left:50%;transform:translateX(-50%)}
