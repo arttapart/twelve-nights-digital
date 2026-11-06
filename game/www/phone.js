@@ -14,7 +14,7 @@ const api = connect('phone', (m, u) => {
   const G = S.G; setTimer(G);
   const nowTurn = G && G.turn ? G.turn.pid + ':' + G.turn.startedAt : null;
   if (nowTurn !== prevTurn) { view = null; handGrid = true; if (G && G.turn && G.turn.pid === G.me) { tab = 'hand'; ix.hand = 0; } }
-  if (S.err && S.err.n > errSeen) { errSeen = S.err.n; errMsg = S.err.t; setTimeout(() => { errMsg = null; render(); }, 3500); }
+  if (S.err && S.err.n > errSeen) { errSeen = S.err.n; errMsg = S.err.t; SFX.play('error'); setTimeout(() => { errMsg = null; render(); }, 3500); }
   if (!G || !G.battle) prepRm = null;
   render();
 });
@@ -55,6 +55,14 @@ function render() {
 const HOUSES = DATA.rules.houses;
 const HPW = DATA.rules.housePowers || {};
 // house power (chosen per house in the editor) and the client-side copy of its discounts
+// house list on the join screen (Farshad 2026-11-06): each house's name, and its power and starting resources when powers are on
+const ST_IC = { coin: 'coin', scroll: 'scr', ess: 'ess', torch: 'torch', pick: 'pick' };
+const hStart = h => Object.entries(h.start || {}).filter(([k, v]) => v && ST_IC[k]).map(([k, v]) => `<span class="hst">${fa(v)}${sv(ST_IC[k])}</span>`).join('');
+const housesBox = (hs, used) => {
+  const any = HOUSES.some(h => HPW[h.power]);
+  if (!any) { const h = HOUSES.find(x => x.id === hs); return `<div class="hname" style="color:${h.color}">${esc(h.title || h.name)}</div>`; }
+  return `<div class="hlist">${HOUSES.map(h => { const w = HPW[h.power], tk = used.includes(h.id); return `<div class="hrow ${h.id === hs ? 'sel' : ''} ${tk ? 'tk' : ''}" data-house="${h.id}" style="--hc:${h.color}"><i></i><div class="hb"><div class="ht"><b>${esc(h.title || h.name)}</b>${tk ? '<span class="mut">گرفته</span>' : ''}${hStart(h)}</div>${w ? `<div class="hp"><u>${esc(w.name)}:</u> ${esc(w.txt)}</div>` : '<div class="hp mut">بدون قدرت</div>'}</div></div>`; }).join('')}</div>`;
+};
 const hpBox = k => HPW[k] ? `<div class="pbox" style="padding:8px 12px"><h5>قدرت خاندان: ${esc(HPW[k].name)}</h5><div style="font-size:13px;line-height:1.7">${esc(HPW[k].txt)}</div></div>` : '';
 function hpCost(c, p, T) {
   const cost = Object.assign({}, c.cost);
@@ -72,12 +80,12 @@ function lobby() {
   const c = HOUSES.find(h => h.id === hs).color;
   let o = `<div class="ph"><div class="hs" style="background:${c}">${esc((name || '؟')[0])}</div><b>${mine ? esc(mine.name) : 'بازیکن تازه'}</b>${S.host ? '<span class="tag" style="margin-inline-start:auto">میزبان</span>' : ''}</div>
 <div><div class="lbl">نام تو</div><input id="nm" class="inp" maxlength="14" value="${esc(name)}" placeholder="نامت را بنویس"></div>
-<div><div class="lbl">رنگ خاندان</div><div class="cols" style="padding:6px 0 14px">${HOUSES.map(h => `<i data-house="${h.id}" style="background:${h.color}" class="${h.id === hs ? 'sel' : used.includes(h.id) ? 'tk' : ''}"></i>`).join('')}</div>${hpBox(HOUSES.find(h => h.id === hs).power)}</div>
+<div><div class="lbl">رنگ خاندان</div><div class="cols" style="padding:6px 0 14px">${HOUSES.map(h => `<i data-house="${h.id}" style="background:${h.color}" class="${h.id === hs ? 'sel' : used.includes(h.id) ? 'tk' : ''}"></i>`).join('')}</div>${housesBox(hs, used)}</div>
 <div class="btn ${mine ? 'ghost' : ''}" data-do="join">${mine ? 'ذخیرهٔ نام و رنگ' : 'ورود به بازی'}</div>`;
   if (mine) {
     o += `<div class="pmsg gold">${fa(L.players.length)} بازیکن وصل شده‌اند${L.players.length < 2 ? ' – دست‌کم ۲ نفر لازم است' : ''}</div>`;
     if (S.host) {
-      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div><div class="tg" data-do="tmr">تایمر نوبت<span class="sw2 ${L.timer ? '' : 'offs'}"></span></div>${L.timer ? `<div class="tmrow"><span>زمان هر نوبت</span><input id="tmrs" class="inp" type="number" min="10" max="3600" step="5" value="${L.timer}"><span>ثانیه</span></div>` : ''}</div><div style="flex:1"></div>
+      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div>${L.players.length === 3 || L.players.length === 4 ? `<div class="tg" data-do="short">بازی کوتاه ۱۰ شبه<span class="sw2 ${L.short ? '' : 'offs'}"></span></div>` : ''}<div class="tg" data-do="tmr">تایمر نوبت<span class="sw2 ${L.timer ? '' : 'offs'}"></span></div>${L.timer ? `<div class="tmrow"><span>زمان هر نوبت</span><input id="tmrs" class="inp" type="number" min="10" max="3600" step="5" value="${L.timer}"><span>ثانیه</span></div>` : ''}</div><div style="flex:1"></div>
 ${L.hasSave ? '<div class="btn ghost" data-do="resume">ادامهٔ بازی ذخیره‌شده</div>' : ''}<div class="btn ${L.players.length < 2 ? 'off' : ''}" data-do="start">شروع بازی تازه</div>`;
     } else o += `<div style="flex:1"></div><div class="pmsg">منتظر «شروع بازی» از گوشی میزبان…</div><div class="btn ghost" data-do="leave">خروج از لابی</div>`;
   }
@@ -131,7 +139,21 @@ function rollShow() {
   if (!r) return;
   if (r.n <= rollSeen) return; rollSeen = r.n;
   if (r.pid !== S.G.me) return;
-  dieFx(document.body, r, 'ph');
+  const cube = document.querySelector('.die3 .cube');
+  if (cube) die3Fx(cube, r); else dieFx(document.body, r, 'ph');
+}
+// the on-screen die keeps spinning while its front face flicks through numbers and slows down, then lands on the result
+function die3Fx(cube, r) {
+  const num = cube.querySelector('.dnum'), fin = num.innerHTML, faces = DIEF[Math.min(4, r.lv || 1)] || [1, 2, 3, 4, 5, 6];
+  if (!ANIM.on) return;
+  cube.classList.remove('land'); cube.classList.add('spin');
+  const steps = [60, 65, 70, 80, 90, 105, 120, 140, 170, 210, 260, 330]; let i = 0;
+  const tick = () => {
+    if (!cube.isConnected) return;
+    if (i < steps.length) { num.textContent = r.vals.map(() => fa(faces[Math.floor(Math.random() * faces.length)])).join(' + '); setTimeout(tick, steps[i++]); }
+    else { num.innerHTML = fin; cube.classList.remove('spin'); cube.classList.add('land'); }
+  };
+  tick();
 }
 function waitFor() { const q = S.G.prompts[0]; return q && q.to !== S.G.me ? `<div class="pmsg">منتظر ${esc(S.G.players[q.to].name)}: ${esc(q.title || '')}</div>` : ''; }
 
@@ -225,13 +247,17 @@ function boardP() {
 }
 
 // ---- dice ----
+// a white 3D die (Farshad 2026-11-06): the face toward the player shows «؟» (or the result) instead of pips; tapping it rolls
+const PIPS = { 2: [0, 8], 3: [0, 4, 8], 5: [0, 2, 4, 6, 8] };
+const pipF = n => `<div class="pips">${[...Array(9)].map((_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
+const die3 = (txt, tap) => `<div class="die3 ${tap ? 'tap' : ''}" ${tap ? 'data-do="roll"' : ''}><div class="cube"><div class="cf fr"><b class="dnum">${txt}</b></div><div class="cf bk">${pipF(5)}</div><div class="cf rt">${pipF(3)}</div><div class="cf lf">${pipF(2)}</div><div class="cf tp">${pipF(2)}</div><div class="cf bt">${pipF(3)}</div></div></div>`;
 function diceP() {
   const T = S.G.turn, p = me(), d = T.die, lv = Math.min(4, d ? d.lv : p.wand + (T.flags.dieup ? 1 : 0)), need = Math.max(d ? d.need : 1, T.flags.twice ? 2 : 1);
   let o = poolH(false) + `<div class="dieb"><div class="lbl" style="font-size:15px">تاس ${DIEN[lv]} – سطح ${fa(lv)}${need > 1 ? ' – دو تاس' : ''}${T.flags.x2 ? ' – دو برابر' : ''}</div>`;
   const pend = d && d.acc < d.faces.length;       // rolled, not yet accepted
-  if (!d) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div><div class="face">؟</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
+  if (!d) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div>${die3('؟', true)}<div class="lbl">برای انداختن، روی تاس بزن</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
   else {
-    o += `<div class="face">${d.vals.map((v, i) => `<span class="${i < d.acc ? 'okd' : ''}">${fa(v)}</span>`).join(' + ')}</div>${need > 1 ? `<div class="lbl">${d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + fa(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ')}</div>` : ''}</div>`;
+    o += die3(d.vals.map((v, i) => `<span class="${i < d.acc ? 'okd' : ''}">${fa(v)}</span>`).join(' + '), !pend && !T.dieUsed) + `${need > 1 ? `<div class="lbl">${d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + fa(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ')}</div>` : ''}</div>`;
     if (pend) {
       const free = Game_hasItem(p, 'fate') && !T.freeReroll, hpFree = p.hp === 'hp_luck' && !T.flags.hpLuck;
       if (free) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (طومار تقدیر)</div>`;
@@ -378,12 +404,14 @@ function finalP() {
 // ---------- input ----------
 function sendUI(o) { if (myTurn()) api.send(Object.assign({ t: 'ui' }, o)); }
 function swipe(k, d) {
+  SFX.play('swipe');
   ix[k] = (ix[k] || 0) + d; ANIM.swipe = d;
   render();
   if (k === 'acad' || k === 'hall') sendUI({ tab: k, i: ix[k] });
 }
 function bind() {
   const R = root;
+  if (!R._tap) { R._tap = 1; R.addEventListener('click', e => { const b = e.target.closest('[data-do],[data-ans],[data-play],[data-tab],[data-hg],[data-gob],[data-sel],[data-off],[data-sub],.tg'); if (b && !b.classList.contains('off') && !b.matches('[data-sw]')) SFX.play('tap'); }, true); }
   R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; if (S.ui && S.ui.dun) dunAway = true; tab = e.dataset.tab; view = null; if (tab === 'hand') handGrid = true; render(); sendUI({ tab, i: ix[tab] || 0 }); });
   R.querySelectorAll('[data-sub]').forEach(e => e.onclick = () => { sub = +e.dataset.sub; render(); });
   R.querySelectorAll('[data-sw]').forEach(e => e.onclick = ev => { ev.stopPropagation(); const car = e.closest('[data-car]'); if (car) swipe(car.dataset.car, +e.dataset.sw); });
@@ -418,7 +446,7 @@ function bind() {
 function flyUp(go) {
   const el = root.querySelector('[data-car="hand"] > .ac');
   if (!ANIM.on || !el || !el.animate || flyUp.busy) { go(); return; }
-  flyUp.busy = true;
+  flyUp.busy = true; SFX.play('play');
   const t0 = getComputedStyle(el).transform, b = t0 === 'none' ? '' : t0 + ' ';
   const a = el.animate([{ transform: b + 'translateY(0)', opacity: 1 }, { transform: b + 'translateY(-260px)', opacity: 0 }], { duration: 380, easing: 'cubic-bezier(.5,0,.8,.4)', fill: 'forwards' });
   let done = false; const fin = () => { if (done) return; done = true; flyUp.busy = false; go(); }; a.onfinish = fin; setTimeout(fin, 600);
@@ -433,6 +461,7 @@ function doIt(k, e) {
     case 'join': { const n = (R0('#nm').value || '').trim(); try { localStorage.setItem('12shab_name', n); } catch (er) {} const L = S.lobby, mine = L.players[S.you], used = L.players.filter((p, i) => i !== S.you).map(p => p.house); const hs = pickHouse || (mine && mine.house) || HOUSES.find(h => !used.includes(h.id)).id; api.send({ t: 'join', name: n, house: hs }); typedName = null; return; }
     case 'leave': api.send({ t: 'leave' }); return;
     case 'bf': api.send({ t: 'opt', bf: !S.lobby.bf }); return;
+    case 'short': api.send({ t: 'opt', short: !S.lobby.short }); return;
     case 'tmr': api.send({ t: 'opt', timer: S.lobby.timer ? 0 : 120 }); return;
     case 'start': api.send({ t: 'start' }); return;
     case 'resume': api.send({ t: 'resume' }); return;
@@ -442,7 +471,7 @@ function doIt(k, e) {
     case 'endv': view = 'end'; render(); return;
     case 'end': view = null; act({ t: 'end' }); return;
     case 'dun': if (S.ui && S.ui.dun && dunAway) { dunAway = false; view = null; render(); return; } dunAway = false; sendUI({ dun: !(S.ui && S.ui.dun) }); view = null; return;
-    case 'roll': act({ t: 'roll' }); return;
+    case 'roll': { const c = document.querySelector('.die3 .cube'); if (c) { c.classList.remove('land'); c.classList.add('spin'); } if (typeof SFX !== 'undefined') SFX.play('dice'); act({ t: 'roll' }); return; }
     case 'reroll': act({ t: 'reroll' }); return;
     case 'dieok': { const d = S.G.turn.die, last = d && d.acc + 1 >= Math.max(d.need, S.G.turn.flags.twice ? 2 : 1); act({ t: 'dieok' }); if (last) view = null; return; }
     case 'hpalch': act({ t: 'hpalch' }); return;

@@ -35,9 +35,12 @@ const card = id => id === 'W' ? Object.assign({ id: 'W', ty: 'wound', cost: {}, 
 // ---------- setup ----------
 function newGame(opts) {
   const G = { v: 1, seed: (opts.seed != null ? opts.seed : Date.now()) | 0, phase: 'setup', uid: 0, log: [], toasts: [], prompts: [], pid: 0,
-    cfg: { bf: !!opts.bf, timer: Math.max(0, opts.timer | 0) }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
+    cfg: { bf: !!opts.bf, timer: Math.max(0, opts.timer | 0), short: false }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
   const nP = opts.players.length;
-  const BP = byP(nP);
+  // short 10-night game for 3 and 4 players, chosen in the lobby (Farshad 2026-11-06)
+  const short = !!opts.short && (nP === 3 || nP === 4) && R.shortGame;
+  const BP = short ? R.shortGame : byP(nP);
+  G.cfg.short = !!short;
   G.cfg.nights = BP.nights;
   opts.players.forEach((p, i) => G.players.push(newPlayer(G, p, i)));
   G.players.forEach(p => applyHouse(G, p));
@@ -543,7 +546,7 @@ function endNight(G) {
   }
   G.nightQ = { n: G.night, steps, i: 0, at: null };
 }
-const NIGHT_MS = { mv: 3200, mv0: 1600, chal: 6500, battle: 800, acad: 2600, hall: 2200, hat: 2400, final: 0 };
+const NIGHT_MS = { mv: 3200, mv0: 2200, chal: 7000, battle: 900, acad: 3400, hall: 3200, hat: 3200, final: 0 };
 function nightStep(G, s) {
   if (s.k === 'mv') {
     const m = Dun.nightMoveOne(G, s.id);
@@ -555,18 +558,19 @@ function nightStep(G, s) {
   else if (s.k === 'acad') {
     // academy: rightmost (unsealed) card burns (2 in a 2-player game)
     const nb = G.players.length === 2 ? 2 : 1; const burned = [];
-    for (let k = 0; k < nb; k++) { let i = 0; while (i < G.acad.row.length && G.acad.seal[i]) i++; if (i < G.acad.row.length) { const id = removeFromRow(G, i); G.acad.discard.push(id); burned.push(D.cards[id].name); } }
+    for (let k = 0; k < nb; k++) { let i = 0; while (i < G.acad.row.length && G.acad.seal[i]) i++; if (i < G.acad.row.length) { const id = removeFromRow(G, i); G.acad.discard.push(id); burned.push(D.cards[id].name); (s.ids = s.ids || []).push(id); } }
     s.d = 'سوخت: ' + (burned.join('، ') || 'هیچ'); log(G, 'پایان شب ' + fa(G.night) + ': ' + s.d + ' از آکادمی.');
     fillAcademy(G);
   } else if (s.k === 'hall') {
     // hall: -1 defense token on every unhired wizard (at most R.hallTokMax, Farshad 2026-11-05: 2)
-    let n = 0; for (const w of G.hall.row) { const t = Math.min(R.hallTokMax || 2, (w.tok || 0) + 1); if (t > (w.tok || 0)) n++; w.tok = t; }
+    let n = 0; s.ws = []; for (const w of G.hall.row) { const t = Math.min(R.hallTokMax || 2, (w.tok || 0) + 1); s.ws.push({ id: w.id, tok: t, add: t > (w.tok || 0) }); if (t > (w.tok || 0)) n++; w.tok = t; }
     s.d = fa(n) + ' جادوگر توکن گرفت'; log(G, 'تالار: ' + s.d + '.');
   } else if (s.k === 'hat') {
     for (const p of G.players) p.shield = false;
     // the wizard hat goes to the next player; in a 2-player game turns simply alternate (Farshad 2026-11-05)
     if (G.players.length !== 2) G.order = G.order.slice(1).concat(G.order.slice(0, 1));
     s.d = 'نفر اول شب ' + fa(G.night + 1) + ': ' + P(G, G.order[0]).name;
+    s.first = G.order[0];
   }
   s.done = true;
 }
@@ -709,9 +713,18 @@ function phoenix(G, p, u) {
   p.discard.push(p.hand.splice(i, 1)[0]); drawCards(G, p, 1); G.turn.phoenix = true; return null;
 }
 
+
+// ---------- sound cues ----------
+// the engine only records WHAT happened (G.sfx); each screen decides which sound to play (Farshad 2026-11-06)
+function sfx(G, k) { G.sfx = (G.sfx || []).slice(-24); G.sfx.push({ n: ++G.ev, k }); }
+const okWrap = (f, k) => function (G) { const r = f.apply(this, arguments); if (r == null || r === true) sfx(G, k); return r; };
+playCard = okWrap(playCard, 'card'); buy = okWrap(buy, 'buy'); hire = okWrap(hire, 'hire'); goblin = okWrap(goblin, 'gob'); upgrade = okWrap(upgrade, 'upgrade');
+finalScore = okWrap(finalScore, 'win');
+{ const ns = nightStep; nightStep = function (G, s) { ns(G, s); sfx(G, s.k === 'mv' ? (s.m && s.m.breach ? 'breach' : 'demon') : 'nightTick'); }; }
+{ const st = startTurn; startTurn = function (G) { st(G); sfx(G, 'turn'); }; }
 const Game = { tick, CHAL_METRIC, HP, housePower, hasHP, newGame, act, answer, fa, HOUSES, UPGRADES, ITEMS, TREASURE_NAME, CHALLENGES, DIE, DIE_NAME, RES, LV_NAME, LV_KEY, REWARD_NAME, card, cap, activeItems, hasItem, hireCost, canPay, curP, isTurn, busy, continueNight };
 // internals shared with the dungeon and battle modules
-Game._ = { hasHP, H, ask, slotN, askSlots, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
+Game._ = { sfx, hasHP, H, ask, slotN, askSlots, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
 let Dun, Battle;
 Game.use = (d, b) => { Dun = d; Battle = b; };
 root.Game = Game;

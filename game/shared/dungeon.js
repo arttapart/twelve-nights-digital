@@ -442,6 +442,11 @@ function act(G, p, a) {
   return 'کار ناشناخته';
 }
 
+
+// sound cues (see engine sfx)
+{ const W = (f, k) => function (G) { const r = f.apply(this, arguments); if (r == null || r === true) _.sfx(G, k); return r; };
+  move = W(move, 'step'); placeTile = W(placeTile, 'tile'); openChest = W(openChest, 'chest'); startFight = W(startFight, 'fight');
+  winFight = W(winFight, 'fightWin'); loseFight = W(loseFight, 'fightLose'); wound = W(wound, 'wound'); }
 const Dun = { init, graph, startCells, cellName, tileCell, isCursed, isStart, moveOptions, openExits, canEndHere, portalChoice, farStrike, nightMove, nightMoveOne, forceEnd, GATE, act, demonsAt, rotCell, rotExit, posOf, cellOf, key, GATE, CELLNAME };
 root.Dun = Dun;
 if (typeof module !== 'undefined') module.exports = Dun;

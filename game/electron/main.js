@@ -9,7 +9,7 @@ app.whenReady().then(async () => {
   let srv;
   try { srv = require('../server/server.js'); await srv.start(); }
   catch (e) { dialog.showErrorBox('۱۲ شب', 'میزبان بازی اجرا نشد:\n' + e.message + '\nشاید برنامه دو بار باز شده است.'); app.quit(); return; }
-  win = new BrowserWindow({ width: 1600, height: 900, fullscreen: true, backgroundColor: '#0b0c1d', title: '۱۲ شب', autoHideMenuBar: true, webPreferences: { contextIsolation: true } });
+  win = new BrowserWindow({ width: 1600, height: 900, fullscreen: true, backgroundColor: '#0b0c1d', title: '۱۲ شب', autoHideMenuBar: true, webPreferences: { contextIsolation: true, autoplayPolicy: 'no-user-gesture-required' } });
   win.loadURL('http://127.0.0.1:' + srv.PORT + '/m');
   win.webContents.on('before-input-event', (e, inp) => {
     if (inp.type !== 'keyDown') return;

@@ -303,10 +303,10 @@ const START_KEYS = [['coin', 'سکه'], ['scroll', 'طومار'], ['ess', 'جو�
 const hpOpts = () => [['', '— بدون قدرت —']].concat(Object.entries(W.rules.housePowers || {}).map(([k, v]) => [k, v.name + ' (' + ((W.rules.houses.find(h => h.id === v.house) || {}).name || '؟') + ')']));
 const startTxt = st => Object.entries(st || {}).filter(([, v]) => v).map(([k, v]) => fa(v) + ' ' + (START_KEYS.find(x => x[0] === k) || [k, k])[1]).join(' + ') || '—';
 VIEWS.houses = m => {
-  m.innerHTML = `<h2>خاندان‌ها و قدرت خاندان‌ها</h2><p class="help">نام و رنگ هر خاندان. بازیکن در صفحهٔ اول گوشی یکی را انتخاب می‌کند و رنگ فیگورش همین است. حداکثر ۵ بازیکن.<br>برای هر خاندان از ستون «قدرت فعال» یکی از قدرت‌ها را انتخاب کن، یا «بدون قدرت» بگذار. منابع شروع هر خاندان جدا تنظیم می‌شود و به منابع شروع همهٔ بازیکنان (بخش «قانون‌ها و عددها») اضافه می‌شود؛ پس هر ترکیب تازه‌ای از قدرت و منابع ممکن است. دکمهٔ «پیشنهاد» منابع پیشنهادی همان قدرت را می‌گذارد.</p>`;
+  m.innerHTML = `<h2>خاندان‌ها و قدرت خاندان‌ها</h2><p class="help">نام خاندان، نام رنگ و رنگ هر خاندان. اگر دست‌کم یک خاندان قدرت داشته باشد، بازیکنان در صفحهٔ انتخاب رنگ، نام و قدرت و منابع شروع همهٔ خاندان‌ها را می‌بینند. بازیکن در صفحهٔ اول گوشی یکی را انتخاب می‌کند و رنگ فیگورش همین است. حداکثر ۵ بازیکن.<br>برای هر خاندان از ستون «قدرت فعال» یکی از قدرت‌ها را انتخاب کن، یا «بدون قدرت» بگذار. منابع شروع هر خاندان جدا تنظیم می‌شود و به منابع شروع همهٔ بازیکنان (بخش «قانون‌ها و عددها») اضافه می‌شود؛ پس هر ترکیب تازه‌ای از قدرت و منابع ممکن است. دکمهٔ «پیشنهاد» منابع پیشنهادی همان قدرت را می‌گذارد.</p>`;
   const H = W.rules.houses, d1 = document.createElement('div'); m.appendChild(d1);
-  table(d1, { rows: () => H, key: 'id', add: () => ({ id: 'h' + Date.now().toString(36).slice(-3), name: 'تازه', color: '#888888', power: '', start: {} }),
-    cols: [{ k: 'id', l: 'شناسه', ty: 'code', w: 80 }, { k: 'name', l: 'نام', w: 120 }, { k: 'color', l: 'رنگ', ty: 'color' },
+  table(d1, { rows: () => H, key: 'id', add: () => ({ id: 'h' + Date.now().toString(36).slice(-3), title: 'خاندان تازه', name: 'تازه', color: '#888888', power: '', start: {} }),
+    cols: [{ k: 'id', l: 'شناسه', ty: 'code', w: 80 }, { k: 'title', l: 'نام خاندان', w: 160 }, { k: 'name', l: 'نام رنگ', w: 110 }, { k: 'color', l: 'رنگ', ty: 'color' },
       { k: 'power', l: 'قدرت فعال', ty: 'sel', opts: hpOpts, w: 220, get: x => x.power || '', redraw: true },
       ...START_KEYS.map(([r, n]) => ({ k: 'st_' + r, l: n, h: 'منابع شروع خاندان', ty: 'num', get: x => (x.start || {})[r] || 0, set: (x, v) => { x.start = x.start || {}; if (v) x.start[r] = v; else delete x.start[r]; } })),
       { k: 'sugg', l: 'منابع پیشنهادی قدرت', ty: 'html', w: 150, html: x => { const p = (W.rules.housePowers || {})[x.power]; return p ? `<span class="mut">${esc(startTxt(p.start))}</span> <button class="btn g" data-sugg="${esc(x.id)}" style="padding:2px 8px">پیشنهاد</button>` : '<span class="mut">—</span>'; } }] });
@@ -328,6 +328,7 @@ VIEWS.rules = m => {
     d.addEventListener('change', e => { const f = fields[+e.target.dataset.i]; if (!f) return; try { const v = f.ty === 'num' ? +e.target.value : e.target.value; if (f.set) f.set(v); else f.o[f.k] = v; e.target.style.outline = ''; dirty(); } catch (er) { e.target.style.outline = '2px solid var(--bad)'; status(er.message, true); } });
     host.appendChild(d); return d; };
   box('دست و ذخیره', [field(R, 'handSize', 'کارت در شروع نوبت'), field(R, 'acadRow', 'کارت‌های ردیف آکادمی'), field(R, 'hallSize', 'جادوگران تالار'), field(R, 'storeBase', 'جای ذخیرهٔ هر منبع'), field(R, 'storeUp', 'جای ذخیره پس از ارتقا'), field(R, 'tokenMax', 'حداکثر مشعل + کلنگ'), field(R, 'huntTokens', 'تعداد کل توکن‌های شکار اهریمن'), field(R, 'hallTokMax', 'حداکثر توکن «۱- دفاع» روی هر جادوگر تالار')]);
+  box('صدا', [field(R, 'soundVol', 'بلندی کلی صداها (۰ تا ۱۰۰؛ ۰ = بی‌صدا)')]);
   box('رخنه', [{ o: R, k: 'breachMode', label: 'وقتی اهریمن به دروازهٔ شهر می‌رسد', ty: 'sel', opts: [['min', 'بازیکن(های) با کمترین توکن شکار ۱ زخم می‌گیرند'], ['all', 'همهٔ بازیکنان ۱ زخم می‌گیرند و کمترین توکن شکار ۱ امتیاز از دست می‌دهد']] }]);
   box('شروع بازی', [field(R, 'startWand', 'سطح چوب‌دستی'), field(R, 'startTorch', 'مشعل'), field(R, 'startPick', 'کلنگ'), ...['coin', 'scroll', 'ess'].map(r => ({ label: ['سکه', 'طومار', 'جوهره'][['coin', 'scroll', 'ess'].indexOf(r)] + ' در ذخیره', ty: 'num', get: () => R.startStore[r] || 0, set: v => { R.startStore[r] = v; } }))]);
   const costF = (o, k, n) => ['coin', 'scroll', 'ess'].map((r, j) => ({ label: n + ' (' + ['سکه', 'طومار', 'جوهره'][j] + ')', ty: 'num', get: () => (o[k] || {})[r] || 0, set: v => { o[k] = o[k] || {}; if (v) o[k][r] = v; else delete o[k][r]; } }));
@@ -341,8 +342,9 @@ VIEWS.rules = m => {
   // per player count
   const pz = document.createElement('div'); pz.className = 'box'; pz.style.gridColumn = '1/-1';
   const chT = o => Object.entries(o).map(([n, k]) => n + ':' + k).join(' ');
-  pz.innerHTML = `<h3>شب‌ها بسته به تعداد بازیکن</h3><p class="help" style="margin:0 0 6px">شب‌های نبرد را با فاصله جدا کن. شب‌های چالش را به شکل «شب:نوع» بنویس؛ نوع «early» یعنی یک توکن زود تصادفی، «late» یعنی یک توکن دیر تصادفی، یا شناسهٔ خود توکن مثل f_hunt.</p><table class="t"><tr><th>بازیکن</th><th>تعداد شب</th><th>شب‌های نبرد</th><th>شب‌های چالش</th></tr>${Object.keys(R.byPlayers).map(n => `<tr><td>${fa(n)}</td><td><input type="number" data-pn="${n}" data-w="nights" value="${R.byPlayers[n].nights}" style="width:60px"></td><td><input class="ltr" data-pn="${n}" data-w="battle" value="${R.byPlayers[n].battle.join(' ')}"></td><td><input class="ltr" data-pn="${n}" data-w="chal" value="${chT(R.byPlayers[n].chal)}" style="width:300px"></td></tr>`).join('')}</table>`;
-  pz.addEventListener('change', e => { const t = e.target, B = R.byPlayers[t.dataset.pn]; if (!B) return;
+  const BPx = n => n === 'short' ? R.shortGame : R.byPlayers[n];
+  pz.innerHTML = `<h3>شب‌ها بسته به تعداد بازیکن</h3><p class="help" style="margin:0 0 6px">ردیف «بازی کوتاه» وقتی به کار می‌رود که میزبان در صفحهٔ شروع، برای بازی ۳ یا ۴ نفره «بازی کوتاه ۱۰ شبه» را روشن کند. شب‌های نبرد را با فاصله جدا کن. شب‌های چالش را به شکل «شب:نوع» بنویس؛ نوع «early» یعنی یک توکن زود تصادفی، «late» یعنی یک توکن دیر تصادفی، یا شناسهٔ خود توکن مثل f_hunt.</p><table class="t"><tr><th>بازیکن</th><th>تعداد شب</th><th>شب‌های نبرد</th><th>شب‌های چالش</th></tr>${Object.keys(R.byPlayers).concat(R.shortGame ? ['short'] : []).map(n => `<tr><td>${n === 'short' ? 'بازی کوتاه (۳ و ۴ نفر)' : fa(n)}</td><td><input type="number" data-pn="${n}" data-w="nights" value="${BPx(n).nights}" style="width:60px"></td><td><input class="ltr" data-pn="${n}" data-w="battle" value="${BPx(n).battle.join(' ')}"></td><td><input class="ltr" data-pn="${n}" data-w="chal" value="${chT(BPx(n).chal)}" style="width:300px"></td></tr>`).join('')}</table>`;
+  pz.addEventListener('change', e => { const t = e.target, B = BPx(t.dataset.pn); if (!B) return;
     try { if (t.dataset.w === 'nights') B.nights = +t.value; else if (t.dataset.w === 'battle') B.battle = t.value.trim().split(/[\s,،]+/).filter(Boolean).map(Number); else { const o = {}; for (const p of t.value.trim().split(/\s+/).filter(Boolean)) { const [a, b] = p.split(':'); if (!b || isNaN(+a)) throw new Error('شکل درست: ۵:early'); if (!['early', 'late'].includes(b) && !R.challenges[b]) throw new Error('توکن ناشناخته: ' + b); o[+a] = b; } B.chal = o; } t.style.outline = ''; dirty(); }
     catch (er) { t.style.outline = '2px solid var(--bad)'; status(er.message, true); } });
   host.appendChild(pz);
@@ -387,6 +389,7 @@ function slotsFor() {
   S.push(['پس‌زمینه‌ها و فونت‌ها', [['bg', 'monitor', 'پس‌زمینهٔ مانیتور', 'image', '۱۹۲۰×۱۰۸۰'], ['bg', 'phone', 'پس‌زمینهٔ گوشی', 'image', '۳۹۰×۸۴۴'], ['fonts', 'body', 'فونت متن (جای وزیرمتن)', 'font'], ['fonts', 'title', 'فونت تیتر (جای لاله‌زار)', 'font'], ['app', 'icon', 'آیکون برنامه (ویندوز و اندروید)', 'image', 'مربع، دست‌کم ۵۱۲×۵۱۲']]]);
   S.push(['پشت کارت‌ها', [['backs', 'academy', 'پشت کارت آکادمی', 'image'], ['backs', 'wizard', 'پشت کارت جادوگر', 'image'], ['backs', 'demon', 'پشت کارت اهریمن', 'image']]]);
   S.push(['آیکون‌ها', ICONS.map(([k, n]) => ['icons', k, n, 'image', 'مربع'])]);
+  S.push(['صداها', [['tap', 'زدن دکمه'], ['swipe', 'ورق زدن کارت‌ها'], ['play', 'پرتاب کارت از گوشی'], ['card', 'نشستن کارت روی مانیتور'], ['dice', 'انداختن تاس'], ['buy', 'خرید کارت آکادمی'], ['hire', 'استخدام جادوگر'], ['gob', 'حمله به گوبلین'], ['upgrade', 'ارتقای برد شخصی'], ['step', 'حرکت مهره'], ['tile', 'گذاشتن تایل'], ['chest', 'باز کردن صندوقچه'], ['fight', 'شروع نبرد با اهریمن'], ['fightWin', 'پیروزی بر اهریمن'], ['fightLose', 'شکست از اهریمن'], ['wound', 'گرفتن زخم'], ['demon', 'حرکت اهریمن در شب'], ['breach', 'رخنه'], ['nightTick', 'تیک اقدام شب'], ['turn', 'شروع نوبت'], ['round', 'نتیجهٔ راند نبرد جادوگران'], ['fanfare', 'پایان نبرد جادوگران'], ['win', 'پایان بازی'], ['clock', 'تیک ساعت در ۱۵ ثانیهٔ آخر'], ['error', 'کار نادرست']].map(([k, n]) => ['sounds', k, n, 'audio', 'mp3، ogg یا wav کوتاه'])]);
   S.push(['مهره‌ها و توکن‌های سیاه‌چال', W.rules.houses.map(h => ['pieces', 'fig_' + h.id, 'مهرهٔ جادوگر ' + (h.name || h.id), 'image', 'مربع، پس‌زمینهٔ شفاف']).concat([1, 2, 3].map(l => ['pieces', 'dem' + l, 'توکن اهریمن ' + ['زرد', 'نارنجی', 'قرمز'][l - 1], 'image', 'مربع، پس‌زمینهٔ شفاف']), [['pieces', 'chest', 'صندوقچه', 'image', 'مربع، پس‌زمینهٔ شفاف']])]);
   S.push(['کارت‌های آکادمی', Object.values(W.cards).map(c => ['cards', c.id, c.name + ' ' + (c.code || ''), 'image', '۱۳۸×۲۰۶ یا بزرگ‌تر با همین نسبت'])]);
   S.push(['جادوگران', Object.values(W.wizards).map(w => ['wizards', w.id, 'جادوگر ' + w.id, 'image'])]);
@@ -403,12 +406,13 @@ VIEWS.art = m => {
   const draw = () => { const q = $('art-q').value.trim();
     list.innerHTML = slotsFor().map(([g, items]) => { const its = items.filter(it => !q || (it[2] + it[1]).includes(q)); if (!its.length) return ''; const done = its.filter(([c, k]) => (W.art[c] || {})[k]).length;
       return `<details ${q || g === 'پس‌زمینه‌ها و فونت‌ها' ? 'open' : ''} style="margin-bottom:10px"><summary><b>${g}</b> <span class="mut">${fa(done)} از ${fa(its.length)}</span></summary><div class="slots" style="margin-top:8px">${its.map(([c, k, n, ty, hint]) => { const p = (W.art[c] || {})[k], f = p && FILES[p];
-        return `<div class="slot ${p ? 'has' : ''}" data-c="${c}" data-k="${esc(k)}" data-ty="${ty}">${p ? '<button class="x" data-x title="حذف">×</button>' : ''}<div class="pv">${f ? (ty === 'font' ? `<span>${esc(p.split('/').pop())}</span>` : `<img src="${f.url}">`) : `<span>${ty === 'font' ? 'فایل فونت' : 'بدون تصویر'}</span>`}</div><b>${esc(n)}</b>${hint ? `<span class="tag">${hint}</span>` : ''}</div>`; }).join('')}</div></details>`; }).join(''); };
+        return `<div class="slot ${p ? 'has' : ''}" data-c="${c}" data-k="${esc(k)}" data-ty="${ty}">${p ? '<button class="x" data-x title="حذف">×</button>' : ''}<div class="pv">${f ? (ty === 'font' || ty === 'audio' ? `<span>${esc(p.split('/').pop())}</span>` : `<img src="${f.url}">`) : `<span>${ty === 'font' ? 'فایل فونت' : ty === 'audio' ? 'صدای پیش‌فرض برنامه' : 'بدون تصویر'}</span>`}</div><b>${esc(n)}</b>${hint ? `<span class="tag">${hint}</span>` : ''}</div>`; }).join('')}</div></details>`; }).join(''); };
   $('art-q').oninput = draw;
   let target = null;
   const take = async (slot, file) => {
     const c = slot.dataset.c, k = slot.dataset.k, ty = slot.dataset.ty;
     if (ty === 'image' && !/^image\//.test(file.type)) return status('این فایل تصویر نیست', true);
+    if (ty === 'audio' && !/^audio\//.test(file.type)) return status('این فایل صدا نیست', true);
     if (ty === 'font' && !/\.(woff2?|ttf|otf)$/i.test(file.name)) return status('فایل فونت باید woff2، ttf یا otf باشد', true);
     const ext = (file.name.match(/\.[a-z0-9]+$/i) || ['.png'])[0].toLowerCase();
     const old = (W.art[c] || {})[k]; if (old) await delFile(old);
@@ -417,7 +421,7 @@ VIEWS.art = m => {
   };
   list.onclick = async e => { const s = e.target.closest('.slot'); if (!s) return;
     if (e.target.dataset.x != null) { const p = W.art[s.dataset.c][s.dataset.k]; delete W.art[s.dataset.c][s.dataset.k]; if (!artRefs().has(p)) await delFile(p); dirty(); draw(); return; }
-    target = s; const f = $('f-up'); f.accept = s.dataset.ty === 'font' ? '.woff2,.woff,.ttf,.otf' : 'image/*'; f.click(); };
+    target = s; const f = $('f-up'); f.accept = s.dataset.ty === 'font' ? '.woff2,.woff,.ttf,.otf' : s.dataset.ty === 'audio' ? 'audio/*' : 'image/*'; f.click(); };
   $('f-up').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f && target) take(target, f); };
   list.ondragover = e => { const s = e.target.closest('.slot'); if (s) { e.preventDefault(); s.classList.add('drag'); } };
   list.ondragleave = e => { const s = e.target.closest('.slot'); if (s) s.classList.remove('drag'); };
@@ -571,16 +575,16 @@ function editBar() {
 // the preview keeps its game: after a reload (a new version) it comes back to the same night, turn and phone tabs
 const PVKEY = 'pv-save';
 function pvLoad() { try { return JSON.parse(localStorage.getItem(PVKEY) || 'null'); } catch (e) { return null; } }
-function pvStore() { if (!PV || !PV.R.G) return; try { const tabs = [...document.querySelectorAll('#pv-ph iframe')].map(f => { try { return JSON.parse(f.contentWindow.eval('JSON.stringify({tab, ix})')); } catch (e) { return null; } }); localStorage.setItem(PVKEY, JSON.stringify({ n: PV.n, bf: $('pv-bf').checked, tm: $('pv-tm').checked, tms: +$('pv-tms').value, hp: PVHP, G: PV.R.G, lobby: PV.R.lobby, tabs })); } catch (e) {} }
+function pvStore() { if (!PV || !PV.R.G) return; try { const tabs = [...document.querySelectorAll('#pv-ph iframe')].map(f => { try { return JSON.parse(f.contentWindow.eval('JSON.stringify({tab, ix})')); } catch (e) { return null; } }); localStorage.setItem(PVKEY, JSON.stringify({ n: PV.n, bf: $('pv-bf').checked, sh: $('pv-sh').checked, tm: $('pv-tm').checked, tms: +$('pv-tms').value, hp: PVHP, G: PV.R.G, lobby: PV.R.lobby, tabs })); } catch (e) {} }
 
 function fitMon() { const mon = $('pv-mon'); if (!mon || !mon.firstChild) return; const k = mon.clientWidth / 1920; mon.firstChild.style.transform = 'scale(' + k + ')'; mon.style.height = Math.round(1080 * k) + 'px'; }
 addEventListener('resize', fitMon);
 VIEWS.preview = m => {
   m.innerHTML = `<h2>پیش‌نمایش زنده</h2><p class="help">کل بازی با همهٔ تغییرهایت، همین‌جا و بدون شبکه اجرا می‌شود: مانیتور بالا و گوشی‌ها پایین. روی گوشی‌ها مثل بازی واقعی کلیک کن، یا «ربات» را بزن تا خودش بازی کند و به صفحه‌های بعدی برسی. هر بار که چیزی را عوض کردی، «شروع دوباره» را بزن.</p>
-  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label><input type="checkbox" id="pv-tm"> تایمر نوبت <input type="number" id="pv-tms" value="90" min="10" step="5" style="width:64px"> ثانیه</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
+  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label title="فقط برای ۳ و ۴ بازیکن"><input type="checkbox" id="pv-sh"> بازی کوتاه ۱۰ شبه</label><label><input type="checkbox" id="pv-tm"> تایمر نوبت <input type="number" id="pv-tms" value="90" min="10" step="5" style="width:64px"> ثانیه</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><button class="btn g" id="pv-nev" title="ربات نوبت‌های باقی‌ماندهٔ این شب را بازی می‌کند و وقایع شب روی مانیتور یکی‌یکی پخش می‌شود">وقایع شب ☾</button><span class="mut" id="pv-st"></span></div>
   <div id="pv-wrap"><div class="pvcap"><span class="pvl" id="pvlm">مانیتور</span></div><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
   const saved0 = pvLoad();
-  if (saved0) { $('pv-n').value = saved0.n; $('pv-bf').checked = !!saved0.bf; $('pv-tm').checked = !!saved0.tm; if (saved0.tms) $('pv-tms').value = saved0.tms; PVHP = saved0.hp || ''; $('pv-hp').value = PVHP; }
+  if (saved0) { $('pv-n').value = saved0.n; $('pv-bf').checked = !!saved0.bf; $('pv-sh').checked = !!saved0.sh; $('pv-tm').checked = !!saved0.tm; if (saved0.tms) $('pv-tms').value = saved0.tms; PVHP = saved0.hp || ''; $('pv-hp').value = PVHP; }
   const start = fresh => {
     stopPreview(); const n = +$('pv-n').value;
     const saved = fresh ? null : pvLoad(); if (fresh) try { localStorage.removeItem(PVKEY); } catch (e) {}
@@ -591,6 +595,7 @@ VIEWS.preview = m => {
       const H = W.rules.houses, fake = t => ({ token: t, role: 'phone', send() {} });
       for (let i = 0; i < n; i++) R.message(fake('pv' + i), { t: 'join', name: 'بازیکن ' + fa(i + 1), house: H[i % H.length].id });
       if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
+      if ($('pv-sh').checked) R.message(fake('pv0'), { t: 'opt', short: true });
       if ($('pv-tm').checked) R.message(fake('pv0'), { t: 'opt', timer: Math.max(10, +$('pv-tms').value || 90) });
       R.message(fake('pv0'), { t: 'start', seed: 7 });
       if (saved && saved.n === n && saved.G) { try { R.G = saved.G; R.save(); } catch (e) {} }
@@ -605,8 +610,9 @@ VIEWS.preview = m => {
   let rs = 11; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
   const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) PV.hw.botStep(PV.R.G, rnd); } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-hp').onchange = e => { PVHP = e.target.value; start(true); };
-  $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true); $('pv-tm').onchange = () => start(true); $('pv-tms').onchange = () => { if ($('pv-tm').checked) start(true); };
+  $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true); $('pv-sh').onchange = () => start(true); $('pv-tm').onchange = () => start(true); $('pv-tms').onchange = () => { if ($('pv-tm').checked) start(true); };
   $('pv-go').onclick = () => start(true); $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
+  $('pv-nev').onclick = () => { if (!PV) return; const G0 = () => PV.R.G, n0 = G0().night; let g = 0; while (!G0().nightQ && G0().night === n0 && G0().phase !== 'end' && g++ < 3000) PV.hw.botStep(G0(), rnd); PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) PV.hw.botStep(PV.R.G, rnd); PV.R.broadcast(); info(); };
   $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };
   start();
@@ -629,8 +635,8 @@ function check() {
   if (Object.values(Wz).filter(w => w.g !== 'N').length < R.hallSize) E.push('جادوگران شهر از اندازهٔ تالار کمترند');
   for (const t of R.treasures) if (!R.items[t] && !R.treasureNames[t]) E.push('گنجینهٔ ناشناخته: ' + t);
   if (R.treasures.includes('m6') && !C.m6) E.push('گنجینهٔ «کارت جادوی قدرت ۶» کارت m6 را لازم دارد');
-  for (const n in R.byPlayers) { const B = R.byPlayers[n]; for (const b of B.battle) if (b > B.nights) E.push(fa(n) + ' بازیکن: شب نبرد ' + fa(b) + ' بعد از پایان بازی است'); for (const k in B.chal) if (+k > B.nights) E.push(fa(n) + ' بازیکن: شب چالش ' + fa(k) + ' بعد از پایان بازی است'); }
-  for (const n in R.byPlayers) { const B = R.byPlayers[n]; for (const kind of ['early', 'late']) { const need = Object.values(B.chal).filter(x => x === kind).length, have = Object.values(R.challenges).filter(c => c.kind === kind && c.active !== false).length; if (have < need) E.push(fa(n) + ' بازیکن: ' + fa(need) + ' توکن چالش «' + (kind === 'early' ? 'زود' : 'دیر') + '» لازم است ولی فقط ' + fa(have) + ' توکن فعال است'); } for (const k in B.chal) { const v = B.chal[k]; if (v !== 'early' && v !== 'late' && !R.challenges[v]) E.push('توکن چالش ناشناخته: ' + v); } }
+  for (const n of Object.keys(R.byPlayers).concat(R.shortGame ? ['short'] : [])) { const B = n === 'short' ? R.shortGame : R.byPlayers[n]; for (const b of B.battle) if (b > B.nights) E.push(fa(n) + ' بازیکن: شب نبرد ' + fa(b) + ' بعد از پایان بازی است'); for (const k in B.chal) if (+k > B.nights) E.push(fa(n) + ' بازیکن: شب چالش ' + fa(k) + ' بعد از پایان بازی است'); }
+  for (const n of Object.keys(R.byPlayers).concat(R.shortGame ? ['short'] : [])) { const B = n === 'short' ? R.shortGame : R.byPlayers[n]; for (const kind of ['early', 'late']) { const need = Object.values(B.chal).filter(x => x === kind).length, have = Object.values(R.challenges).filter(c => c.kind === kind && c.active !== false).length; if (have < need) E.push(fa(n) + ' بازیکن: ' + fa(need) + ' توکن چالش «' + (kind === 'early' ? 'زود' : 'دیر') + '» لازم است ولی فقط ' + fa(have) + ' توکن فعال است'); } for (const k in B.chal) { const v = B.chal[k]; if (v !== 'early' && v !== 'late' && !R.challenges[v]) E.push('توکن چالش ناشناخته: ' + v); } }
   for (const h of R.houses) if (h.power && !(R.housePowers || {})[h.power]) E.push('قدرت ناشناخته برای خاندان ' + h.name);
   if (R.houses.length < 5) E.push('برای ۵ بازیکن دست‌کم ۵ خاندان لازم است');
   if (new Set(R.houses.map(h => h.id)).size !== R.houses.length) E.push('شناسهٔ خاندان‌ها تکراری است');

@@ -183,6 +183,66 @@ input.inp:focus{border-color:#f3cf72}
 .hgc>.ac{box-shadow:0 4px 14px rgba(0,0,0,.45)}
 .btn.gold2{background:linear-gradient(#ffe39a,#c9962e);color:#2a1a00;box-shadow:0 0 0 2px #4fc08d,0 4px 16px rgba(79,192,141,.45)}
 
-.meblink{animation:meb 1s ease-in-out infinite}@keyframes meb{50%{opacity:.3}}
+.meblink{animation:meb 2.6s ease-in-out infinite}@keyframes meb{50%{opacity:.62}}
 .mepulse{transform-box:fill-box;transform-origin:center;animation:mep 1.4s ease-out infinite}@keyframes mep{from{transform:scale(.8);opacity:.9}to{transform:scale(1.9);opacity:0}}
 circle.mk2{stroke-width:7;animation:blk 1s ease-in-out infinite}
+
+.ndet{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:26px;min-height:0;animation:ndIn .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes ndIn{from{opacity:0;transform:translateX(-40px) scale(.97)}}
+.ndet h2{margin:0}.ndbig{font-size:34px;font-weight:800;color:#ece6ff;text-align:center}
+.ndd{font-size:26px;font-weight:800;color:#9ef0c3;background:rgba(79,192,141,.12);border:1.5px solid #4fc08d;border-radius:14px;padding:10px 22px;animation:ndIn .5s .25s both}
+.ndcards{display:flex;gap:26px;justify-content:center;flex-wrap:wrap;align-items:center}
+.ndc>.ac,.ndc>.wz{transform:scale(1.25);transform-origin:center}.ndc{padding:30px 20px}
+.ndc.toburn{animation:toburn 1.2s ease-in-out infinite}@keyframes toburn{50%{filter:drop-shadow(0 0 18px #ff8a3a) brightness(1.15)}}
+.ndc.burnt{animation:burnt 1.6s ease-in forwards}@keyframes burnt{0%{filter:drop-shadow(0 0 22px #ff8a3a) brightness(1.3)}45%{filter:drop-shadow(0 0 36px #ff5a1f) brightness(1.6) sepia(.6);transform:translateY(-10px)}100%{filter:grayscale(1) brightness(.45);opacity:.45;transform:translateY(16px) scale(.92)}}
+.ndc.tokpop .mk{animation:tokpop .7s .35s cubic-bezier(.3,1.8,.5,1) both}@keyframes tokpop{from{transform:scale(0);opacity:0}}
+.ndc.tokpop{animation:tokglow 1s .3s ease-out}@keyframes tokglow{40%{filter:drop-shadow(0 0 16px #7fc0ff)}}
+.nhat{display:flex;flex-direction:column;align-items:center;gap:12px}.nhat.go svg{animation:hatgo 1.1s cubic-bezier(.3,1.3,.5,1) both}@keyframes hatgo{0%{transform:translateX(160px) rotate(18deg);opacity:0}60%{transform:translateX(-10px) rotate(-6deg);opacity:1}100%{transform:none}}
+.nhn{font-size:46px;font-weight:900;animation:ndIn .6s .5s both}
+/* join screen: house names and powers */
+.hname{text-align:center;font-weight:900;font-size:17px;margin:-4px 0 8px}
+.hlist{display:flex;flex-direction:column;gap:7px;margin-bottom:6px}
+.hrow{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);transition:border-color .2s,background .2s}
+.hrow>i{flex:none;width:18px;height:18px;border-radius:50%;background:var(--hc);margin-top:3px;box-shadow:0 0 0 2px rgba(0,0,0,.35)}
+.hrow.sel{border-color:var(--hc);background:color-mix(in srgb,var(--hc) 14%,transparent)}
+.hrow.tk{opacity:.45}
+.hrow .hb{flex:1;min-width:0}
+.hrow .ht{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hrow .ht b{font-size:15px;color:var(--hc)}
+.hrow .hp{font-size:12.5px;line-height:1.65;margin-top:2px;color:#ddd8f3}
+.hrow .hp u{text-decoration:none;font-weight:800;color:#f3cf72}
+.hst{display:inline-flex;align-items:center;gap:2px;font-size:12px;font-weight:800}
+.hst .svi{width:16px;height:16px}
+/* white 3D die on the phone (Farshad 2026-11-06) */
+.die3{--s:132px;width:var(--s);height:var(--s);perspective:600px;margin:14px auto 10px;-webkit-tap-highlight-color:transparent}
+.die3.tap{cursor:pointer}
+.die3 .cube{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:rotateX(-16deg) rotateY(20deg)}
+.die3.tap .cube:not(.spin){animation:dieIdle 3.2s ease-in-out infinite}
+.die3 .cube.spin{animation:dieSpin .7s linear infinite}
+.die3 .cube.land{animation:dieLand .55s cubic-bezier(.2,1.4,.4,1)}
+.die3 .cf{position:absolute;inset:0;border-radius:18%;background:radial-gradient(circle at 35% 30%,#ffffff 0%,#f4f1ea 55%,#ddd6c8 100%);border:1px solid #bfb6a4;box-shadow:inset 0 0 14px rgba(120,100,70,.28);display:flex;align-items:center;justify-content:center;backface-visibility:hidden}
+.die3 .fr{transform:translateZ(calc(var(--s)/2))}
+.die3 .bk{transform:rotateY(180deg) translateZ(calc(var(--s)/2))}
+.die3 .rt{transform:rotateY(90deg) translateZ(calc(var(--s)/2));filter:brightness(.86)}
+.die3 .lf{transform:rotateY(-90deg) translateZ(calc(var(--s)/2));filter:brightness(.86)}
+.die3 .tp{transform:rotateX(90deg) translateZ(calc(var(--s)/2));filter:brightness(1.04)}
+.die3 .bt{transform:rotateX(-90deg) translateZ(calc(var(--s)/2));filter:brightness(.75)}
+.die3 .dnum{font-size:64px;font-weight:900;color:#2a1a5a;line-height:1;white-space:nowrap;text-shadow:0 1px 0 #fff}
+.die3 .dnum:has(span+span),.die3 .dnum{max-width:92%}
+.die3 .dnum .okd{color:#1d8a55}
+.die3 .pips{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:70%;height:70%;gap:6%}
+.die3 .pips i{border-radius:50%}
+.die3 .pips i.on{background:radial-gradient(circle at 40% 35%,#4a4458,#16131d);box-shadow:inset 0 1px 2px rgba(0,0,0,.6)}
+@keyframes dieIdle{0%,100%{transform:rotateX(-16deg) rotateY(20deg)}50%{transform:rotateX(-18deg) rotateY(36deg) translateY(-4px)}}
+@keyframes dieSpin{from{transform:rotateX(-16deg) rotateY(20deg) rotateZ(0)}to{transform:rotateX(344deg) rotateY(380deg) rotateZ(360deg)}}
+@keyframes dieLand{0%{transform:rotateX(-60deg) rotateY(80deg) scale(1.12)}100%{transform:rotateX(-16deg) rotateY(20deg)}}
+@media (prefers-reduced-motion:reduce){.die3 .cube{animation:none!important}}
+/* start-cell picker: cells stay round circles whatever the phone height (Farshad 2026-11-06) */
+.pgate{flex:none;width:min(100%,46vh);aspect-ratio:1;align-self:center;align-items:center;justify-items:center}
+.pgate i{width:100%;aspect-ratio:1;height:auto}
+/* monitor top bar: the night number is already on the night track at the right; the timer sits at the far left, no frame */
+.M .top .turn{display:flex;align-items:center;gap:14px}
+.M .top .turn .tmr{order:2;margin-inline-start:auto;border:0;background:none;padding:0 4px}
+/* the join screen scrolls when the house list is long */
+body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touch}
+.P:has(.hlist)>*{flex-shrink:0}

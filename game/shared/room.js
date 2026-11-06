@@ -5,7 +5,7 @@
 'use strict';
 function Room(mods, env) {
   const { D, Game, Dun, WB } = mods;
-  let lobby = { players: [], host: null, bf: false, timer: 0 };   // timer: seconds per turn, 0 = off   // players: {token, name, house}
+  let lobby = { players: [], host: null, bf: false, timer: 0, short: false };   // timer: seconds per turn, 0 = off   // players: {token, name, house}
   let G = null;
   const lastErr = {};
   let UI = { pid: null, pos: null, dun: false, off: [0, 0], tab: 'hand', i: 0, n: 0 };
@@ -39,7 +39,7 @@ function Room(mods, env) {
     v.me = pid;
     return v;
   }
-  function lobbyView() { return { players: lobby.players.map((p, i) => ({ name: p.name, house: p.house, host: p.token === lobby.host, on: !!online[p.token], i })), bf: lobby.bf, timer: lobby.timer, hasSave: !G && !!env.load(), version: env.version }; }
+  function lobbyView() { return { players: lobby.players.map((p, i) => ({ name: p.name, house: p.house, host: p.token === lobby.host, on: !!online[p.token], i })), bf: lobby.bf, timer: lobby.timer, short: lobby.short, hasSave: !G && !!env.load(), version: env.version }; }
   function broadcast() {
     syncUI();
     const base = { ips: env.ips(), port: env.port, version: env.version, ui: UI };
@@ -62,11 +62,11 @@ function Room(mods, env) {
       broadcast(); return;
     }
     if (m.t === 'leave') { if (G) return; lobby.players = lobby.players.filter(p => p.token !== tok); if (lobby.host === tok) lobby.host = lobby.players[0] ? lobby.players[0].token : null; broadcast(); return; }
-    if (m.t === 'opt') { if (tok !== lobby.host || G) return; if ('bf' in m) lobby.bf = !!m.bf; if ('timer' in m) lobby.timer = Math.max(0, Math.min(3600, m.timer | 0)); broadcast(); return; }
+    if (m.t === 'opt') { if (tok !== lobby.host || G) return; if ('bf' in m) lobby.bf = !!m.bf; if ('short' in m) lobby.short = !!m.short; if ('timer' in m) lobby.timer = Math.max(0, Math.min(3600, m.timer | 0)); broadcast(); return; }
     if (m.t === 'start') {
       if (tok !== lobby.host || G) return;
       if (lobby.players.length < 2) return err(c, 'دست‌کم ۲ بازیکن لازم است');
-      G = Game.newGame({ players: lobby.players.map(p => ({ name: p.name, house: p.house })), bf: lobby.bf, timer: lobby.timer, seed: m.seed });
+      G = Game.newGame({ players: lobby.players.map(p => ({ name: p.name, house: p.house })), bf: lobby.bf, timer: lobby.timer, short: lobby.short, seed: m.seed });
       save(); broadcast(); return;
     }
     if (m.t === 'resume') {

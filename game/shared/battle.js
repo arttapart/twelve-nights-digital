@@ -142,6 +142,7 @@ _.H.bq = (G, pid, v, q) => {
 };
 function afterRound(G) {
   const B = G.battle, E = B.eng, h = E.history[E.history.length - 1];
+  _.sfx(G, 'round');
   B.last = { n: ++G.ev, round: h.round, cards: h.cards, score: h.score, base: h.base, parts: h.parts, winner: h.winner, tie: h.tie };
   for (const p of G.players) {
     const P = E.P[p.id], prevBurn = (B.burnSeen = B.burnSeen || {})[p.id] || 0;
@@ -171,6 +172,7 @@ function nextRound(G) {
   B.phase = 'pick'; B.picked = {};
 }
 function scoreBattle(G) {
+  _.sfx(G, 'fanfare');
   const B = G.battle, F = B.eng.final, e = bfe(B);
   B.phase = 'done'; B.res = { n: ++G.ev, res: F.res, bonusTo: F.bonusTo };
   for (const p of G.players) {

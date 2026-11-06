@@ -6112,35 +6112,40 @@
     "name": "بنفش",
     "color": "#8e5bd6",
     "power": "",
-    "start": {}
+    "start": {},
+    "title": "خاندان نیلوفر سیاه"
    },
    {
     "id": "sky",
     "name": "آبی آسمانی",
     "color": "#5cb8e8",
     "power": "",
-    "start": {}
+    "start": {},
+    "title": "خاندان آسمان‌پر"
    },
    {
     "id": "orange",
     "name": "نارنجی",
     "color": "#f08a3c",
     "power": "",
-    "start": {}
+    "start": {},
+    "title": "خاندان آذرخش"
    },
    {
     "id": "green",
     "name": "سبز",
     "color": "#5bbd5f",
     "power": "",
-    "start": {}
+    "start": {},
+    "title": "خاندان سروبن"
    },
    {
     "id": "yellow",
     "name": "زرد",
     "color": "#e9c63b",
     "power": "",
-    "start": {}
+    "start": {},
+    "title": "خاندان زرین‌تاج"
    }
   ],
   "byPlayers": {
@@ -6216,6 +6221,7 @@
   "hallSize": 5,
   "hallTokMax": 2,
   "breachMode": "min",
+  "soundVol": 60,
   "storeBase": 2,
   "storeUp": 4,
   "tokenMax": 3,
@@ -6702,6 +6708,21 @@
     "start": {
      "coin": 1
     }
+   }
+  },
+  "shortGame": {
+   "nights": 10,
+   "battle": [
+    4,
+    6,
+    8,
+    10
+   ],
+   "chal": {
+    "5": "early",
+    "7": "early",
+    "9": "late",
+    "10": "f_hunt"
    }
   }
  },

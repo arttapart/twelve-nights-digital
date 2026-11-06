@@ -16,10 +16,12 @@ const api = connect('monitor', (m, up) => {
     seen.duel = G.duel ? G.duel.n : 0; seen.chal = G.chalResult ? G.chalResult.n : 0; seen.breach = G.lastBreach ? G.lastBreach.n : 0;
   }
   first = false;
+  sfxRun(S.G);
   render();
 });
 
 let CURK = '';
+window.CLOCK_SFX = true;   // only the monitor ticks in the last seconds of a turn
 function render() {
   const G = S.G;
   if (!G) { morph(stage, lobby(), 'lobby'); return; }
@@ -53,7 +55,7 @@ function lobby() {
 <div class="zone ctr" style="padding:26px 34px;gap:14px;width:520px">${qr ? `<div class="qr">${qr.svg}</div><div class="sub" style="direction:ltr;font-size:26px;color:#ffe7a6">${esc(qr.url)}</div>` : '<div class="sub">هنوز به هیچ شبکه‌ای وصل نیست</div>'}
 <div class="sub">با اپ «۱۲ شب» یا دوربین گوشی اسکن کنید</div>${ips.length > 1 ? `<div class="sub" style="font-size:18px;direction:ltr">${ips.slice(1).map(ip => esc(S.qr[ip].url)).join(' – ')}</div>` : ''}</div>
 <div class="zone" style="padding:26px 34px;gap:12px;width:640px;justify-content:flex-start"><h3>بازیکنان – ${fa(n)} از ۵</h3>${slots.join('')}
-<div class="chk" style="font-size:22px;margin-top:6px">${n >= 2 ? `${fa(n)} بازیکن – <span class="gold">${n === 5 ? '۱۰' : '۱۲'} شب</span>` : 'دست‌کم ۲ بازیکن لازم است'} – اثرهای میدان نبرد: <span class="gold">${L.bf ? 'روشن' : 'خاموش'}</span></div>
+<div class="chk" style="font-size:22px;margin-top:6px">${n >= 2 ? `${fa(n)} بازیکن – <span class="gold">${fa(L.short && (n === 3 || n === 4) && RU.shortGame ? RU.shortGame.nights : (RU.byPlayers[n] || {}).nights || 12)} شب${L.short && (n === 3 || n === 4) ? ' (بازی کوتاه)' : ''}</span>` : 'دست‌کم ۲ بازیکن لازم است'} – اثرهای میدان نبرد: <span class="gold">${L.bf ? 'روشن' : 'خاموش'}</span></div>
 ${L.hasSave ? '<div class="banner" style="font-size:20px">یک بازی ذخیره‌شده هست؛ میزبان می‌تواند آن را ادامه دهد.</div>' : ''}
 <div class="banner" style="margin-top:auto;background:rgba(243,207,114,.12);border-color:#f3cf72;color:#ffe7a6;font-size:22px">منتظر «شروع بازی» از گوشی میزبان…</div></div>
 <div class="zone" style="padding:22px 26px;width:470px;gap:10px;font-size:19px;line-height:1.75"><h3 style="font-size:28px">وصل شدن گوشی‌ها</h3>
@@ -74,7 +76,7 @@ function chalLine(G) {
 }
 function topH(G, extra) {
   const T = G.turn;
-  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>${tmrH()}` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}</span></div></div>`;
+  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>${tmrH()}` : ''}</div></div>`;
 }
 function pbarH(G) {
   const T = G.turn;
@@ -189,6 +191,10 @@ function chalStrip(G) {
 }
 
 // ---------- night ----------
+function chalH(C) {
+  const [name, pts] = CHN[C.k], mx = Math.max(1, ...C.vals.map(v => v.v));
+  return `<h2>توکن چالش شب ${fa(C.night)}</h2><div style="font-size:34px;font-weight:800">${name} – ${fa(pts)} ${sv('fame')}</div><div class="bars">${C.vals.slice().sort((a, b) => (RU.challenges[C.k] && RU.challenges[C.k].dir === 'min' ? a.v - b.v : b.v - a.v)).map(v => `<div class="bar"><span class="nm">${NM(v.id)}</span><span class="tr"><b style="width:${v.v / mx * 100}%;background:${H(v.id)}"></b></span><span class="v">${fa(v.v)}</span></div>`).join('')}</div><div class="banner" style="background:rgba(243,207,114,.14);border-color:#f3cf72;color:#ffe7a6">${C.winners.length ? C.winners.map(NM).join(' و ') + ' ← ' + fa(C.pts) + ' ' + sv('fame') + (C.winners.length > 1 ? ' (تقسیم و گرد به پایین)' : '') : 'کسی امتیاز نگرفت'}</div>`;
+}
 function nightScr() {
   const G = S.G, Q = G.nightQ;
   const br = G.lastBreach && seen.breach === G.lastBreach.n && Date.now() - (timers.breachAt || 0) < 15000 ? G.lastBreach : null;
@@ -196,14 +202,37 @@ function nightScr() {
   const list = Q ? Q.steps.map((st, i) => { const cls = st.done ? 'ok' : st.on ? 'on' : ''; return `<div class="nstep ${cls}"><i>${st.done ? '✓' : st.on ? '◆' : ''}</i><div><b>${esc(st.t)}</b>${st.done && st.d ? `<span>${esc(st.d)}</span>` : ''}</div></div>`; }).join('') : '';
   // a demon's raid step: its tile big on the map, the token slides along the corridor
   const cur = Q && Q.cur != null ? Q.steps[Q.cur] : null;
-  let map;
+  // the left window shows what the current step does, with its own animation
+  let map, det = '';
   if (cur && cur.k === 'mv') {
     const dm = G.dun.demons.find(x => x.id === cur.id), node = cur.m ? cur.m.from : dm ? dm.node : null;
     map = node ? mapSvg(G, { focus: tileOf(node).split(',').map(Number), pad: .3, arrows: cur.done && cur.m ? [cur.m] : [] }) : mapSvg(G, { arrows: G.nightMoves });
-  } else map = mapSvg(G, { arrows: G.nightMoves });
+  } else if (cur) det = nightDet(G, cur, Q.cur);
+  else map = mapSvg(G, { arrows: G.nightMoves });
   return `<div class="M MX" data-s="a">${topH(G, `<span class="tag" style="font-size:22px;padding:6px 18px">پایان شب ${fa(G.night)}</span>`)}<div class="body">
 <div class="nlist zone"><h4>اقدامات پایان شب</h4>${list}</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – ${br.mode === 'all' ? 'همه ۱ زخم گرفتند؛ ۱ امتیاز کم شد: <b>' + (br.fameLost || []).map(NM).join('، ') + '</b>' : 'کمترین توکن شکار: <b>' + br.hit.map(NM).join('، ') + '</b>'}</div>` : ''}<div class="dmap">${map}</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – ${br.mode === 'all' ? 'همه ۱ زخم گرفتند؛ ۱ امتیاز کم شد: <b>' + (br.fameLost || []).map(NM).join('، ') + '</b>' : 'کمترین توکن شکار: <b>' + br.hit.map(NM).join('، ') + '</b>'}</div>` : ''}${det ? det : `<div class="dmap">${map}</div>`}</div></div>${pbarH(G)}${waitLine(G)}</div>`;
+}
+function nightDet(G, st, i) {
+  const k = 'nd-' + G.night + '-' + i + (st.done ? 'd' : 'o');
+  const box = (title, body, cls) => `<div class="ndet zone ${cls || ''}" data-k="${k}"><h2>${title}</h2>${body}${st.done && st.d ? `<div class="ndd">${esc(st.d)}</div>` : ''}</div>`;
+  if (st.k === 'mv0') return box('هجوم شبانه', `<div class="ndbig">اهریمنی در سیاه‌چال نیست</div><div class="dmap" style="flex:1;width:100%">${mapSvg(G, {})}</div>`);
+  if (st.k === 'chal') return G.chalResult && st.done ? `<div class="ndet zone" data-k="${k}">${chalH(G.chalResult)}</div>` : box('توکن چالش شب ' + fa(G.night), `<div class="ndbig">${esc(st.t)}</div>`);
+  if (st.k === 'acad') {
+    // before: the cards about to burn glow at the right end of the row; after: they burn to ash
+    const ids = st.done ? (st.ids || []) : G.acad.row.filter((_, j) => !G.acad.seal[j]).slice(0, G.players.length === 2 ? 2 : 1);
+    return box('آکادمی سحرستان', `<div class="ndcards">${ids.map(id => `<div class="ndc ${st.done ? 'burnt' : 'toburn'}">${acard(id)}</div>`).join('') || '<div class="ndbig">کارتی نسوخت</div>'}</div>`);
+  }
+  if (st.k === 'hall') {
+    const ws = st.done ? st.ws || [] : G.hall.row.map(w => ({ id: w.id, tok: w.tok || 0 }));
+    return box('تالار جادوگران', `<div class="ndcards">${ws.map(w => `<div class="ndc ${st.done && w.add ? 'tokpop' : ''}">${wcard(w.id, w.tok)}</div>`).join('')}</div>`);
+  }
+  if (st.k === 'hat') {
+    const id = st.done ? st.first : G.order[0];
+    return box('کلاه جادوگری', `<div class="nhat ${st.done ? 'go' : ''}"><svg viewBox="0 0 64 64" width="190" height="190"><defs><linearGradient id="gHat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8f6bff"/><stop offset="1" stop-color="#2c1677"/></linearGradient></defs><path d="M33 4c-4 9-9 20-13 34l24 0C41 28 38 20 44 12c-4 2-8 1-11-8z" fill="url(#gHat)" stroke="#120a33" stroke-width="1.6" stroke-linejoin="round"/><path d="M21 33.5c7 1.6 15 1.6 22 0l1 4.6c-8 1.8-16 1.8-24 0z" fill="#f3cf72" stroke="#6e4a08" stroke-width="1.2"/><ellipse cx="32" cy="44" rx="27" ry="7" fill="url(#gHat)" stroke="#120a33" stroke-width="1.6"/><path d="M28 18l1.4 2.8 3 .4-2.2 2 .6 3-2.8-1.5-2.7 1.5.5-3-2.2-2 3-.4z" fill="#f3cf72"/></svg><div class="nhn" style="color:${H(id)}">${NM(id)}</div><div class="sub">${G.players.length === 2 ? 'بازی دونفره: نوبت‌ها یکی در میان' : st.done ? 'نفر اول شب ' + fa(G.night + 1) : 'کلاه به نفر بعد می‌رسد…'}</div></div>`);
+  }
+  if (st.k === 'battle') return box('نبرد جادوگران', `<div class="ndbig">آماده شدن برای نبرد…</div>`);
+  return box(esc(st.t), '');
 }
 
 // ---------- wizard battle ----------
@@ -257,7 +286,7 @@ function overlays() {
   if (live('toast') && timers.toastT && CURK !== 'main') o += `<div class="mtoast k-${timers.toastT.kind}">${esc(timers.toastT.t)}</div>`;
   // every die a player rolls: spinning faces on the big screen, then the result
   const rr = G.roll;
-  if (rr && rr.n > seen.die) { seen.die = rr.n; setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
+  if (rr && rr.n > seen.die) { seen.die = rr.n; SFX.play('dice'); setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
   if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 9000); }
   if (live('duel') && G.duel) {
     const D2 = G.duel;
@@ -269,10 +298,7 @@ function overlays() {
     o += `<div class="ovl"><div class="zone ctr" style="gap:20px;padding:34px 50px"><h2>دوئل چالش کریستال</h2><table class="tbl" style="width:1100px"><tr><th></th>${Array.from({ length: nd }, (_, k) => `<th>پرتاب ${fa(k + 1)}</th>`).join('')}<th>جمع</th></tr>${D2.res.map(r => `<tr class="${cur && cur.id === r.id ? 'win' : ''}"><td><span class="nmd"><i style="background:${H(r.id)}"></i>${NM(r.id)}</span></td>${Array.from({ length: nd }, (_, k) => `<td>${r.rolls[k] != null ? `<span class="die6">${fa(r.rolls[k])}</span>` : '<span class="sub">–</span>'}</td>`).join('')}<td style="font-size:34px">${r.rolls.length ? fa(r.sum) : ''}</td></tr>`).join('')}</table><div class="sub">${cur ? NM(cur.id) + ' در گوشی تاس را بیندازد' : ''}</div></div></div>`;
   }
   if (G.chalResult && G.chalResult.n > seen.chal) { seen.chal = G.chalResult.n; show('chal', 9000); }
-  if (live('chal') && G.chalResult) {
-    const C = G.chalResult, [name, pts] = CHN[C.k], mx = Math.max(1, ...C.vals.map(v => v.v));
-    o += `<div class="ovl"><div class="zone ctr" style="gap:26px;padding:34px 50px;width:1300px"><h2>توکن چالش شب ${fa(C.night)}</h2><div style="font-size:34px;font-weight:800">${name} – ${fa(pts)} ${sv('fame')}</div><div class="bars">${C.vals.slice().sort((a, b) => (RU.challenges[C.k] && RU.challenges[C.k].dir === 'min' ? a.v - b.v : b.v - a.v)).map(v => `<div class="bar"><span class="nm">${NM(v.id)}</span><span class="tr"><b style="width:${v.v / mx * 100}%;background:${H(v.id)}"></b></span><span class="v">${fa(v.v)}</span></div>`).join('')}</div><div class="banner" style="background:rgba(243,207,114,.14);border-color:#f3cf72;color:#ffe7a6">${C.winners.length ? C.winners.map(NM).join(' و ') + ' ← ' + fa(C.pts) + ' ' + sv('fame') + (C.winners.length > 1 ? ' (تقسیم و گرد به پایین)' : '') : 'کسی امتیاز نگرفت'}</div></div></div>`;
-  }
+  if (live('chal') && G.chalResult && G.phase !== 'night') o += `<div class="ovl"><div class="zone ctr" style="gap:26px;padding:34px 50px;width:1300px">${chalH(G.chalResult)}</div></div>`;
   if (G.lastBreach && G.lastBreach.n > seen.breach) { seen.breach = G.lastBreach.n; timers.breachAt = Date.now(); }
   return o;
 }

@@ -78,7 +78,7 @@ function demTok(x, y, c, r, lv) { const art = ART.pieces && lv && ART.pieces['de
 function figure(x, y, c, me, id, blink, house) {
   const art = ART.pieces && house && ART.pieces['fig_' + house];
   const body = art ? `<image href="${artU(art)}" x="-22" y="-22" width="44" height="44"/>` : `<circle r="17" fill="${c}" stroke="#000" stroke-width="4"/><circle r="17" fill="none" stroke="#fff" stroke-width="1.5" opacity=".7"/>`;
-  return `<g class="fig"${id != null ? ` data-fig="${id}"` : ''} style="transform:translate(${x}px,${y}px)"><g class="figin"><g class="${blink ? 'meblink' : ''}">${body}${me ? `<circle r="24" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>` : ''}</g>${blink ? `<circle class="mepulse" r="22" fill="none" stroke="#fff" stroke-width="3"/>` : ''}</g><circle class="figring" r="17" fill="none" stroke="${c}" stroke-width="3"/></g>`;
+  return `<g class="fig"${id != null ? ` data-fig="${id}"` : ''} style="transform:translate(${x}px,${y}px)"><g class="figin"><g class="${blink ? 'meblink' : ''}">${body}${me ? `<circle r="24" fill="none" stroke="${c}" stroke-width="2" opacity=".8"/>` : ''}</g></g><circle class="figring" r="17" fill="none" stroke="${c}" stroke-width="3"/></g>`;
 }
 // o: {focus:[R,C], moves:[...], exits:[...], portal:{cells}, place, arrows, me, hit (phone: add tap targets)}
 function mapSvg(G, o = {}) {
@@ -309,4 +309,84 @@ let TEND = null;
 function setTimer(G) { TEND = G && G.turn && G.turn.left != null && G.cfg && G.cfg.timer ? Date.now() + G.turn.left : null; }
 const tmrTxt = () => { const s = Math.max(0, Math.ceil((TEND - Date.now()) / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 function tmrH() { return TEND ? `<span class="tmr ${TEND - Date.now() <= 10000 ? 'low' : ''}">⏱ <b>${fa(tmrTxt())}</b></span>` : ''; }
-setInterval(() => { if (!TEND) return; for (const e of document.querySelectorAll('.tmr')) { e.querySelector('b').textContent = fa(tmrTxt()); e.classList.toggle('low', TEND - Date.now() <= 10000); } }, 300);
+let clockLast = 0;
+setInterval(() => {
+  if (!TEND) return; for (const e of document.querySelectorAll('.tmr')) { e.querySelector('b').textContent = fa(tmrTxt()); e.classList.toggle('low', TEND - Date.now() <= 10000); }
+  // the monitor ticks softly once a second during the last 15 seconds
+  const left = TEND - Date.now(), sec = Math.ceil(left / 1000);
+  if (window.CLOCK_SFX && left > 0 && sec <= 15 && sec !== clockLast) { clockLast = sec; if (typeof SFX !== 'undefined') SFX.play('clock'); }
+}, 200);
+
+// ---------- sound effects (Farshad 2026-11-06) ----------
+// Soft, short sounds made in the browser (no files). Any sound can be replaced in the editor
+// (art.sounds[key] = an audio file); the overall volume is rules.soundVol (0-100).
+const SFX = (() => {
+  let ctx = null, master = null;
+  const vol = () => { const v = RU && RU.soundVol != null ? RU.soundVol : 60; return Math.max(0, Math.min(100, v)) / 100; };
+  const ac = () => {
+    if (!ctx) { const A = window.AudioContext || window.webkitAudioContext; if (!A) return null; ctx = new A(); master = ctx.createGain(); master.gain.value = .55; master.connect(ctx.destination); }
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    return ctx;
+  };
+  const unlock = () => { try { ac(); } catch (e) {} };
+  ['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, unlock, { passive: true }));
+  let nbuf = null;
+  const noise = c => { if (nbuf) return nbuf; nbuf = c.createBuffer(1, c.sampleRate, c.sampleRate); const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return nbuf; };
+  // building blocks: a tone and a filtered noise burst, both with soft attack and decay
+  function tone(c, t, f, dur, g, type, f2) {
+    const o = c.createOscillator(), a = c.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(g, t + .008); a.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(a); a.connect(master); o.start(t); o.stop(t + dur + .05);
+  }
+  function hiss(c, t, dur, g, f, q, f2, type) {
+    const s = c.createBufferSource(), fl = c.createBiquadFilter(), a = c.createGain(); s.buffer = noise(c); fl.type = type || 'bandpass'; fl.frequency.setValueAtTime(f, t); if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur); fl.Q.value = q || 1;
+    a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(g, t + Math.min(.02, dur / 4)); a.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(fl); fl.connect(a); a.connect(master); s.start(t, Math.random() * .5); s.stop(t + dur + .05);
+  }
+  const DEF = {
+    tap: (c, t) => { tone(c, t, 1400, .045, .05); hiss(c, t, .03, .03, 4000, 2); },                          // button
+    swipe: (c, t) => { hiss(c, t, .12, .11, 3200, .8, 1400); hiss(c, t + .03, .08, .05, 5000, 1.5); },        // soft page/card flick
+    play: (c, t) => { hiss(c, t, .32, .12, 500, .7, 2600); },                                                 // card thrown up
+    card: (c, t) => { tone(c, t, 170, .14, .14, 'sine', 90); hiss(c, t, .06, .07, 2500, 1); },                // card lands on the monitor
+    dice: (c, t) => { for (let i = 0; i < 7; i++) { const d = t + i * .11 + Math.random() * .05; hiss(c, d, .035, .12 * (1 - i / 9), 2600 + Math.random() * 1600, 3); tone(c, d, 300 + Math.random() * 200, .03, .03); } tone(c, t + .85, 140, .14, .1, 'sine', 80); },
+    buy: (c, t) => { tone(c, t, 1318, .18, .07, 'triangle'); tone(c, t + .07, 1760, .26, .06, 'triangle'); },
+    hire: (c, t) => { [523, 659, 784].forEach((f, i) => tone(c, t + i * .07, f, .45, .06, 'triangle')); },
+    gob: (c, t) => { tone(c, t, 240, .12, .08, 'square', 160); tone(c, t + .1, 1318, .16, .05, 'triangle'); },
+    upgrade: (c, t) => { [392, 523, 659, 1046].forEach((f, i) => tone(c, t + i * .06, f, .4, .05, 'triangle')); },
+    step: (c, t) => { hiss(c, t, .09, .1, 380, .9, 0, 'lowpass'); },
+    tile: (c, t) => { tone(c, t, 210, .09, .12, 'sine', 120); hiss(c, t, .05, .06, 900, 1.2); },
+    chest: (c, t) => { [880, 1175, 1480, 1760, 2349].forEach((f, i) => tone(c, t + i * .05, f, .3, .045, 'sine')); },
+    fight: (c, t) => { tone(c, t, 98, .5, .12, 'sawtooth', 70); hiss(c, t, .4, .05, 300, .7, 0, 'lowpass'); },
+    fightWin: (c, t) => { [523, 659, 784, 1046].forEach((f, i) => tone(c, t + i * .08, f, .5, .06, 'triangle')); },
+    fightLose: (c, t) => { [392, 330, 262].forEach((f, i) => tone(c, t + i * .12, f, .45, .06, 'triangle')); },
+    wound: (c, t) => { tone(c, t, 180, .3, .09, 'sine', 110); hiss(c, t, .15, .05, 700, 1); },
+    demon: (c, t) => { tone(c, t, 62, .7, .12, 'sawtooth', 52); hiss(c, t, .6, .06, 220, .6, 0, 'lowpass'); },
+    breach: (c, t) => { [110, 165.5, 221, 293].forEach((f, i) => tone(c, t, f, 2.2 - i * .3, .09 - i * .015, 'sine')); },
+    nightTick: (c, t) => { tone(c, t, 988, .5, .05, 'triangle'); tone(c, t + .05, 1480, .35, .025, 'sine'); },
+    turn: (c, t) => { tone(c, t, 660, .35, .05, 'triangle'); tone(c, t + .12, 990, .45, .045, 'triangle'); },
+    round: (c, t) => { tone(c, t, 120, .3, .12, 'sine', 70); hiss(c, t, .12, .05, 1800, .8); },
+    fanfare: (c, t) => { [523, 659, 784, 1046, 1318].forEach((f, i) => tone(c, t + i * .1, f, .7, .055, 'triangle')); },
+    win: (c, t) => { [392, 523, 659, 784, 1046, 1318].forEach((f, i) => tone(c, t + i * .12, f, .9, .055, 'triangle')); },
+    clock: (c, t) => { tone(c, t, 2100, .025, .035, 'square'); hiss(c, t, .02, .03, 5000, 4); },          // gentle tick of the last seconds
+    error: (c, t) => { tone(c, t, 230, .16, .06, 'sine', 180); }
+  };
+  const files = {};
+  function play(k) {
+    try {
+      const v = vol(); if (!v) return;
+      const f = ART.sounds && ART.sounds[k];
+      if (f) { const a = files[k] || (files[k] = new Audio(artU(f))); const b = a.cloneNode(); b.volume = Math.min(1, v); b.play().catch(() => {}); return; }
+      const c = ac(); if (!c || !DEF[k]) return;
+      master.gain.value = .55 * v;
+      DEF[k](c, c.currentTime + .01);
+    } catch (e) {}
+  }
+  return { play, keys: Object.keys(DEF) };
+})();
+// sounds the engine recorded (G.sfx): each screen plays only the ones it should, once
+let sfxSeen = null;
+function sfxRun(G, only) {
+  const L = (G && G.sfx) || [];
+  if (sfxSeen == null) { sfxSeen = L.length ? L[L.length - 1].n : 0; return; }   // no replay after a reload
+  for (const e of L) if (e.n > sfxSeen) { sfxSeen = e.n; if (!only || only.includes(e.k)) SFX.play(e.k); }
+}
