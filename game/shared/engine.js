@@ -93,7 +93,9 @@ function applyHouse(G, p) {
 }
 const P = (G, id) => G.players[id];
 const curP = G => G.players[G.order[G.cur]];
-function log(G, t) { G.log.push({ n: ++G.ev, t }); if (G.log.length > 80) G.log.shift(); }
+// every log line remembers which player action made it (a) and whether it is a card play (k), so the monitor can show
+// the played card itself instead of its line, and the lines of other actions in the same place (Farshad 2026-11-06)
+function log(G, t, k) { const e = { n: ++G.ev, t, a: G.aseq || 0 }; if (k) e.k = k; G.log.push(e); if (G.log.length > 80) G.log.shift(); }
 function toast(G, t, kind) { G.toasts.push({ n: ++G.ev, t, kind: kind || '' }); if (G.toasts.length > 12) G.toasts.shift(); log(G, t); }
 const cap = (p, r) => p.ups[{ coin: 'capCoin', scroll: 'capScroll', ess: 'capEss' }[r]] ? R.storeUp : R.storeBase;
 const slotN = p => p.ups.slot2 ? 2 : 1;
@@ -243,7 +245,7 @@ function playCard(G, p, u, mode) {
   if (mode === 'main' || both) runMain(G, p, c);
   if (mode === 'strip' || both) runStrip(G, p, c);
   if (c.fx === 'k_both') G.turn.both = true;
-  log(G, p.name + ' کارت «' + c.name + '» را ' + (both ? 'با هر دو بخش' : mode === 'strip' ? 'برای سیاه‌چال' : '') + ' بازی کرد.');
+  log(G, p.name + ' کارت «' + c.name + '» را ' + (both ? 'با هر دو بخش' : mode === 'strip' ? 'برای سیاه‌چال' : '') + ' بازی کرد.', 'play');
   return null;
 }
 function runStrip(G, p, c) {
@@ -693,6 +695,7 @@ function finalScore(G) {
 
 // ---------- action dispatcher ----------
 function act(G, pid, a) {
+  G.aseq = (G.aseq || 0) + 1;
   try {
     if (a.t === 'answer') return answer(G, pid, a.id, a.v);
     if (G.battle && a.t && a.t.startsWith('b_')) return Battle.act(G, pid, a);

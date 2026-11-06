@@ -402,3 +402,6 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 .M:not(.MX){grid-template-rows:96px minmax(0,328fr) minmax(0,350fr) 208px}
 .zH .rowc>.wz,.zH .rowc>.deck{zoom:1.1}
 .mtoast{top:840px}
+/* the active player's latest non-card action, in the «کارت در حال اجرا» box: no frame, same font as the title, larger */
+.curc .curmsg{margin:auto;max-width:94%;text-align:center;font-size:28px;font-weight:800;line-height:1.6;animation:cmIn .4s ease-out}
+@keyframes cmIn{from{opacity:0;transform:translateY(8px)}}

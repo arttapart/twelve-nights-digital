@@ -97,7 +97,7 @@ function pbarH(G) {
     // only the active player's latest action, until the next one replaces it
     const lastL = on ? G.log.filter(l => l.n > (T.ev0 || 0)).pop() : null;
     const minis = on ? `<div class="played">${T.played.slice(-6).map(x => { const c = card(x.c); return `<div class="mini"><div class="mt2" style="background:${TYBG[c.ty]}">${TYN[c.ty]}</div><div class="mn">${esc(c.name)}</div></div>`; }).join('')}</div>` : '';
-    const played = (lastL ? `<div class="lastact" data-k="lg-${lastL.n}">${esc(lastL.t)}</div>` : '') + minis;
+    const played = minis;
     return `<div class="pt ${on ? 'on' : ''}" style="--pc:${p.color}">${played}<div class="nm"><i style="background:${p.color}"></i>${esc(p.name)}${on ? '<span style="font-size:16px;font-weight:600;opacity:.8">· در حال بازی</span>' : ''}</div><div class="stats"><span>${sv('fame')}${fa(p.fame)}</span><span>${sv('coin')}${fa(p.store.coin)}</span><span>${sv('scr')}${fa(p.store.scroll)}</span><span>${sv('ess')}${fa(p.store.ess)}</span><span>${sv('hunt')}${fa(p.hunt)}</span>${p.wounds ? `<span class="wd">زخم ${fa(p.wounds)}</span>` : ''}</div></div>`;
   }).join('')}</div>`;
 }
@@ -123,9 +123,14 @@ function spendH(G) {
 }
 function curCard(G) {
   const T = G.turn; if (!T) return '';
+  // the active player's latest action: a card play shows the card itself (lines that the same play made are not shown);
+  // any other action shows its line here, until the next action replaces it (Farshad 2026-11-06)
+  const L = G.log.filter(l => l.n > (T.ev0 || 0)), last = L[L.length - 1];
+  const pl = L.length && last.a ? L.filter(l => l.a === last.a && l.k === 'play').pop() : null;
+  if (last && !pl && !(last.k === 'play')) return `<div class="curmsg" data-k="lg-${last.n}">${esc(last.t)}</div>`;
   const x = T.played[T.played.length - 1];
   // only the last played card, while the player still has cards in hand
-  const pl = G.players[T.pid], hn = pl.handN != null ? pl.handN : (pl.hand || []).length;
+  const p2 = G.players[T.pid], hn = p2.handN != null ? p2.handN : (p2.hand || []).length;
   return x && hn ? acard(x.c, { k: '-p' + T.played.length }) : '';
 }
 const acadList = G => G.acad.row.map((id, i) => ({ src: 'row', i, id })).concat(Object.keys(G.acad.fixed).map(id => ({ src: 'fixed', i: id, id })));
