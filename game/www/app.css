@@ -409,3 +409,13 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 body.monitor .M .nights{gap:9px}
 body.monitor .M .nt{width:62px;height:76px;font-size:24px}
 body.monitor .M .nt small{font-size:23px;margin-top:3px}
+/* academy row cards share the bottom line of the fixed-row cards (Farshad 2026-11-06) */
+.zA .rowc{align-items:flex-end}.zA .rowc>.sep{align-self:stretch}
+/* decks as wide as the cards beside them (Farshad 2026-11-06) */
+.zA .rowc>.deck{width:140px;height:212px;box-sizing:border-box}
+.zH .rowc>.deck{width:158px;height:212px;box-sizing:border-box}
+/* challenge line two sizes larger; «قابل خرج» bar bigger in the actions box (Farshad 2026-11-06) */
+body.monitor .M .top .chal{font-size:22px}
+body.monitor .M .top .chal .svi{width:24px;height:24px}
+.side .cur .spend{font-size:24px;gap:14px;padding:6px 16px;border-radius:14px}
+.side .cur .spend .svi{width:30px;height:30px}.side .cur .spend .sl{font-size:17px}
