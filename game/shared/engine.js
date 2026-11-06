@@ -20,7 +20,7 @@ const CHALLENGES = R.challenges;
 const HP = R.housePowers || {};
 // house power of a player (Farshad 2026-11-05: chosen per house in the editor; '' = none)
 const housePower = p => { const h = HOUSES.find(x => x.id === p.house); return h && h.power && HP[h.power] ? h.power : ''; };
-const hasHP = (p, k) => housePower(p) === k;
+const hasHP = (p, k) => (p.hp != null ? p.hp : housePower(p)) === k;
 const byP = n => R.byPlayers[n] || R.byPlayers[Object.keys(R.byPlayers).pop()];
 const DEMON_LV = { Y: 1, O: 2, R: 3 };
 const LV_NAME = { 1: 'زرد', 2: 'نارنجی', 3: 'قرمز' };
@@ -35,7 +35,7 @@ const card = id => id === 'W' ? Object.assign({ id: 'W', ty: 'wound', cost: {}, 
 // ---------- setup ----------
 function newGame(opts) {
   const G = { v: 1, seed: (opts.seed != null ? opts.seed : entropy()) | 0, phase: 'setup', uid: 0, log: [], toasts: [], prompts: [], pid: 0,
-    cfg: { bf: !!opts.bf, timer: Math.max(0, opts.timer | 0), short: false }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
+    cfg: { bf: !!opts.bf, timer: Math.max(0, opts.timer | 0), short: false, hp: opts.hp !== false }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
   const nP = opts.players.length;
   // short 10-night game for 3 and 4 players, chosen in the lobby (Farshad 2026-11-06)
   const short = !!opts.short && (nP === 3 || nP === 4) && R.shortGame;
@@ -83,7 +83,9 @@ function newPlayer(G, p, i) {
     items: [], fame: 0, hunt: 0, chests: 0, curse: 0, red: 0, pos: null, pendingFight: null, shield: false, hp: '' };
 }
 // house start resources (on top of the common start) and power
+// the host can switch house powers off in the lobby (Farshad 2026-11-06): then no house power and no house start resources
 function applyHouse(G, p) {
+  if (G.cfg && G.cfg.hp === false) { p.hp = ''; return; }
   const h = HOUSES.find(x => x.id === p.house) || {}, st = h.start || {};
   for (const r of ['coin', 'scroll', 'ess']) if (st[r]) p.store[r] = Math.min(cap(p, r), p.store[r] + st[r]);
   for (const k of ['torch', 'pick']) for (let i = 0; i < (st[k] || 0); i++) if (p.torch + p.pick < R.tokenMax) p[k]++;

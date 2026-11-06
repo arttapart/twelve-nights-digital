@@ -59,7 +59,7 @@ const HPW = DATA.rules.housePowers || {};
 const ST_IC = { coin: 'coin', scroll: 'scr', ess: 'ess', torch: 'torch', pick: 'pick' };
 const hStart = h => Object.entries(h.start || {}).filter(([k, v]) => v && ST_IC[k]).map(([k, v]) => `<span class="hst">${fa(v)}${sv(ST_IC[k])}</span>`).join('');
 const housesBox = (hs, used) => {
-  const any = HOUSES.some(h => HPW[h.power]);
+  const any = HOUSES.some(h => HPW[h.power]) && !(S.lobby && S.lobby.hp === false);
   if (!any) { const h = HOUSES.find(x => x.id === hs); return `<div class="hname" style="color:${h.color}">${esc(h.title || h.name)}</div>`; }
   return `<div class="hlist">${HOUSES.map(h => { const w = HPW[h.power], tk = used.includes(h.id); return `<div class="hrow ${h.id === hs ? 'sel' : ''} ${tk ? 'tk' : ''}" data-house="${h.id}" style="--hc:${h.color}"><i></i><div class="hb"><div class="ht"><b>${esc(h.title || h.name)}</b>${tk ? '<span class="mut">گرفته</span>' : ''}${hStart(h)}</div>${w ? `<div class="hp"><u>${esc(w.name)}:</u> ${esc(w.txt)}</div>` : '<div class="hp mut">بدون قدرت</div>'}</div></div>`; }).join('')}</div>`;
 };
@@ -85,7 +85,7 @@ function lobby() {
   if (mine) {
     o += `<div class="pmsg gold">${fa(L.players.length)} بازیکن وصل شده‌اند${L.players.length < 2 ? ' – دست‌کم ۲ نفر لازم است' : ''}</div>`;
     if (S.host) {
-      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div>${L.players.length === 3 || L.players.length === 4 ? `<div class="tg" data-do="short">بازی کوتاه ۱۰ شبه<span class="sw2 ${L.short ? '' : 'offs'}"></span></div>` : ''}<div class="tg" data-do="tmr">تایمر نوبت<span class="sw2 ${L.timer ? '' : 'offs'}"></span></div>${L.timer ? `<div class="tmrow"><span>زمان هر نوبت</span><input id="tmrs" class="inp" type="number" min="10" max="3600" step="5" value="${L.timer}"><span>ثانیه</span></div>` : ''}</div><div style="flex:1"></div>
+      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div>${L.players.length === 3 || L.players.length === 4 ? `<div class="tg" data-do="short">بازی کوتاه ۱۰ شبه<span class="sw2 ${L.short ? '' : 'offs'}"></span></div>` : ''}${HOUSES.some(h => HPW[h.power]) ? `<div class="tg" data-do="hpw">قدرت ویژهٔ خاندان‌ها<span class="sw2 ${L.hp !== false ? '' : 'offs'}"></span></div>` : ''}<div class="tg" data-do="tmr">تایمر نوبت<span class="sw2 ${L.timer ? '' : 'offs'}"></span></div>${L.timer ? `<div class="tmrow"><span>زمان هر نوبت</span><input id="tmrs" class="inp" type="number" min="10" max="3600" step="5" value="${L.timer}"><span>ثانیه</span></div>` : ''}</div><div style="flex:1"></div>
 ${L.hasSave ? '<div class="btn ghost" data-do="resume">ادامهٔ بازی ذخیره‌شده</div>' : ''}<div class="btn ${L.players.length < 2 ? 'off' : ''}" data-do="start">شروع بازی تازه</div>`;
     } else o += `<div style="flex:1"></div><div class="pmsg">منتظر «شروع بازی» از گوشی میزبان…</div><div class="btn ghost" data-do="leave">خروج از لابی</div>`;
   }
@@ -463,6 +463,7 @@ function doIt(k, e) {
     case 'leave': api.send({ t: 'leave' }); return;
     case 'bf': api.send({ t: 'opt', bf: !S.lobby.bf }); return;
     case 'short': api.send({ t: 'opt', short: !S.lobby.short }); return;
+    case 'hpw': api.send({ t: 'opt', hp: S.lobby.hp === false }); return;
     case 'tmr': api.send({ t: 'opt', timer: S.lobby.timer ? 0 : 120 }); return;
     case 'start': api.send({ t: 'start' }); return;
     case 'resume': api.send({ t: 'resume' }); return;
