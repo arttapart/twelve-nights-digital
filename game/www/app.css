@@ -258,3 +258,9 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 @keyframes tb{50%{box-shadow:0 0 0 3px #ffb070,0 0 44px rgba(255,140,60,.95)}}
 .ndet:has(.ndrow){position:relative}
 .ndet:has(.ndrow) .ndd{position:absolute;bottom:22px;left:50%;transform:translateX(-50%)}
+/* fight screen: neutral defence guide in the corner */
+.zone.ctr:has(>.dguide){position:relative}
+.dguide{position:absolute;left:22px;bottom:18px;font-size:20px;line-height:1.7;color:#8f8ab5;text-align:right;min-width:150px;opacity:.85}
+.dguide h6{margin:0 0 2px;font-size:20px;font-weight:700;color:#a9a3cf}
+.dguide div{display:flex;justify-content:space-between;gap:14px}
+.dguide b{font-weight:700;color:#a9a3cf}

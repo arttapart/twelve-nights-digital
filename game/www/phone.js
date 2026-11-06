@@ -124,8 +124,8 @@ function game() {
   else if (G.phase === 'start') body = `<div class="ctr" style="flex:1;gap:12px"><div class="pmsg gold">نوبت ${esc(G.players[G.order[G.cur]].name)} است</div><div class="lbl">ترتیب بازی تصادفی است و روی مانیتور دیده می‌شود</div></div>`;
   else if (G.battle) body = battleP();
   else if (G.phase === 'night') body = `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="font-size:40px">پایان شب ${fa(G.night)}</div><div class="lbl" style="text-align:center;font-size:15px">اهریمن‌ها پیش می‌روند و رویداد شب اجرا می‌شود.<br>مانیتور را ببین.</div>${waitFor()}</div>${navH()}`;
+  else if (view === 'dice' && myTurn()) body = diceP();   // the wand die can also be rolled during a demon fight (Farshad 2026-11-06)
   else if (G.fight && G.fight.pid === G.me) body = fightP();
-  else if (view === 'dice' && myTurn()) body = diceP();
   else if (view === 'end' && myTurn()) body = endP();
   else if (myTurn() && S.ui && S.ui.dun && (!dunAway || G.dun.place || G.dun.portal)) body = dunP();
   else body = tabP();
@@ -323,7 +323,7 @@ function fightP() {
   else o += `<div class="brow"><div class="btn grn" data-do="f_stop">توقف نبرد</div><div class="btn red" data-do="f_next">ادامه</div></div>`;
   const mag = p.hand.filter(x => card(x.c).ty === 'magic');
   o += mag.length ? `<div class="lbl" style="text-align:center">کارت جادو بازی کن:</div><div class="mrow">${mag.map(x => `<div class="mchip" data-play="main" data-u="${x.u}">${sv('pow')}${fa(card(x.c).power)} ${esc(card(x.c).name)}</div>`).join('')}</div>` : '';
-  if (!T.dieUsed) o += `<div class="btn ghost" data-do="dice">تاس چوب‌دستی</div>`;
+  if (!T.dieUsed) o += `<div class="btn" data-do="dice">انداختن تاس جادو ${sv('die')}</div>`;
   return o;
 }
 

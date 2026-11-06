@@ -175,13 +175,20 @@ function dcardH(ci, lv, paid, on) {
   if (art) return `<div class="dc artfull lv${lv || 0}" style="background-image:url('${artU(art)}')">${lv ? `<span class="dlvl">${['', 'زرد', 'نارنجی', 'قرمز'][lv]}</span>` : ''}</div>`;
   return `<div class="dc">${[['y', 1], ['o', 2], ['r', 3]].map(([c, l]) => `<div class="sec ${c} ${l === lv ? 'on' : ''}"><span class="dv">${fa(dm[c][0])}</span>${rew(dm[c][1])}</div>`).join('')}</div>`;
 }
+// a quiet guide in the corner of the fight screen: the defence values of this demon colour in the deck, and how many cards have each (Farshad 2026-11-06)
+function defGuide(lv) {
+  const key = { 1: 'y', 2: 'o', 3: 'r' }[lv], n = {};
+  for (const dm of DATA.demons) { const sec = dm[key]; if (sec) n[sec[0]] = (n[sec[0]] || 0) + 1; }
+  const rows = Object.keys(n).map(Number).sort((a, b) => a - b).map(v => `<div><span>دفاع ${fa(v)}</span><b>${fa(n[v])} کارت</b></div>`).join('');
+  return `<div class="dguide"><h6>دفاع‌های اهریمن ${LVN[lv]} در دک</h6>${rows}</div>`;
+}
 function fightScr() {
   const G = S.G, F = G.fight, T = G.turn;
   const cards = F.cards.map((c, i) => `<div>${dcardH(c.ci, F.lv)}<div class="dres" style="color:${c.paid ? '#9ef0c3' : '#ffe7a6'}">${c.paid ? 'شکست خورد ✓ – ' + fa(c.def) + ' قدرت' : 'دفاع ' + fa(c.def) + ' – در انتظار'}</div></div>`).join('');
   return `<div class="M MX" data-s="a">${topH(G, `<span class="tag" style="font-size:22px;padding:6px 18px;background:rgba(240,138,42,.18);color:#ffd7b0;border-color:#f08a2a">نبرد با اهریمن</span>`)}
 <div class="body"><div class="zone ctr" style="flex:1;gap:30px"><h2>${NM(F.pid)} با اهریمن <span style="color:${LVC[F.lv]}">${LVN[F.lv]}</span> (سطح ${fa(F.lv)}) می‌جنگد</h2><div class="powbig">قدرت باقی‌مانده: ${sv('pow')} <span class="gold">${fa(T ? T.pool.power : 0)}</span></div>
 <div class="dcards">${cards}${F.pending == null ? '<div><div class="dc back">کارت بعدی؟</div><div class="dres" style="color:#a9a3cf">ادامه یا توقف نبرد</div></div>' : ''}</div>
-<div class="sub">فقط بخش هم‌رنگ اهریمن خوانده می‌شود – توقف نبرد: پاداش همهٔ کارت‌های شکست‌خورده + ${fa(F.lv)} ${sv('hunt')}</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
+<div class="sub">فقط بخش هم‌رنگ اهریمن خوانده می‌شود – توقف نبرد: پاداش همهٔ کارت‌های شکست‌خورده + ${fa(F.lv)} ${sv('hunt')}</div>${defGuide(F.lv)}</div></div>${pbarH(G)}${waitLine(G)}</div>`;
 }
 
 // ---------- start positions ----------
