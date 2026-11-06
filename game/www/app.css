@@ -390,3 +390,15 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 /* battle: a card drawn at the end of a round slides into the hand */
 .zoom.bnew .wz{animation:bnewIn .8s cubic-bezier(.2,.8,.2,1) both}
 @keyframes bnewIn{0%{opacity:0;transform:translateY(-120px) rotate(-8deg) scale(1.3)}60%{opacity:1;transform:translateY(8px) rotate(1deg) scale(1.9)}100%{transform:scale(1.85)}}
+/* pending «1 scroll -> +1 magic» option (hand tab and demon fight) */
+.slater{display:flex;gap:8px;align-items:stretch;margin:2px 0}
+.slater .btn.grn{flex:1;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px;animation:slBlink 2.4s ease-in-out infinite}
+.slater .btn.grn.off{animation:none}
+.slater .btn small{flex-basis:100%;text-align:center;font-size:11px;opacity:.8}
+.slater .sx{flex:0 0 48px;font-size:20px;display:flex;align-items:center;justify-content:center}
+@keyframes slBlink{50%{box-shadow:0 0 14px rgba(120,230,160,.55)}}
+.dfaces.wc b{background:color-mix(in srgb,var(--wc) 22%,#1a1236);border:1.5px solid var(--wc);color:#fff}
+/* wizard hall a little taller, using the free band above the player bar (Farshad 2026-11-06): the bar row keeps exactly the active box height */
+.M:not(.MX){grid-template-rows:96px minmax(0,328fr) minmax(0,350fr) 208px}
+.zH .rowc>.wz,.zH .rowc>.deck{zoom:1.1}
+.mtoast{top:840px}

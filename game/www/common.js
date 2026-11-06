@@ -19,6 +19,8 @@ const DIEF = RU.die.faces;
 const ITEMN = Object.fromEntries(Object.entries(RU.items).map(([k, v]) => [k, v.name]));
 const ITEMT = Object.fromEntries(Object.entries(RU.items).map(([k, v]) => [k, v.txt]));
 const CHN = Object.fromEntries(Object.entries(RU.challenges).map(([k, v]) => [k, [v.name, v.pts]]));
+// wand / die level colours (Farshad 2026-11-06): 1 green, 2 blue, 3 purple, 4 gold
+const WCOL = { 1: '#5fd47a', 2: '#5aa9ff', 3: '#b884ff', 4: '#f3cf72' };
 const UPN = Object.fromEntries(Object.entries(RU.upgrades).map(([k, v]) => [k, [v.name, v.before, v.after, v.cost]]));
 
 const card = id => id === 'W' ? Object.assign({ id: 'W', ty: 'wound', cost: {}, power: 0, strip: null }, RU.wound) : DATA.cards[id];

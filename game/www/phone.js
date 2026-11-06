@@ -181,6 +181,12 @@ function spinMine(lv) {
 function waitFor() { const q = S.G.prompts[0]; return q && q.to !== S.G.me ? `<div class="pmsg">منتظر ${esc(S.G.players[q.to].name)}: ${esc(q.title || '')}</div>` : ''; }
 
 // ---- tabs ----
+// pending «1 scroll for +1 magic» options from magic cards played without scrolls (Farshad 2026-11-06)
+function scrollLaterH() {
+  const T = S.G.turn, L = myTurn() && T && T.scrollLater; if (!L || !L.length) return '';
+  const can = canPayC({ scroll: 1 });
+  return `<div class="slater"><div class="btn grn ${can ? '' : 'off'}" data-do="scrpay">پرداخت ۱ ${sv('scr')} برای دریافت ۱ ${sv('pow')}${L.length > 1 ? ' (' + fa(L.length) + ')' : ''}<small>${esc(L[0])}</small></div><div class="btn ghost sx" data-do="scrno" title="انصراف">✕</div></div>`;
+}
 function tabP() {
   const G = S.G, p = me(), mt = myTurn(), T = G.turn;
   const top = mt ? poolH() : `<div class="pmsg tn">نوبت <b style="color:${T ? G.players[T.pid].color : '#fff'}">${T ? esc(G.players[T.pid].name) : ''}</b> است</div>`;
@@ -189,6 +195,7 @@ function tabP() {
     const h = p.hand; const i = clamp('hand', h.length);
     o += mt ? poolH(false) : top + presH(p);
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
+    o += scrollLaterH();
     if (h.length && handGrid) {
       o += `<div class="hgrid">${h.map((x, j) => `<div class="hgc" data-hg="${j}">${acard(x.c)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(h.length)} کارت در دست – برای دیدن بزرگ روی کارت بزن</div>`;
     } else if (h.length) {
@@ -254,14 +261,14 @@ function boardP() {
     const act2 = p.items.slice(0, p.ups.slot2 ? 2 : 1);
     o += `<div class="pbox"><h5>ذخیره</h5>${presH(p)}</div>
 <div class="pbox"><h5>مشعل و کلنگ – ۳ جا</h5><div class="tslots">${Array.from({ length: 3 }, (_, k) => k < p.torch ? `<i>${sv('torch')}</i>` : k < p.torch + p.pick ? `<i>${sv('pick')}</i>` : '<i class="e"></i>').join('')}</div></div>
-<div class="pbox"><h5>چوب‌دستی</h5>سطح ${fa(p.wand)} – تاس ${DIEN[p.wand]}<div class="dfaces">${DIEF[p.wand].map(v => `<b>${fa(v)}</b>`).join('')}</div></div>
+<div class="pbox" style="--wc:${WCOL[p.wand]}"><h5 style="color:var(--wc)">چوب‌دستی</h5><span style="color:var(--wc);font-weight:700">سطح ${fa(p.wand)} – تاس ${DIEN[p.wand]}</span><div class="dfaces wc">${DIEF[p.wand].map(v => `<b>${fa(v)}</b>`).join('')}</div></div>
 <div class="pbox"><h5>وسایل جادویی</h5><div class="octs">${[0, 1].map(k => k === 1 && !p.ups.slot2 ? `<div class="oct lk">${sv('lock')}</div>` : `<div class="oct">${p.items[k] ? `<span>${ITEMN[p.items[k]]}</span>` : ''}</div>`).join('')}</div>${p.items.length ? `<div class="lbl" style="margin-top:6px">${p.items.map(k => `<div>${act2.includes(k) ? '✓' : '·'} <b>${ITEMN[k]}</b>: ${ITEMT[k]}</div>`).join('')}</div>` : ''}${mt && p.items.length > 1 && !G.turn.played.length ? '<div class="btn ghost" data-do="items" style="margin-top:8px">جابه‌جا کردن وسایل</div>' : ''}</div>
 <div class="pbox grp3"><div><h5>کارت‌های اقدام</h5><span>دک ${fa(p.deckN)}</span><span>سوخته ${fa(p.discardN)}</span><span>حذف‌شده ${fa(p.removedN)}</span></div><div><h5>جادوگران</h5><span>${fa(p.wiz.length)} کارت</span></div><div><h5>زخم و شکار</h5><span>زخم ${fa(p.wounds)}</span><span>شکار ${fa(p.hunt)}</span><span>صندوقچه ${fa(p.chests)}</span></div></div>${hpBox(p.hp)}`;
   } else if (sub === 1) {
     const T = G.turn, have = r => (mt ? T.pool[r] || 0 : 0) + p.store[r];
     o += `<div class="pmsg gold" style="display:flex;gap:10px;justify-content:center;align-items:center">موجود: ${sv('coin')}${fa(have('coin'))} ${sv('scr')}${fa(have('scroll'))} ${sv('ess')}${fa(have('ess'))}</div><div class="upl">${Object.entries(UPN).map(([k, [n, b, a, c]]) => {
       const done = k === 'wand2' ? p.wand >= 2 : !!p.ups[k], can = mt && !done && Object.entries(c).every(([r, v]) => have(r) >= v);
-      return `<div class="up ${done ? 'dn' : can ? '' : 'no'}" ${can ? `data-up="${k}"` : ''}><b>${n}</b><div class="co"><span>${Object.entries(c).map(([r, v]) => fa(v) + sv(RI[r])).join(' ')}</span><span class="go">${done ? 'انجام شد ✓' : can ? 'ارتقا' : mt ? 'منابع کم' : '—'}</span></div><div class="ba">${b} ← <em>${a}</em></div></div>`;
+      return `<div class="up ${done ? 'dn' : can ? '' : 'no'}" ${can ? `data-up="${k}"` : ''}><b>${n}</b><div class="co"><span>${Object.entries(c).map(([r, v]) => fa(v) + sv(RI[r])).join(' ')}</span><span class="go">${done ? 'انجام شد ✓' : can ? 'ارتقا' : mt ? 'منابع کم' : '—'}</span></div><div class="ba">${k === 'wand2' ? `<span style="color:${WCOL[1]}">${b}</span> ← <em style="color:${WCOL[2]}">${a}</em>` : `${b} ← <em>${a}</em>`}</div></div>`;
     }).join('')}</div>`;
   } else {
     o += `<div class="pbox logb">${S.G.log.slice(-18).reverse().map(l => `<div>${esc(l.t)}</div>`).join('')}</div>`;
@@ -345,6 +352,7 @@ function fightP() {
   else o += `<div class="brow"><div class="btn grn" data-do="f_stop">توقف نبرد</div><div class="btn red" data-do="f_next">ادامه</div></div>`;
   const mag = p.hand.filter(x => card(x.c).ty === 'magic');
   o += mag.length ? `<div class="lbl" style="text-align:center">کارت جادو بازی کن:</div><div class="mrow">${mag.map(x => `<div class="mchip" data-play="main" data-u="${x.u}">${sv('pow')}${fa(card(x.c).power)} ${esc(card(x.c).name)}</div>`).join('')}</div>` : '';
+  o += scrollLaterH();
   if (!T.dieUsed) o += `<div class="btn" data-do="dice">انداختن تاس جادو ${sv('die')}</div>`;
   return o;
 }
@@ -458,7 +466,11 @@ function swipe(k, d) {
 function bind() {
   const R = root;
   if (!R._tap) { R._tap = 1; R.addEventListener('click', e => { const b = e.target.closest('[data-do],[data-ans],[data-play],[data-tab],[data-hg],[data-gob],[data-sel],[data-off],[data-sub],.tg'); if (b && !b.classList.contains('off') && !b.matches('[data-sw]')) SFX.play('tap'); }, true); }
-  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; if (S.ui && S.ui.dun) dunAway = true; tab = e.dataset.tab; view = null; if (tab === 'hand') handGrid = true; render(); sendUI({ tab, i: ix[tab] || 0 }); });
+  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; tab = e.dataset.tab; view = null; if (tab === 'hand') handGrid = true;
+    // any bottom tab leaves the dungeon and sends the monitor back to the main screen (Farshad 2026-11-06, decision card)
+    const G = S.G, leave = S.ui && S.ui.dun && !(G && G.dun && (G.dun.place || G.dun.portal));
+    if (S.ui && S.ui.dun && !leave) dunAway = true; if (leave) dunAway = false;
+    render(); sendUI(leave ? { dun: false, tab, i: ix[tab] || 0 } : { tab, i: ix[tab] || 0 }); });
   R.querySelectorAll('[data-sub]').forEach(e => e.onclick = () => { sub = +e.dataset.sub; render(); });
   R.querySelectorAll('[data-sw]').forEach(e => e.onclick = ev => { ev.stopPropagation(); const car = e.closest('[data-car]'); if (car) swipe(car.dataset.car, +e.dataset.sw); });
   R.querySelectorAll('[data-house]').forEach(e => e.onclick = () => { if (e.classList.contains('tk')) return; pickHouse = e.dataset.house; typedName = R.querySelector('#nm').value; render(); });
@@ -524,6 +536,8 @@ function doIt(k, e) {
     case 'reroll': { const T = S.G.turn; if (T.die) spinMine(T.die.lv); if (typeof SFX !== 'undefined') SFX.play('dice'); act({ t: 'reroll' }); return; }
     case 'dieok': { const d = S.G.turn.die, last = d && d.acc + 1 >= Math.max(d.need, S.G.turn.flags.twice ? 2 : 1); act({ t: 'dieok' }); if (last) view = null; return; }
     case 'hpalch': act({ t: 'hpalch' }); return;
+    case 'scrpay': act({ t: 'scrollpay', v: 1 }); return;
+    case 'scrno': act({ t: 'scrollpay', v: 0 }); return;
     case 'buy': { const it = acadItems()[ix.acad]; if (it) act({ t: 'buy', src: it.src, i: it.i }); return; }
     case 'swap': { const it = acadItems()[ix.acad]; if (it) act({ t: 'swap', i: it.i }); return; }
     case 'hire': act({ t: 'hire', src: e.dataset.src, i: +e.dataset.i }); return;

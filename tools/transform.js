@@ -79,12 +79,16 @@ function apply(src, name, G) {
   return src;
 }
 // css from the editor's art and style settings; artUrl(path) gives the url of an uploaded file
+const BOXBG = [['top', 'body.monitor .M>.top'], ['acad', 'body.monitor .zA'], ['hall', 'body.monitor .zH'], ['goblin', 'body.monitor .zG'], ['mini', 'body.monitor .side .mm'], ['cur', 'body.monitor .side .cur'], ['players', 'body.monitor .pbar .pt'], ['dmap', 'body.monitor .dmap'], ['dside', 'body.monitor .dside .cur']];
 function customCss(G, artUrl) {
   const A = G.art || {}, u = artUrl || (p => p), o = [];
   if (A.bg && A.bg.monitor) o.push(`body.monitor #stage>.M{background:url("${u(A.bg.monitor)}") center/cover no-repeat!important}`);
   if (A.bg && A.bg.phone) o.push(`body.phone #stage>.P{background:url("${u(A.bg.phone)}") center/cover no-repeat!important}`);
   if (A.fonts && A.fonts.body) o.push(`@font-face{font-family:"Vazirmatn";src:url("${u(A.fonts.body)}");font-weight:100 900}`);
   if (A.fonts && A.fonts.title) o.push(`@font-face{font-family:"Lalezar";src:url("${u(A.fonts.title)}")}`);
+  // per-box backgrounds on the monitor (Farshad 2026-11-06); a box without its own image keeps its see-through panel over the main background
+  const X = A.boxbg || {};
+  for (const [k, sel] of BOXBG) if (X[k]) o.push(`${sel}{background:url("${u(X[k])}") center/cover no-repeat!important}`);
   const B = A.backs || {};
   if (B.academy) o.push(`.zA .deck{background:url("${u(B.academy)}") center/cover no-repeat!important;color:transparent!important}`);
   if (B.wizard) o.push(`.zH .deck{background:url("${u(B.wizard)}") center/cover no-repeat!important;color:transparent!important}`);
@@ -92,6 +96,6 @@ function customCss(G, artUrl) {
   if (G.css) o.push(G.css);
   return o.join('\n') + '\n';
 }
-const T = { literals, runs, extract, applyTexts, colors, norm, applyColors, apply, customCss };
+const T = { BOXBG, literals, runs, extract, applyTexts, colors, norm, applyColors, apply, customCss };
 if (typeof module !== 'undefined') module.exports = T; else root.TX = T;
 })(this);

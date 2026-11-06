@@ -262,7 +262,7 @@ function runMain(G, p, c) {
   generic(G, p, c);
   switch (c.fx) {
     case 'p_any3': ask(G, p.id, 'any3', { title: c.name, text: '۳ منبع به انتخاب خودت', opts: [[3, 0], [2, 1], [1, 2], [0, 3]].map(([a, b]) => ({ v: a, label: (a ? fa(a) + ' سکه' : '') + (a && b ? ' + ' : '') + (b ? fa(b) + ' طومار' : '') })) }); break;
-    case 'scrollPow': if (pool.scroll + p.store.scroll > 0) ask(G, p.id, 'scrollPow', { title: c.name, text: '۱ طومار بدهی تا ۱+ قدرت بگیری؟', opts: [{ v: 1, label: 'بله، ۱ طومار بده' }, { v: 0, label: 'نه' }] }); break;
+    case 'scrollPow': if (pool.scroll + p.store.scroll > 0) ask(G, p.id, 'scrollPow', { title: c.name, text: '۱ طومار بدهی تا ۱+ قدرت بگیری؟', opts: [{ v: 1, label: 'بله، ۱ طومار بده' }, { v: 0, label: 'نه' }] }); else (T.scrollLater = T.scrollLater || []).push(c.name); break;
     case 'm4b': if (p.hand.length) ask(G, p.id, 'burnPow', { title: c.name, text: '۱ کارت از دستت را بسوزانی تا ۱+ قدرت بگیری؟', kind: 'cards', opts: p.hand.map(x => ({ v: x.u, card: x.c })).concat([{ v: 0, label: 'نمی‌سوزانم' }]) }); break;
     case 'm4_shelter': T.flags.shelter = true; break;
     case 'm4_luck': T.flags.luck = 1; break;
@@ -340,14 +340,18 @@ function entropy() {
   try { const c = (typeof globalThis !== 'undefined' && globalThis.crypto) || (typeof require === 'function' ? require('crypto').webcrypto : null); if (c && c.getRandomValues) return c.getRandomValues(new Uint32Array(1))[0] | 0; } catch (e) {}
   return (Math.random() * 4294967296) | 0;
 }
-function rollFace(G, lv) { const f = DIE[Math.min(4, lv)]; G.seed = (G.seed ^ entropy()) | 0; return f[Math.floor(rnd(G) * 6)]; }
+// each face index 0-5 comes straight from fresh entropy with rejection sampling, so every face has exactly 1/6 chance
+// (values at the top of the 32-bit range that would favour some faces are thrown away). Farshad 2026-11-06
+function face6() { const lim = 4294967296 - (4294967296 % 6); for (let k = 0; k < 64; k++) { const x = entropy() >>> 0; if (x < lim) return x % 6; } return Math.floor(Math.random() * 6); }
+function rollFace(G, lv) { const f = DIE[Math.min(4, lv)]; G.seed = (G.seed ^ entropy()) | 0; return f[face6()]; }
 function dieValue(G, p, face) { let v = face + (hasItem(p, 'gem') ? 1 : 0); if (G.turn && G.turn.flags.x2) v *= 2; return v; }
 function rollPower(G, p) {
   const T = G.turn; if (T.dieUsed) return 'تاس این نوبت را انداخته‌ای';
   if (T.die && T.die.acc < T.die.faces.length) return 'اول نتیجهٔ همین تاس را قبول کن';
-  const lv = T.die ? T.die.lv : p.wand + (T.flags.dieup ? 1 : 0);
+  // a wand upgraded during the turn counts for every die not yet rolled, and for a reroll of a die not yet accepted (Farshad 2026-11-06)
+  const lv = Math.max(T.die ? T.die.lv : 0, p.wand + (T.flags.dieup ? 1 : 0));
   if (!T.die) T.die = { lv, faces: [], vals: [], total: 0, acc: 0, need: 1, flags: { x2: !!T.flags.x2, twice: !!T.flags.twice, gem: hasItem(p, 'gem') } };
-  T.die.need = Math.max(T.die.need, T.flags.twice ? 2 : 1);
+  T.die.need = Math.max(T.die.need, T.flags.twice ? 2 : 1); T.die.lv = lv;
   const f = rollFace(G, lv), v = dieValue(G, p, f);
   T.die.faces.push(f); T.die.vals.push(v); T.die.total += v; T.die.n = ++G.ev;
   T.pool.power += v;
@@ -373,9 +377,10 @@ function reroll(G, p) {
   if (T.pool.power < old) return 'قدرت این تاس خرج شده و بازانداختن ممکن نیست';
   if (free) { if (hasItem(p, 'fate') && !T.freeReroll) T.freeReroll = true; else T.flags.hpLuck = true; } else { pay(G, p, R.rerollCost); T.reroll++; }
   T.pool.power -= old;
-  const f = rollFace(G, T.die.lv), v = dieValue(G, p, f);
+  const lv = Math.max(T.die.lv, p.wand + (T.flags.dieup ? 1 : 0));
+  const f = rollFace(G, lv), v = dieValue(G, p, f);
   const faces = T.die.faces.slice(), vals = T.die.vals.slice(); faces[j] = f; vals[j] = v;
-  T.die = Object.assign({}, T.die, { faces, vals, total: vals.reduce((a, b) => a + b, 0), n: ++G.ev, rer: true });
+  T.die = Object.assign({}, T.die, { lv, faces, vals, total: vals.reduce((a, b) => a + b, 0), n: ++G.ev, rer: true });
   T.pool.power += v;
   G.roll = { n: T.die.n, pid: p.id, lv: T.die.lv, vals: [v], label: 'بازانداختن تاس' };
   toast(G, p.name + ' تاس را دوباره انداخت: ' + fa(v) + ' قدرت', 'die');
@@ -709,6 +714,8 @@ function act(G, pid, a) {
       case 'hpalch': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return hpAlch(G, p);
       case 'upgrade': if (G.fight || G.turn.forced != null) return 'الان نمی‌شود'; return upgrade(G, p, a.k);
       case 'phoenix': return phoenix(G, p, a.u);
+      // a «1 scroll for +1 power» magic card played without scrolls stays payable for the rest of the turn (Farshad 2026-11-06)
+      case 'scrollpay': { const L = G.turn.scrollLater; if (!L || !L.length) return 'گزینه‌ای نمانده'; if (a.v) { if (!canPay(G, p, { scroll: 1 })) return 'طومار نداری'; pay(G, p, { scroll: 1 }); G.turn.pool.power += 1; log(G, p.name + ' برای «' + L[0] + '» ۱ طومار داد و ۱+ جادو گرفت.'); } L.shift(); return null; }
       case 'end': return endTurn(G, p);
       default: if (a.t.startsWith('d_') || a.t.startsWith('f_')) return Dun.act(G, p, a); return 'کار ناشناخته';
     }
