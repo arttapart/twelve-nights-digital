@@ -312,3 +312,68 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 .MX .mtoast.btop{bottom:auto;top:24px;max-width:900px}
 /* full-width screens (night, fight, battle result): the "waiting for" line sits just above the player bars, never over a title or banner */
 .MX .waitq{top:auto;bottom:132px}
+.die3 .snum{font-size:calc(var(--s) * .5);font-weight:900;color:#2a1a5a;line-height:1;white-space:nowrap;text-shadow:0 1px 0 #fff}
+.die3 .snum.long{font-size:calc(var(--s) * .27)}
+
+/* ===== wizard battle, Farshad 2026-11-06 ===== */
+/* round counter: big rounded triangles, top-left corner */
+.btrack{position:absolute;top:16px;left:26px;display:flex;gap:10px;z-index:6;direction:ltr}
+.btrack svg{width:66px;height:60px;overflow:visible}
+.btrack text{font:900 19px Vazirmatn,sans-serif;fill:#fff}
+.btrack svg.cur{filter:drop-shadow(0 0 10px rgba(243,207,114,.7))}
+.btrack svg.cur text{fill:#14152e}
+.btitle{font-size:40px}
+.btitle.nowin{color:#ffb4a8}
+/* one column per player, fixed rows so nothing jumps between round start, pick, reveal and result */
+.bplat{flex:1;min-height:0;align-items:stretch}
+.bplat .pc{justify-content:flex-start;gap:10px;padding:16px 14px}
+.buntil,.bnext{min-height:44px;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%}
+.bfxc{display:flex;align-items:center;gap:8px;max-width:100%;padding:5px 12px;border-radius:10px;font-size:16px;font-weight:700;line-height:1.3;color:#e9e4ff;background:rgba(255,255,255,.06);border:1.5px solid rgba(199,155,255,.55)}
+.bfxc i{font-style:normal;font-size:20px}.bfxc b{color:#f3cf72}
+.bfxc.next{border-color:#7fc0ff;background:rgba(127,192,255,.12)}
+.bfxc.until{border-color:#f3cf72;background:rgba(243,207,114,.1)}
+.bslot{width:278px;height:392px;flex:none;position:relative;border-radius:16px}
+.bslot.empty{border:3px dashed color-mix(in srgb,var(--pc) 55%,transparent);background:rgba(255,255,255,.025)}
+.bslot .wflip{position:absolute;inset:0}
+.bslot .wz{transform:scale(1.853);transform-origin:top left;margin:0;position:absolute;top:0;left:0}
+.bslot .wflip .wfb{inset:0;border:0;border-radius:16px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22278%22%20height%3D%22392%22%20viewBox%3D%220%200%20278%20392%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22p%22%20width%3D%2226%22%20height%3D%2226%22%20patternUnits%3D%22userSpaceOnUse%22%20x%3D%229%22%20y%3D%221%22%3E%3Crect%20width%3D%2226%22%20height%3D%2226%22%20fill%3D%22%23241a5c%22/%3E%3Cpath%20d%3D%22M13%201%20L25%2013%20L13%2025%20L1%2013%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23c9a24a%22%20stroke-width%3D%221.3%22/%3E%3Cpath%20d%3D%22M13%207%20L19%2013%20L13%2019%20L7%2013%20Z%22%20fill%3D%22%233a2b84%22%20stroke%3D%22%23e7c873%22%20stroke-width%3D%22.9%22/%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%2226%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2226%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%2226%22%20cy%3D%2226%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2213%22%20r%3D%221.4%22%20fill%3D%22%23f6e2a4%22/%3E%3C/pattern%3E%3C/defs%3E%3Crect%20width%3D%22278%22%20height%3D%22392%22%20rx%3D%2216%22%20fill%3D%22%23140f38%22/%3E%3Crect%20x%3D%229%22%20y%3D%229%22%20width%3D%22260%22%20height%3D%22374%22%20rx%3D%2211%22%20fill%3D%22none%22%20stroke%3D%22%23e7c873%22%20stroke-width%3D%222.2%22/%3E%3Crect%20x%3D%2217%22%20y%3D%2217%22%20width%3D%22244%22%20height%3D%22358%22%20rx%3D%227%22%20fill%3D%22url%28%23p%29%22%20stroke%3D%22%23c9a24a%22%20stroke-width%3D%221.4%22/%3E%3Crect%20x%3D%2225%22%20y%3D%2225%22%20width%3D%22228%22%20height%3D%22342%22%20rx%3D%224%22%20fill%3D%22none%22%20stroke%3D%22%23e7c873%22%20stroke-opacity%3D%22.55%22%20stroke-width%3D%221%22/%3E%3C/svg%3E") center/100% 100%}
+.bnoc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:16px;border:2px solid rgba(255,255,255,.2);color:#a9a3cf;font-size:24px}
+/* card back: geometric pattern like a playing-card back, no number */
+.bslot .wbk.sent{width:100%;height:100%;padding:0;border:0;border-radius:16px;background:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22278%22%20height%3D%22392%22%20viewBox%3D%220%200%20278%20392%22%3E%3Cdefs%3E%3Cpattern%20id%3D%22p%22%20width%3D%2226%22%20height%3D%2226%22%20patternUnits%3D%22userSpaceOnUse%22%20x%3D%229%22%20y%3D%221%22%3E%3Crect%20width%3D%2226%22%20height%3D%2226%22%20fill%3D%22%23241a5c%22/%3E%3Cpath%20d%3D%22M13%201%20L25%2013%20L13%2025%20L1%2013%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23c9a24a%22%20stroke-width%3D%221.3%22/%3E%3Cpath%20d%3D%22M13%207%20L19%2013%20L13%2019%20L7%2013%20Z%22%20fill%3D%22%233a2b84%22%20stroke%3D%22%23e7c873%22%20stroke-width%3D%22.9%22/%3E%3Ccircle%20cx%3D%220%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%2226%22%20cy%3D%220%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%220%22%20cy%3D%2226%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%2226%22%20cy%3D%2226%22%20r%3D%222.2%22%20fill%3D%22%23e7c873%22/%3E%3Ccircle%20cx%3D%2213%22%20cy%3D%2213%22%20r%3D%221.4%22%20fill%3D%22%23f6e2a4%22/%3E%3C/pattern%3E%3C/defs%3E%3Crect%20width%3D%22278%22%20height%3D%22392%22%20rx%3D%2216%22%20fill%3D%22%23140f38%22/%3E%3Crect%20x%3D%229%22%20y%3D%229%22%20width%3D%22260%22%20height%3D%22374%22%20rx%3D%2211%22%20fill%3D%22none%22%20stroke%3D%22%23e7c873%22%20stroke-width%3D%222.2%22/%3E%3Crect%20x%3D%2217%22%20y%3D%2217%22%20width%3D%22244%22%20height%3D%22358%22%20rx%3D%227%22%20fill%3D%22url%28%23p%29%22%20stroke%3D%22%23c9a24a%22%20stroke-width%3D%221.4%22/%3E%3Crect%20x%3D%2225%22%20y%3D%2225%22%20width%3D%22228%22%20height%3D%22342%22%20rx%3D%224%22%20fill%3D%22none%22%20stroke%3D%22%23e7c873%22%20stroke-opacity%3D%22.55%22%20stroke-width%3D%221%22/%3E%3C/svg%3E") center/100% 100%;box-shadow:0 0 0 3px var(--pc),0 0 26px color-mix(in srgb,var(--pc) 45%,transparent);animation:bkIn .5s cubic-bezier(.2,.8,.2,1) both}
+.bslot .wbk.sent::before{content:none}
+@keyframes bkIn{0%{opacity:0;transform:translateY(-40px) scale(.9)}100%{opacity:1;transform:none}}
+/* the flip: back turns away, face turns in */
+.bslot .wflip{perspective:1400px}
+.bslot .wflip .wfb{animation:wfbOut .45s ease-in both}
+.bslot .wflip .wff{position:absolute;inset:0;animation:wffIn .5s ease-out .45s both}
+/* power line: the diamond steps through each change */
+.bpow{min-height:104px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bpow .ptrail{align-items:center;gap:12px}
+.bpow .dm{position:relative}
+.bpow .dmv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;animation:dmIn .35s cubic-bezier(.3,1.6,.5,1) var(--d) both,dmOut .2s ease-in var(--e) forwards}
+.bpow .dmv.last{animation:dmIn .45s cubic-bezier(.3,1.6,.5,1) var(--d) both}
+@keyframes dmIn{0%{opacity:0;transform:scale(.4)}100%{opacity:1;transform:none}}
+@keyframes dmOut{to{opacity:0;transform:scale(1.4)}}
+.bpow .pchips{display:flex;flex-wrap:wrap;gap:6px 12px;justify-content:center}
+.bpin{animation:pinIn .4s cubic-bezier(.3,1.5,.5,1) var(--d) both}
+@keyframes pinIn{0%{opacity:0;transform:translateY(12px) scale(.6)}100%{opacity:1;transform:none}}
+.tdie{display:flex;flex-direction:column;align-items:center;font-size:16px;color:#bfe0ff;line-height:1.2}.tdie b{font-size:30px;color:#7fc0ff}
+.bwinr{min-height:38px;display:flex;justify-content:center}
+.bwin{font-size:20px;animation:pinIn .45s cubic-bezier(.3,1.5,.5,1) var(--d) both}
+/* the winner glow comes after the power count */
+.bplat .pc.win{animation:wglow 2.2s ease-in-out var(--wd) infinite}
+.bplat .pc.win::before{opacity:0;animation:spin 3s linear infinite,wshow .6s ease var(--wd) forwards}
+.bplat .pc.win::after{opacity:0;animation:wshow .6s ease var(--wd) forwards}
+.bplat .pc.win .ptrail .dm{background:linear-gradient(#c9a0ff,#7a3fd6);animation:dmGold .6s ease var(--wd) forwards}
+@keyframes wshow{to{opacity:1}}
+@keyframes dmGold{to{background:linear-gradient(#ffe9a3,#c9921f);color:#3a2a05}}
+.bplat .pc.win{background:rgba(255,255,255,.05);border-color:var(--pc)}
+/* battle columns must always fit the 1080 screen: smaller card slot, columns never grow past the area */
+.bslot{width:244px;height:345px}
+.bslot .wz{transform:scale(1.627)}
+.bplat{overflow:hidden}
+.bplat .pc{min-height:0;overflow:hidden}
+.bpow{min-height:96px}
+.bpow .ptrail .dm{width:84px;height:84px;font-size:40px}
+.buntil,.bnext{min-height:34px;gap:4px}
+.bfxc{font-size:15px;padding:3px 10px}

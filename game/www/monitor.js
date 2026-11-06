@@ -292,27 +292,62 @@ ${B.bf ? `<div class="ctr"><div class="bfx"><span>اثر میدان نبرد</sp
 <table class="tbl" style="width:1400px"><tr><th></th><th>توکن‌های راند</th><th>هر توکن ۱</th><th>امتیاز کارت</th><th>جایزهٔ بیشترین توکن</th><th>جمع</th></tr>${rows}</table>
 <div class="sub">جایزهٔ بیشترین توکن ۲ امتیاز است؛ در تساوی، برندهٔ راند ششم آن را می‌گیرد – همه «باشه» را در گوشی بزنند</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
   }
-  // rounds: show last revealed round + who has picked
-  const L = B.last;
-  let lastH = '';
-  // hidden pick (Farshad 2026-11-06): a card back appears for every player who has sent a card; when all have sent,
-  // the cards turn over together (the flip is keyed by round, so it plays once)
-  const sent = id => B.picked[id] ? `<div class="wbk sent" data-k="wbk-${B.round}-${id}"><span>ارسال شد</span></div>` : `<div class="wbk wait" data-k="wbw-${B.round}-${id}"><span>در حال انتخاب…</span></div>`;
+  // rounds (Farshad 2026-11-06): every player box has a fixed card slot. Round start: empty slot; a sent card shows its back
+  // in the slot; when all have sent, all cards turn over together and the power diamonds count to the final power;
+  // the round result (winner glow, «no winner») stays until the first player sends a card for the next round.
+  // Next-card effects sit under the slot, until-end-of-battle effects above it.
+  const L = B.last, anyPick = G.order.some(id => B.picked[id]);
+  const showRes = !!L && (B.phase === 'r6' || B.phase === 'peek' || (B.phase === 'pick' && !anyPick));
+  const noWin = L && (L.winner == null || L.winner === 'lost');
+  const fxChip = (cid, kind) => { const w = wiz(cid); if (!w) return ''; const t = TN[w.t] || ['', '']; return `<span class="bfxc ${kind}" data-k="fx-${kind}-${cid}"><i>${t[0]}</i><b>${esc(cid)}</b>${esc(w.txt || '')}</span>`; };
+  const untilH = id => `<div class="buntil">${((B.until || {})[id] || []).map(c => fxChip(c, 'until')).join('')}</div>`;
+  const nextH = id => `<div class="bnext">${(B.next || {})[id] ? fxChip(B.next[id], 'next') : ''}</div>`;
+  const back = (id, r) => `<div class="wbk sent" data-k="wbk-${r}-${id}"></div>`;
   const flip = (r, id, inner) => `<div class="wflip" data-k="fl-${r}-${id}"><div class="wfb"></div><div class="wff">${inner}</div></div>`;
-  const noCard = '<div class="deck" style="width:158px;height:240px;display:flex;align-items:center;justify-content:center">بدون کارت</div>';
-  if (B.phase === 'resolve' && B.shown) {
-    lastH = `<div class="plat" style="flex:1">${G.order.map(id => { const cid = B.shown[id]; return `<div class="pc" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${flip(B.round, id, cid ? wcard(cid) : noCard)}</div>`; }).join('')}</div>`;
-  } else if (B.phase === 'pick' && !L) {
-    lastH = `<div class="plat" style="flex:1">${G.order.map(id => `<div class="pc" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${sent(id)}</div>`).join('')}</div>`;
-  } else if (L) {
-    lastH = `<div class="plat" style="flex:1">${G.order.map(id => { const cid = L.cards[id]; const win = L.winner === id; const parts = (L.parts && L.parts[id]) || [];
-      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${B.phase === 'pick' ? `<div class="wnext">${sent(id)}</div>` : ''}${flip(L.round, id, cid ? wcard(cid) : noCard)}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${(L.tie && L.tie.dice && L.tie.dice[id] != null) || win ? `<div class="ptags">${L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tag" style="font-size:20px;background:rgba(127,192,255,.16);color:#bfe0ff;border-color:#7fc0ff">تاس مساوی: ${dieN(L.tie.dice[id])}</span>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>` : ''}</div>`; }).join('')}</div>`;
+  const noCard = '<div class="bnoc">بدون کارت</div>';
+  // the power line: base value, then each change pops in one after another and the diamond steps to the final power
+  const T0 = 1.1, STEP = .9;
+  const powH = id => {
+    const cid = L.cards[id]; if (!cid) return '<div class="bpow"></div>';
+    const parts = (L.parts && L.parts[id]) || [], fin = L.score[id] != null ? L.score[id] : 0;
+    let v = L.base && L.base[id] != null ? L.base[id] : fin - parts.reduce((s, x) => s + x[0], 0);
+    const vals = [v]; for (const [d] of parts) vals.push(v += d);
+    if (vals[vals.length - 1] !== fin) vals.push(fin);
+    const dm = vals.map((x, k) => `<b class="dmv ${k === vals.length - 1 ? 'last' : ''}" style="--d:${(T0 + k * STEP).toFixed(2)}s;--e:${(T0 + (k + 1) * STEP).toFixed(2)}s">${fa(x)}</b>`).join('');
+    const chips = parts.map(([d, why], k) => `<span class="ptag bpin" style="--d:${(T0 + (k + 1) * STEP).toFixed(2)}s"><b>${d > 0 ? '+' : ''}${fa(d)}</b>${esc(why)}</span>`).join('');
+    const td = L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tdie bpin" style="--d:${(T0 + vals.length * STEP).toFixed(2)}s"><b>+${dieN(L.tie.dice[id])}</b>تاس جادو</span>` : '';
+    return `<div class="bpow" data-k="pow-${L.round}-${id}"><div class="ptrail"><span class="dm">${dm}</span>${td}</div><div class="pchips">${chips}</div></div>`;
+  };
+  const endT = id => { const parts = (L && L.parts && L.parts[id]) || [], td = L && L.tie && L.tie.dice && L.tie.dice[id] != null ? 1 : 0; return T0 + (parts.length + 1 + td) * STEP; };
+  const winT = L ? Math.max(...G.order.map(endT)) : 0;
+  let cols;
+  if (showRes) {
+    cols = G.order.map(id => { const cid = L.cards[id], win = L.winner === id;
+      return `<div class="pc bcol ${win ? 'win' : ''}" style="--pc:${H(id)};--wd:${winT.toFixed(2)}s"><div class="nmx"><i></i>${NM(id)}</div>${untilH(id)}<div class="bslot">${flip(L.round, id, cid ? wcard(cid) : noCard)}</div>${powH(id)}<div class="bwinr">${win ? `<span class="tag bwin" style="--d:${winT.toFixed(2)}s">برندهٔ راند</span>` : ''}</div>${nextH(id)}</div>`; }).join('');
+  } else {
+    const r = B.round;
+    cols = G.order.map(id => { const shown = B.phase === 'resolve' && B.shown ? B.shown[id] : undefined;
+      const inner = shown !== undefined ? flip(r, id, shown ? wcard(shown) : noCard) : B.picked[id] ? back(id, r) : '';
+      return `<div class="pc bcol" style="--pc:${H(id)}"><div class="nmx"><i></i>${NM(id)}</div>${untilH(id)}<div class="bslot ${inner ? '' : 'empty'}">${inner}</div><div class="bpow"></div><div class="bwinr"></div>${nextH(id)}</div>`; }).join('');
   }
+  const title = showRes ? (noWin ? `راند ${fa(L.round)}: این راند برنده نداشت` : `راند ${fa(L.round)}: برنده ${NM(L.winner)}`) : `راند ${fa(B.round)} از ${fa(DATA.wrules.rounds || 6)}`;
   const status = G.order.map(id => `<span class="bst ${B.picked[id] ? 'ok' : ''}" style="--pc:${H(id)}"><i></i>${NM(id)} ${B.picked[id] ? '✓' : '…'}</span>`).join('');
-  return `<div class="M MX" data-s="a">${head}<div class="body" style="flex-direction:column;gap:18px">
-<div class="ctr" style="flex-direction:row;gap:30px"><h2>${B.phase === 'r6' && L ? 'راند ' + fa(L.round) + ' تمام شد' : (L && B.phase === 'pick' ? 'راند ' + fa(L.round) + ' تمام شد – ' : '') + 'راند ' + fa(B.round) + ' از ۶'}</h2>${track}</div>
-${B.phase === 'pick' && !L ? '<div class="sub" style="font-size:26px;text-align:center">هر بازیکن در گوشی یک کارت از دست ۲ کارتی‌اش را پنهانی انتخاب می‌کند</div>' : ''}${lastH}
-<div class="bstat">${B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند' : B.phase === 'pick' ? 'انتخاب پنهان: ' + status : G.prompts.length ? 'کارت‌ها رو شد – ' + waitTxt(G) : 'در حال اجرای اثرها…'}</div></div></div>`;
+  const st = B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند'
+    : G.prompts.length ? (showRes ? '' : 'کارت‌ها رو شد – ') + waitTxt(G)
+    : showRes ? 'راند بعد با انتخاب کارت در گوشی شروع می‌شود'
+    : B.phase === 'pick' ? 'انتخاب پنهان: ' + status
+    : 'در حال اجرای اثرها…';
+  return `<div class="M MX" data-s="a">${head}${btrack(G, B)}<div class="body" style="flex-direction:column;gap:14px">
+<div class="ctr"><h2 class="btitle ${showRes && noWin ? 'nowin' : ''}" data-k="bt-${showRes ? 'r' + L.round : 'p' + B.round}" style="${showRes ? `--d:${winT.toFixed(2)}s` : ''}">${title}</h2></div>
+<div class="plat bplat">${cols}</div>
+<div class="bstat">${st}</div></div></div>`;
+}
+// round counter: big rounded triangles in the top-left corner, coloured by each round's winner
+function btrack(G, B) {
+  const n = DATA.wrules.rounds || 6;
+  return `<div class="btrack">${Array.from({ length: n }, (_, k) => { const w = B.wins[k], c = w != null && w !== 'lost' && G.players[w] ? H(w) : null, cur = k + 1 === B.round && B.phase !== 'done' && B.phase !== 'r6';
+    const f = c || (cur ? '#f3cf72' : 'rgba(255,255,255,.14)');
+    return `<svg class="${cur ? 'cur' : ''}" viewBox="0 0 60 54"><path d="M30 8 L53 46 L7 46 Z" fill="${f}" stroke="${f}" stroke-width="10" stroke-linejoin="round"/><text x="30" y="41" text-anchor="middle">${fa(k + 1)}</text></svg>`; }).join('')}</div>`;
 }
 
 // ---------- final ----------
@@ -332,15 +367,15 @@ function overlays() {
   const last = G.toasts[G.toasts.length - 1];
   if (last && last.n > seen.toast) { seen.toast = last.n; timers.toastT = last; show('toast', 4500); }
   // the toast is drawn last and only when no big overlay is open (it used to slide under the duel table)
-  const tst = live('toast') && timers.toastT && CURK !== 'main' && CURK !== 'night' ? `<div class="mtoast k-${timers.toastT.kind}${CURK === 'battle' ? ' btop' : ''}">${esc(timers.toastT.t)}</div>` : '';
+  const tst = live('toast') && timers.toastT && CURK !== 'main' && CURK !== 'night' ? `<div class="mtoast k-${timers.toastT.kind}${G.battle ? ' btop' : ''}">${esc(timers.toastT.t)}</div>` : '';
   // every die a player rolls: spinning faces on the big screen, then the result
   const rr = G.roll;
   // a roll from the last turn is not replayed when the night starts (Farshad 2026-11-06)
   if (rr && rr.n > seen.die && G.phase === 'night' && !G.battle) seen.die = rr.n;
   // a roll that belongs to another moment (a battle die after the battle, a die of an earlier turn) is never replayed
-  if (rr && rr.n > seen.die) { const bRoll = /نبرد/.test(rr.label || ''); if (bRoll !== !!G.battle || (!G.battle && G.phase === 'turn' && G.turn && G.turn.pid !== rr.pid && !G.duelPend && !/^دوئل/.test(rr.label || ''))) seen.die = rr.n; }
+  if (rr && rr.n > seen.die) { const bRoll = !!rr.bt || /نبرد/.test(rr.label || ''); if (bRoll !== !!G.battle || (!G.battle && G.phase === 'turn' && G.turn && G.turn.pid !== rr.pid && !G.duelPend && !/^دوئل/.test(rr.label || ''))) seen.die = rr.n; }
   // duel rolls land straight in the duel table (all players roll at once, big overlays would cover each other)
-  if (rr && rr.n > seen.die && (G.duelPend || /^دوئل/.test(rr.label || ''))) { seen.die = rr.n; SFX.play('dice'); }
+  if (rr && rr.n > seen.die && (G.duelPend || /^دوئل/.test(rr.label || '') || (rr.bt && G.battle))) { seen.die = rr.n; SFX.play('dice'); }
   if (rr && rr.n > seen.die) { seen.die = rr.n; SFX.play('dice'); setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
   if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 9000); }
   if (live('duel') && G.duel) {

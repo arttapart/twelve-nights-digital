@@ -581,11 +581,11 @@ function fitMon() { const mon = $('pv-mon'); if (!mon || !mon.firstChild) return
 addEventListener('resize', fitMon);
 VIEWS.preview = m => {
   m.innerHTML = `<h2>پیش‌نمایش زنده</h2><p class="help">کل بازی با همهٔ تغییرهایت، همین‌جا و بدون شبکه اجرا می‌شود: مانیتور بالا و گوشی‌ها پایین. روی گوشی‌ها مثل بازی واقعی کلیک کن، یا «ربات» را بزن تا خودش بازی کند و به صفحه‌های بعدی برسی. هر بار که چیزی را عوض کردی، «شروع دوباره» را بزن.</p>
-  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label title="فقط برای ۳ و ۴ بازیکن"><input type="checkbox" id="pv-sh"> بازی کوتاه ۱۰ شبه</label><label><input type="checkbox" id="pv-tm"> تایمر نوبت <input type="number" id="pv-tms" value="90" min="10" step="5" style="width:64px"> ثانیه</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><button class="btn g" id="pv-nev" title="ربات نوبت‌های باقی‌ماندهٔ این شب را بازی می‌کند و وقایع شب روی مانیتور یکی‌یکی پخش می‌شود">وقایع شب ☾</button><span class="mut" id="pv-st"></span></div>
+  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label title="فقط برای ۳ و ۴ بازیکن"><input type="checkbox" id="pv-sh"> بازی کوتاه ۱۰ شبه</label><label><input type="checkbox" id="pv-tm"> تایمر نوبت <input type="number" id="pv-tms" value="90" min="10" step="5" style="width:64px"> ثانیه</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-lob" title="گوشی‌ها صفحهٔ ورود را نشان می‌دهند: انتخاب رنگ خاندان، نام و قدرت خاندان‌ها؛ گوشی بازیکن ۱ بازی را شروع می‌کند">صفحهٔ ورود و خاندان‌ها</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><button class="btn g" id="pv-nev" title="ربات نوبت‌های باقی‌ماندهٔ این شب را بازی می‌کند و وقایع شب روی مانیتور یکی‌یکی پخش می‌شود">وقایع شب ☾</button><span class="mut" id="pv-st"></span></div>
   <div id="pv-wrap"><div class="pvcap"><span class="pvl" id="pvlm">مانیتور</span></div><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
   const saved0 = pvLoad();
   if (saved0) { $('pv-n').value = saved0.n; $('pv-bf').checked = !!saved0.bf; $('pv-sh').checked = !!saved0.sh; $('pv-tm').checked = !!saved0.tm; if (saved0.tms) $('pv-tms').value = saved0.tms; PVHP = saved0.hp || ''; $('pv-hp').value = PVHP; }
-  const start = fresh => {
+  const start = (fresh, lobbyOnly) => {
     stopPreview(); const n = +$('pv-n').value;
     const saved = fresh ? null : pvLoad(); if (fresh) try { localStorage.removeItem(PVKEY); } catch (e) {}
     const hf = $('pv-host'); hf.srcdoc = hostHtml();
@@ -597,8 +597,9 @@ VIEWS.preview = m => {
       if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
       if ($('pv-sh').checked) R.message(fake('pv0'), { t: 'opt', short: true });
       if ($('pv-tm').checked) R.message(fake('pv0'), { t: 'opt', timer: Math.max(10, +$('pv-tms').value || 90) });
-      R.message(fake('pv0'), { t: 'start' });   // a new random game each time (a fixed seed gave the same dice every restart)
-      if (saved && saved.n === n && saved.G) { try { R.G = saved.G; R.save(); } catch (e) {} }
+      // «صفحهٔ ورود»: players have joined but the game has not started, so every phone shows the lobby (house colours, house names and powers)
+      if (!lobbyOnly) R.message(fake('pv0'), { t: 'start' });   // a new random game each time (a fixed seed gave the same dice every restart)
+      if (!lobbyOnly && saved && saved.n === n && saved.G) { try { R.G = saved.G; R.save(); } catch (e) {} }
       PV.saveT = setInterval(pvStore, 1500);
       const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.onload = () => hookFrame(mon.firstChild, 'm'); mon.firstChild.srcdoc = pageHtml('monitor'); fitMon();
       const ph = $('pv-ph'); ph.innerHTML = '';
@@ -611,7 +612,7 @@ VIEWS.preview = m => {
   const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) if (PV.hw.botStep(PV.R.G, rnd) === 'wait') { status('منتظر تاس: بازیکن باید خودش در گوشی تاس بیندازد'); break; } } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-hp').onchange = e => { PVHP = e.target.value; start(true); };
   $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true); $('pv-sh').onchange = () => start(true); $('pv-tm').onchange = () => start(true); $('pv-tms').onchange = () => { if ($('pv-tm').checked) start(true); };
-  $('pv-go').onclick = () => start(true); $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
+  $('pv-go').onclick = () => start(true); $('pv-lob').onclick = () => start(true, true); $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
   $('pv-nev').onclick = () => { if (!PV) return; const G0 = () => PV.R.G, n0 = G0().night; let g = 0; while (!G0().nightQ && G0().night === n0 && G0().phase !== 'end' && g++ < 3000) if (PV.hw.botStep(G0(), rnd) === 'wait') { status('منتظر تاس: بازیکن باید خودش در گوشی تاس بیندازد'); break; } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) if (PV.hw.botStep(PV.R.G, rnd) === 'wait') { status('منتظر تاس: بازیکن باید خودش در گوشی تاس بیندازد'); break; } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };

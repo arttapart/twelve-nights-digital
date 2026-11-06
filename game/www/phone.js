@@ -253,9 +253,9 @@ function diceP() {
   const pend = d && d.acc < d.faces.length;       // rolled, not yet accepted
   // the die keeps exactly the same place before, during and after the roll: same rows above and below it
   const facesRow = `<div class="dfaces">${DIEF[lv].map(v => `<b>${dieN(v)}</b>`).join('')}</div>`;
-  if (!d) o += `${facesRow}${die3H('؟', { tap: true })}<div class="lbl dhint">برای انداختن، روی تاس بزن</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
+  if (!d) o += `${facesRow}${die3H('؟', { tap: true, lv })}<div class="lbl dhint">برای انداختن، روی تاس بزن</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
   else {
-    o += facesRow + die3H(dieHtml(d), { tap: !pend && !T.dieUsed }) + `<div class="lbl dhint">${need > 1 ? d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + dieN(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ') : '&nbsp;'}</div></div>`;
+    o += facesRow + die3H(dieHtml(d), { tap: !pend && !T.dieUsed, lv }) + `<div class="lbl dhint">${need > 1 ? d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + dieN(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ') : '&nbsp;'}</div></div>`;
     if (pend) {
       o += `<div class="dbtns ${DIEBUSY ? 'hold' : ''}">`;
       const free = Game_hasItem(p, 'fate') && !T.freeReroll, hpFree = p.hp === 'hp_luck' && !T.flags.hpLuck;

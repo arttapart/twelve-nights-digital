@@ -126,7 +126,7 @@ function auto(G, q) {
 function forward(G, q) {
   const B = G.battle, k = q.key.split(':')[0], card = q.card;
   const title = card ? 'جادوگر ' + card : 'نبرد جادوگران';
-  if (q.kind === 'die' || q.kind === 'tiedie') _.ask(G, q.to, 'bq', { title, text: q.kind === 'tiedie' ? 'مساوی شد – برای تعیین برنده تاس را بینداز' : (q.text || 'تاس را بینداز'), opts: [{ v: 'roll', label: 'انداختن تاس' }], data: { key: q.key, die: q.kind } });
+  if (q.kind === 'die' || q.kind === 'tiedie') _.ask(G, q.to, 'bq', { title, text: q.kind === 'tiedie' ? 'مساوی شد – برای تعیین برنده تاس جادو را بینداز' : (q.text || 'تاس جادو را بینداز'), opts: [{ v: 'roll', label: 'انداختن تاس جادو' }], data: { key: q.key, die: q.kind } });
   else if (q.kind === 'yesno') _.ask(G, q.to, 'bq', { title, text: q.text, opts: [{ v: true, label: 'بله' }, { v: false, label: 'نه' }], data: { key: q.key } });
   else if (q.kind === 'choose') _.ask(G, q.to, 'bq', { title, text: q.text, opts: q.options.map(o => ({ v: o.v, label: o.label })), data: { key: q.key } });
   else if (k === 'sac') _.ask(G, q.to, 'bq', { title, text: 'می‌توانی یک کارت دستت را بسوزانی تا قدرت پایه‌اش به این کارت اضافه شود.', kind: 'wizs', opts: B.hand[q.to].map((id, i) => ({ v: 'h' + i, wiz: id })).concat([{ v: null, label: 'نمی‌سوزانم' }]), data: { key: q.key } });
@@ -136,7 +136,7 @@ function forward(G, q) {
 _.H.bq = (G, pid, v, q) => {
   const B = revive(G); if (!B || !B.eng) return true;
   const key = q.data.key, k = key.split(':')[0];
-  if (q.data.die) { const p = _.P(G, pid), d = roll(G, p); v = q.data.die === 'tiedie' ? { die: d, gem: Game.hasItem(p, 'gem'), ring: Game.hasItem(p, 'ring') } : { die: d, gem: Game.hasItem(p, 'gem') }; G.roll = { n: ++G.ev, pid, lv: p.wand, vals: [d + (v.gem ? 1 : 0)], label: q.data.die === 'tiedie' ? 'تاس مساوی نبرد' : 'تاس نبرد' }; _.log(G, p.name + ' تاس نبرد انداخت: ' + fa(d)); }
+  if (q.data.die) { const p = _.P(G, pid), d = roll(G, p); v = q.data.die === 'tiedie' ? { die: d, gem: Game.hasItem(p, 'gem'), ring: Game.hasItem(p, 'ring') } : { die: d, gem: Game.hasItem(p, 'gem') }; G.roll = { n: ++G.ev, pid, lv: p.wand, vals: [d + (v.gem ? 1 : 0)], label: 'تاس جادو', bt: 1 }; _.log(G, p.name + ' تاس جادو انداخت: ' + fa(d)); }
   if (k === 'sac') { if (v) { const i = +String(v).slice(1); const id = B.hand[pid][i]; if (!id) return false; B.hand[pid].splice(i, 1); v = id; } else v = null; }
   if (k === 'burnadd') { const n = v | 0; v = B.deck[pid].splice(0, n); (B.preBurn = B.preBurn || {})[pid] = ((B.preBurn || {})[pid] || 0) + v.length; }
   B.eng.answer(pid, key, v);

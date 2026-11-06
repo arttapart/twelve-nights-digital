@@ -301,8 +301,10 @@ function morph0(root, html, screenKey) {
 // so what the die shows is always what the game counted. While it moves, morph() leaves it alone (el._keep).
 const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 const pipF = n => `<div class="pips">${[...Array(9)].map((_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
+// every face carries a number (Farshad 2026-11-06: all faces alike, not one number and five pip faces); the side faces show the other faces of that die
+function sideN(lv, i) { const f = (DIEF && DIEF[Math.min(4, lv || 1)]) || [1, 2, 3, 4, 5, 6], v = f[(i + 1) % f.length]; return `<b class="snum ${v === 0 ? 'long' : ''}">${dieN(v)}</b>`; }
 function die3H(txt, o = {}) {
-  return `<div class="die3 ${o.tap ? 'tap' : ''} ${o.cls || ''}" data-k="die3${o.k || ''}"${o.tap ? ' data-tap="1"' : ''}><div class="cube"><div class="cf fr"><b class="dnum ${/\+|صفر/.test(txt) ? 'long' : ''}">${txt}</b></div><div class="cf bk">${pipF(6)}</div><div class="cf rt">${pipF(3)}</div><div class="cf lf">${pipF(4)}</div><div class="cf tp">${pipF(2)}</div><div class="cf bt">${pipF(5)}</div></div></div>`;
+  return `<div class="die3 ${o.tap ? 'tap' : ''} ${o.cls || ''}" data-k="die3${o.k || ''}"${o.tap ? ' data-tap="1"' : ''}><div class="cube"><div class="cf fr"><b class="dnum ${/\+|صفر/.test(txt) ? 'long' : ''}">${txt}</b></div>${['bk', 'rt', 'lf', 'tp', 'bt'].map((c, i) => `<div class="cf ${c}">${sideN(o.lv, i)}</div>`).join('')}</div></div>`;
 }
 // the Persian zero (۰) is a small dot and on a die it reads like one pip, so a zero is written as a word
 const dieN = v => v === 0 ? 'صفر' : fa(v);
@@ -349,7 +351,7 @@ function dieFx(host, r, cls) {
   const old = host.querySelector('.dfx'); if (old) old.remove();
   const fin = (r.vals || []).map(dieN).join(' + ');
   const el = document.createElement('div'); el.className = 'dfx ' + (cls || '');
-  el.innerHTML = `<div class="dfx-b">${die3H('؟', { k: 'fx' })}<div class="dfx-lab">${esc(r.label || '')}</div></div>`;
+  el.innerHTML = `<div class="dfx-b">${die3H('؟', { k: 'fx', lv: r.lv })}<div class="dfx-lab">${esc(r.label || '')}</div></div>`;
   host.appendChild(el);
   const d = el.querySelector('.die3');
   const out = () => setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 1400);
