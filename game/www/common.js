@@ -80,7 +80,7 @@ function mapSvg(G, o = {}) {
   const dn = G.dun, k = TS / TL.S;
   let s = '', d = '', hit = '';
   const keys = Object.keys(dn.grid);
-  for (const key of keys) { const g = dn.grid[key], [R, C] = key.split(',').map(Number); s += `<g transform="translate(${C * TS},${R * TS}) scale(${k})">${TL.tileR(g.t, g.r)}</g>`; }
+  for (const key of keys) { const g = dn.grid[key], [R, C] = key.split(',').map(Number); s += `<g transform="translate(${C * TS},${R * TS}) scale(${k})">${TL.tileR(g.t, g.r, true)}</g>`; }
   // tile being placed
   if (dn.place) {
     const pl = dn.place, [R, C] = pl.pos, r = pl.rots.length ? pl.rots[pl.ri % pl.rots.length] : 0;
@@ -92,16 +92,21 @@ function mapSvg(G, o = {}) {
     if (!s.includes(`data-slot="${R},${C}"`)) s += `<rect data-slot="${R},${C}" x="${x + 8}" y="${y + 8}" width="${TS - 16}" height="${TS - 16}" rx="14" fill="rgba(243,207,114,.06)" stroke="${e.no ? '#6f6a92' : '#f3cf72'}" stroke-width="3" stroke-dasharray="14 10"/><path d="M${x + TS / 2 - 46} ${y + TS / 2}h92M${x + TS / 2} ${y + TS / 2 - 46}v92" stroke="${e.no ? '#8f8ab5' : '#ffe7a6'}" stroke-width="16" stroke-linecap="round"/>`;
     if (o.hit && !e.no) hit += `<rect class="hit" data-ex="${e.exit}" x="${x}" y="${y}" width="${TS}" height="${TS}" fill="transparent"/>`;
   }
-  // loot tokens
+  // loot tokens, centred inside the cell circle (the printed icon is hidden on revealed tiles)
+  const cr = TL.RC * k;
   for (const n in dn.loot) {
-    const [x, y] = nodeXY(n), L = dn.loot[n], ic = L.chest ? null : L.coin ? 'coin' : L.scroll ? 'scr' : 'ess';
-    if (L.chest) d += `<g transform="translate(${x - 22},${y + 6})"><rect width="44" height="30" rx="6" fill="#7a4b25" stroke="#f3cf72" stroke-width="2.5"/><rect y="11" width="44" height="5" fill="#f3cf72"/></g>`;
-    else d += `<use href="#i-${ic}" x="${x - 30}" y="${y + 4}" width="30" height="30"/>${L.coin === 2 || L.scroll === 2 ? `<use href="#i-${ic}" x="${x}" y="${y + 4}" width="30" height="30"/>` : ''}`;
+    const [x, y] = nodeXY(n), L = dn.loot[n], ic = L.chest ? null : L.coin ? 'coin' : L.scroll ? 'scr' : 'ess', two = L.coin === 2 || L.scroll === 2;
+    if (L.chest) d += `<g transform="translate(${x - cr * .62},${y - cr * .42})"><rect width="${cr * 1.24}" height="${cr * .84}" rx="${cr * .14}" fill="#7a4b25" stroke="#f3cf72" stroke-width="2.5"/><rect y="${cr * .3}" width="${cr * 1.24}" height="${cr * .14}" fill="#f3cf72"/><rect x="${cr * .52}" y="${cr * .24}" width="${cr * .2}" height="${cr * .28}" rx="2" fill="#2a1608" stroke="#f3cf72" stroke-width="1.5"/></g>`;
+    else { const z = two ? cr * .95 : cr * 1.25; d += two ? `<use href="#i-${ic}" x="${x - z + 2}" y="${y - z / 2}" width="${z}" height="${z}"/><use href="#i-${ic}" x="${x - 2}" y="${y - z / 2}" width="${z}" height="${z}"/>` : `<use href="#i-${ic}" x="${x - z / 2}" y="${y - z / 2}" width="${z}" height="${z}"/>`; }
   }
   const ring = (n, c, cls) => { const [x, y] = nodeXY(n); return `<circle class="${cls || ''}" cx="${x}" cy="${y}" r="${TL.RC * k + 5}" fill="none" stroke="${c}" stroke-width="2.5"/>`; };
   for (const m of o.moves || []) { d += ring(m.to, m.no ? '#6f6a92' : m.tele ? '#7fc0ff' : '#7ef0b5', m.no ? '' : 'blk'); if (o.hit && !m.no) { const [x, y] = nodeXY(m.to); hit += `<circle class="hit" data-mv="${m.to}" data-tele="${m.tele ? 1 : ''}" cx="${x}" cy="${y}" r="${TL.RC * k + 12}" fill="transparent"/>`; } }
   if (o.portal) for (const n of o.portal) { d += ring(n, '#c79bff', 'blk'); if (o.hit) { const [x, y] = nodeXY(n); hit += `<circle class="hit" data-pg="${n}" cx="${x}" cy="${y}" r="${TL.RC * k + 12}" fill="transparent"/>`; } }
-  for (const dm of dn.demons) { const [x, y] = nodeXY(dm.node); d += demTok(x + 24, y - 24, LVC[dm.lv], 17); }
+  // demons: a token inside the cell circle; it slides to its new cell when it moves
+  const dAt = {}, pAt = {};
+  for (const p of G.players) if (p.pos) pAt[p.pos] = 1;
+  for (const dm of dn.demons) (dAt[dm.node] = dAt[dm.node] || []).push(dm);
+  for (const n in dAt) { const [x, y] = nodeXY(n), L = dAt[n], sh = pAt[n]; L.forEach((dm, i) => { const dx = (i - (L.length - 1) / 2) * cr * .9 + (sh ? cr * .55 : 0), dy = sh ? -cr * .5 : 0, r = L.length > 1 || sh ? cr * .48 : cr * .78; d += `<g class="fig" data-fig="d${dm.id}" style="transform:translate(${x + dx}px,${y + dy}px)">${demTok(0, 0, LVC[dm.lv], r)}</g>`; }); }
   if (o.arrows) for (const a of o.arrows) { if (!a.from || !a.to || a.from === a.to) continue; const [x1, y1] = nodeXY(a.from), [x2, y2] = nodeXY(a.to); d += `<line x1="${x1}" y1="${y1}" x2="${x2 + (x1 - x2) * .28}" y2="${y2 + (y1 - y2) * .28}" stroke="#ff5a45" stroke-width="7" marker-end="url(#ah)"/>`; }
   // figures (spread when sharing a cell)
   const at = {};
@@ -288,3 +293,10 @@ function dieFx(host, r, cls) {
   if (!ANIM.on) { num.textContent = fin; setTimeout(() => el.remove(), 1500); return; }
   tick();
 }
+
+// ---------- turn timer countdown (host sends the ms left; each screen counts down on its own clock) ----------
+let TEND = null;
+function setTimer(G) { TEND = G && G.turn && G.turn.left != null && G.cfg && G.cfg.timer ? Date.now() + G.turn.left : null; }
+const tmrTxt = () => { const s = Math.max(0, Math.ceil((TEND - Date.now()) / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function tmrH() { return TEND ? `<span class="tmr ${TEND - Date.now() <= 10000 ? 'low' : ''}">⏱ <b>${fa(tmrTxt())}</b></span>` : ''; }
+setInterval(() => { if (!TEND) return; for (const e of document.querySelectorAll('.tmr')) { e.querySelector('b').textContent = fa(tmrTxt()); e.classList.toggle('low', TEND - Date.now() <= 10000); } }, 300);

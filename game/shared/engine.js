@@ -35,7 +35,7 @@ const card = id => id === 'W' ? Object.assign({ id: 'W', ty: 'wound', cost: {}, 
 // ---------- setup ----------
 function newGame(opts) {
   const G = { v: 1, seed: (opts.seed != null ? opts.seed : Date.now()) | 0, phase: 'setup', uid: 0, log: [], toasts: [], prompts: [], pid: 0,
-    cfg: { bf: !!opts.bf }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
+    cfg: { bf: !!opts.bf, timer: Math.max(0, opts.timer | 0) }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
   const nP = opts.players.length;
   const BP = byP(nP);
   G.cfg.nights = BP.nights;
@@ -518,47 +518,110 @@ function finishTurn(G, p) {
   // seals placed earlier expire at the end of the owner's next turn
   for (const k in G.acad.seal) { const s = G.acad.seal[k]; if (s.pid === p.id) { s.cnt++; if (s.cnt >= 2) delete G.acad.seal[k]; } }
   log(G, p.name + ' نوبتش را تمام کرد.' + (lost.length ? ' از بین رفت: ' + lost.join('، ') : ''));
+  // 2-player game: the rightmost hall wizard leaves, the row shifts and a new wizard is revealed
+  if (G.players.length === 2 && G.hall.row.length) { const w = G.hall.row.shift(); G.hall.gone.push(w.id); refillHall(G); log(G, 'بازی دونفره: جادوگر ' + w.id + ' از تالار حذف شد و جادوگر تازه رو شد.'); }
   G.turn = null;
   G.cur++;
   if (G.cur >= G.order.length) endNight(G); else startTurn(G);
 }
 
 // ---------- end of night ----------
+// The night is a visible checklist (Farshad 2026-11-05): every action is one step, run one at a time by Game.tick
+// so the monitor can show it and tick it off. Each demon of the raid is its own step.
 function endNight(G) {
-  G.phase = 'night';
-  G.nightSteps = { n: G.night, done: [] };
-  Dun.nightMove(G);            // 1. demons advance (may ask players fight/concede)
-  G.nightStage = 'event';
-  continueNight(G);
+  G.phase = 'night'; G.nightMoves = [];
+  const steps = G.dun.demons.slice().map(d => ({ k: 'mv', id: d.id, lv: d.lv, t: 'هجوم شبانه: اهریمن ' + LV_NAME[d.lv] + ' یک راهرو پیش می‌رود' }));
+  if (!steps.length) steps.push({ k: 'mv0', t: 'هجوم شبانه: اهریمنی در سیاه‌چال نیست' });
+  const ck = G.chal[G.night];
+  if (ck) steps.push({ k: 'chal', t: 'توکن چالش شب ' + fa(G.night) + ': ' + CHALLENGES[ck].name });
+  if (G.battleNights.includes(G.night)) steps.push({ k: 'battle', t: 'نبرد جادوگران' });
+  if (G.night >= G.cfg.nights) steps.push({ k: 'final', t: 'امتیازشماری پایانی' });
+  else {
+    steps.push({ k: 'acad', t: 'آکادمی: ' + (G.players.length === 2 ? '۲ کارت' : 'کارت') + ' سمت راست می‌سوزد' });
+    steps.push({ k: 'hall', t: 'تالار: توکن «۱- دفاع» روی هر جادوگر' });
+    steps.push({ k: 'hat', t: G.players.length === 2 ? 'شب بعد: نوبت‌ها یکی در میان ادامه دارد' : 'کلاه جادوگری به نفر بعد می‌رسد' });
+  }
+  G.nightQ = { n: G.night, steps, i: 0, at: null };
 }
-function continueNight(G) {
-  if (G.prompts.length || G.battle) return;    // wait for answers / the battle
-  if (G.nightStage === 'event') {
-    G.nightStage = 'chal';
-    const ck = G.chal[G.night];
-    if (ck) scoreChallenge(G, ck);
-  }
-  if (G.nightStage === 'chal') {
-    G.nightStage = 'battle';
-    if (G.battleNights.includes(G.night)) { Battle.start(G); return; }
-  }
-  if (G.nightStage === 'battle') {
-    G.nightStage = 'wrap';
-    if (G.night >= G.cfg.nights) { finalScore(G); return; }
-    // 3. academy: rightmost (unsealed) card burns (2 in a 2-player game)
+const NIGHT_MS = { mv: 3200, mv0: 1600, chal: 6500, battle: 800, acad: 2600, hall: 2200, hat: 2400, final: 0 };
+function nightStep(G, s) {
+  if (s.k === 'mv') {
+    const m = Dun.nightMoveOne(G, s.id);
+    s.m = m; s.d = !m ? 'دیگر در سیاه‌چال نیست' : m.breach ? 'به دروازهٔ شهر رسید – رخنه!' : 'یک راهرو پیش رفت';
+    log(G, 'هجوم شبانه: اهریمن ' + LV_NAME[s.lv] + ' ' + s.d);
+  } else if (s.k === 'chal') { scoreChallenge(G, G.chal[G.night]); const C = G.chalResult; s.d = C && C.winners && C.winners.length ? 'برنده: ' + C.winners.map(i => P(G, i).name).join('، ') : ''; }
+  else if (s.k === 'battle') Battle.start(G);
+  else if (s.k === 'final') finalScore(G);
+  else if (s.k === 'acad') {
+    // academy: rightmost (unsealed) card burns (2 in a 2-player game)
     const nb = G.players.length === 2 ? 2 : 1; const burned = [];
     for (let k = 0; k < nb; k++) { let i = 0; while (i < G.acad.row.length && G.acad.seal[i]) i++; if (i < G.acad.row.length) { const id = removeFromRow(G, i); G.acad.discard.push(id); burned.push(D.cards[id].name); } }
-    // 4. hall: -1 defense token on every unhired wizard (max 3)
-    for (const w of G.hall.row) w.tok = Math.min(3, (w.tok || 0) + 1);
-    for (const p of G.players) p.shield = false;
-    log(G, 'پایان شب ' + fa(G.night) + ': سوخت از آکادمی: ' + (burned.join('، ') || 'هیچ') + ' · توکن «۱- دفاع» روی جادوگران تالار.');
-    G.night++;
-    G.order = G.order.slice(1).concat(G.order.slice(0, 1));   // the wizard hat goes to the next player
-    G.phase = 'turn'; G.cur = 0; G.nightStage = null;
-    toast(G, 'شب ' + fa(G.night) + ' شروع شد.', 'night');
+    s.d = 'سوخت: ' + (burned.join('، ') || 'هیچ'); log(G, 'پایان شب ' + fa(G.night) + ': ' + s.d + ' از آکادمی.');
     fillAcademy(G);
-    startTurn(G);
+  } else if (s.k === 'hall') {
+    // hall: -1 defense token on every unhired wizard (at most R.hallTokMax, Farshad 2026-11-05: 2)
+    let n = 0; for (const w of G.hall.row) { const t = Math.min(R.hallTokMax || 2, (w.tok || 0) + 1); if (t > (w.tok || 0)) n++; w.tok = t; }
+    s.d = fa(n) + ' جادوگر توکن گرفت'; log(G, 'تالار: ' + s.d + '.');
+  } else if (s.k === 'hat') {
+    for (const p of G.players) p.shield = false;
+    // the wizard hat goes to the next player; in a 2-player game turns simply alternate (Farshad 2026-11-05)
+    if (G.players.length !== 2) G.order = G.order.slice(1).concat(G.order.slice(0, 1));
+    s.d = 'نفر اول شب ' + fa(G.night + 1) + ': ' + P(G, G.order[0]).name;
   }
+  s.done = true;
+}
+function startNextNight(G) {
+  G.night++; G.nightQ = null; G.nightMoves = [];
+  G.phase = 'turn'; G.cur = 0; G.nightStage = null;
+  toast(G, 'شب ' + fa(G.night) + ' شروع شد.', 'night');
+  fillAcademy(G);
+  startTurn(G);
+}
+// kept for the battle module and prompt answers: the next step now waits for Game.tick
+function continueNight(G) { if (G.nightQ && G.nightQ.at == null) G.nightQ.at = 0; }
+// optional turn timer (lobby option, seconds): when it runs out, unplayed production cards become resources,
+// storable resources are stored and the next player starts (Farshad 2026-11-05)
+function turnTimer(G, now, force) {
+  const T = G.turn; if (!G.cfg.timer || G.phase !== 'turn' || !T) return false;
+  if (T.deadline == null) { T.deadline = now + G.cfg.timer * 1000; return true; }
+  if (force || now < T.deadline) return false;
+  timeoutTurn(G); return true;
+}
+function timeoutTurn(G) {
+  const p = curP(G), T = G.turn; if (!p || !T) return;
+  for (let g = 0; g < 20 && (G.fight || G.dun.place || G.dun.portal); g++) Dun.forceEnd(G, p);
+  G.prompts = G.prompts.filter(q => q.to !== p.id);
+  const got = [];
+  for (const x of p.hand.slice()) {
+    const c = D.cards[x.c]; if (!c || c.ty !== 'prod' || !c.gain || c.fx) continue;
+    let any = false; for (const r of ['coin', 'scroll', 'ess']) if (c.gain[r]) { T.pool[r] += c.gain[r]; any = true; }
+    if (any) { T.played.push(x); p.hand.splice(p.hand.indexOf(x), 1); got.push(c.name); }
+  }
+  toast(G, 'وقت ' + p.name + ' تمام شد' + (got.length ? ' – کارت‌های تولید منبع شد: ' + got.join('، ') : ''), 'turn');
+  finishTurn(G, p);
+}
+// called by the host about twice a second (and by the bot with force): runs timed things.
+// returns true when the state changed.
+function tick(G, now, force) {
+  if (!G) return false;
+  let ch = false;
+  if (G.phase === 'night' && G.nightQ && !G.prompts.length && !G.battle) {
+    const Q = G.nightQ;
+    if (Q.at == null) { Q.at = now + 1500; ch = true; }
+    if (force || now >= Q.at) {
+      if (Q.i < Q.steps.length) {
+        const s = Q.steps[Q.i]; Q.cur = Q.i;
+        // first the step is shown as "in progress" (a demon's tile is shown big), then it runs and is ticked off
+        if (!s.on && !force) { s.on = true; Q.at = now + (s.k === 'mv' ? 1400 : 700); }
+        else { s.on = true; nightStep(G, s); Q.i++; Q.at = force ? 0 : now + (NIGHT_MS[s.k] || 2000); }
+      }
+      else if (G.phase === 'night') startNextNight(G);
+      ch = true;
+    }
+  }
+  if (turnTimer(G, now, force)) ch = true;
+  if (ch) G.rev = (G.rev || 0) + 1;
+  return ch;
 }
 const CHAL_METRIC = {
   removed: p => p.removed.length, coin: p => p.store.coin, scroll: p => p.store.scroll, ess: p => p.store.ess,
@@ -646,7 +709,7 @@ function phoenix(G, p, u) {
   p.discard.push(p.hand.splice(i, 1)[0]); drawCards(G, p, 1); G.turn.phoenix = true; return null;
 }
 
-const Game = { CHAL_METRIC, HP, housePower, hasHP, newGame, act, answer, fa, HOUSES, UPGRADES, ITEMS, TREASURE_NAME, CHALLENGES, DIE, DIE_NAME, RES, LV_NAME, LV_KEY, REWARD_NAME, card, cap, activeItems, hasItem, hireCost, canPay, curP, isTurn, busy, continueNight };
+const Game = { tick, CHAL_METRIC, HP, housePower, hasHP, newGame, act, answer, fa, HOUSES, UPGRADES, ITEMS, TREASURE_NAME, CHALLENGES, DIE, DIE_NAME, RES, LV_NAME, LV_KEY, REWARD_NAME, card, cap, activeItems, hasItem, hireCost, canPay, curP, isTurn, busy, continueNight };
 // internals shared with the dungeon and battle modules
 Game._ = { hasHP, H, ask, slotN, askSlots, toast, log, P, rnd, shuffle, drawCards, gain, addFame, removeCard, askRemove, startTurn, continueNight, upgrade, rollFace, dieValue, cap, hasItem, curP, isTurn, allCards, fillAcademy, DEMON_LV, LV_NAME, LV_KEY, REWARD_NAME, TREASURE_NAME, ITEMS };
 let Dun, Battle;

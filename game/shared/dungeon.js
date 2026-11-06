@@ -284,6 +284,15 @@ function fightAct(G, p, a) {
   if (a.t === 'f_luck') { if (!cur || !T.flags.luck) return 'بخت دوباره در دسترس نیست'; T.flags.luck = 0; G.demonDeck.push(cur.ci); F.cards.pop(); revealDemon(G); return null; }
   return 'کار ناشناخته';
 }
+// turn timer ran out: close whatever the player left open in the dungeon
+function forceEnd(G, p) {
+  const F = G.fight;
+  if (F && F.pid === p.id) { const cur = F.pending != null ? F.cards[F.pending] : null; if (cur) loseFight(G, p); else if (F.cards.some(c => c.paid)) winFight(G, p); else endFight(G); }
+  if (G.fight) endFight(G);
+  if (G.dun.place) placeTile(G, p);
+  if (G.dun.portal) G.dun.portal = null;
+  if (G.turn) { G.turn.run = 0; G.turn.forced = null; }
+}
 function endFight(G) { const F = G.fight; for (const c of F.cards) G.demonDeck.push(c.ci); G.demonDeck = _.shuffle(G, G.demonDeck); G.lastFight = Object.assign({}, F); G.fight = null; if (G.turn && G.turn.forced === F.did) G.turn.forced = null; }
 function winFight(G, p) {
   const F = G.fight, paid = F.cards.filter(c => c.paid);
@@ -388,10 +397,22 @@ function breach(G, d) {
   G.dun.demons = G.dun.demons.filter(x => x !== d);
   const min = Math.min(...G.players.map(p => p.hunt));
   const hit = G.players.filter(p => p.hunt === min);
-  const got = [];
-  for (const p of hit) { if (p.shield) continue; wound(G, p, 'رخنه'); got.push(p.name); }
-  G.lastBreach = { n: ++G.ev, lv: d.lv, hit: hit.map(p => p.id), shielded: hit.filter(p => p.shield).map(p => p.id) };
-  _.toast(G, 'رخنه! اهریمن ' + _.LV_NAME[d.lv] + ' به دروازهٔ شهر رسید' + (got.length ? ' · زخم: ' + got.join('، ') : ''), 'breach');
+  const got = [], all = D.rules.breachMode === 'all';
+  // two versions, chosen in the editor (Farshad 2026-11-05): 'min' = fewest hunt tokens take 1 wound;
+  // 'all' = every player takes 1 wound and the fewest hunt tokens lose 1 fame point
+  const wounded = all ? G.players : hit;
+  for (const p of wounded) { if (p.shield) continue; wound(G, p, 'رخنه'); got.push(p.name); }
+  const lostF = [];
+  if (all) for (const p of hit) { if (p.shield) continue; if (p.fame > 0) { p.fame -= 1; } lostF.push(p.name); }
+  G.lastBreach = { n: ++G.ev, lv: d.lv, mode: all ? 'all' : 'min', hit: wounded.map(p => p.id), fameLost: all ? hit.filter(p => !p.shield).map(p => p.id) : [], shielded: wounded.filter(p => p.shield).map(p => p.id) };
+  _.toast(G, 'رخنه! اهریمن ' + _.LV_NAME[d.lv] + ' به دروازهٔ شهر رسید' + (got.length ? ' · زخم: ' + got.join('، ') : '') + (lostF.length ? ' · ۱ امتیاز کم شد: ' + lostF.join('، ') : ''), 'breach');
+}
+// one demon of the night raid moves one corridor (the night list runs them one by one)
+function nightMoveOne(G, id) {
+  const d = G.dun.demons.find(x => x.id === id); if (!d) return null;
+  const from = d.node; demonStep(G, id); const d2 = G.dun.demons.find(x => x.id === id);
+  const m = { id, lv: d.lv, from, to: d2 ? d2.node : GATE, breach: !d2 };
+  (G.nightMoves = G.nightMoves || []).push(m); return m;
 }
 function nightMove(G) {
   G.nightMoves = [];
@@ -419,7 +440,7 @@ function act(G, p, a) {
   return 'کار ناشناخته';
 }
 
-const Dun = { init, graph, startCells, cellName, tileCell, isCursed, isStart, moveOptions, openExits, canEndHere, portalChoice, farStrike, nightMove, act, demonsAt, rotCell, rotExit, posOf, cellOf, key, GATE, CELLNAME };
+const Dun = { init, graph, startCells, cellName, tileCell, isCursed, isStart, moveOptions, openExits, canEndHere, portalChoice, farStrike, nightMove, nightMoveOne, forceEnd, GATE, act, demonsAt, rotCell, rotExit, posOf, cellOf, key, GATE, CELLNAME };
 root.Dun = Dun;
 if (typeof module !== 'undefined') module.exports = Dun;
 })(typeof window !== 'undefined' ? window : global);

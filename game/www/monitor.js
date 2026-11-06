@@ -10,7 +10,7 @@ const NM = i => esc(S.G.players[i].name);
 const api = connect('monitor', (m, up) => {
   if (m === null) { document.body.classList.toggle('offline', !up); return; }
   if (m.t !== 'state') return;
-  S = m;
+  S = m; setTimer(S.G);
   if (first && S.G) { // do not replay old overlays after a reload
     const G = S.G; seen.toast = G.toasts.length ? G.toasts[G.toasts.length - 1].n : 0; seen.die = G.roll ? G.roll.n : 0;
     seen.duel = G.duel ? G.duel.n : 0; seen.chal = G.chalResult ? G.chalResult.n : 0; seen.breach = G.lastBreach ? G.lastBreach.n : 0;
@@ -74,7 +74,7 @@ function chalLine(G) {
 }
 function topH(G, extra) {
   const T = G.turn;
-  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}</span></div></div>`;
+  return `<div class="top">${nightsH(G)}<div class="chal">${extra || chalLine(G)}</div><div class="turn">${T ? `<b style="color:${H(T.pid)}">نوبت ${NM(T.pid)}</b>${tmrH()}` : ''}<span>شب ${fa(G.night)} از ${fa(G.cfg.nights)}</span></div></div>`;
 }
 function pbarH(G) {
   const T = G.turn;
@@ -187,13 +187,20 @@ function chalStrip(G) {
 
 // ---------- night ----------
 function nightScr() {
-  const G = S.G, st = G.nightStage;
-  const steps = [['event', '۱. هجوم شبانه'], ['chal', '۲. رویداد شب: توکن چالش'], ['battle', '۳. نبرد جادوگران'], ['wrap', '۴. آکادمی و تالار'], ['x', '۵. کلاه جادوگری ← نفر بعد']];
-  const idx = { event: 0, chal: 1, battle: 2, wrap: 3 }[st] || 0;
-  const br = G.lastBreach && G.lastBreach.n > (G.nightSteps ? 0 : 0) ? G.lastBreach : null;
+  const G = S.G, Q = G.nightQ;
+  const br = G.lastBreach && seen.breach === G.lastBreach.n && Date.now() - (timers.breachAt || 0) < 15000 ? G.lastBreach : null;
+  // the night as a checklist: done steps are ticked with what happened, the current one glows
+  const list = Q ? Q.steps.map((st, i) => { const cls = st.done ? 'ok' : st.on ? 'on' : ''; return `<div class="nstep ${cls}"><i>${st.done ? '✓' : st.on ? '◆' : ''}</i><div><b>${esc(st.t)}</b>${st.done && st.d ? `<span>${esc(st.d)}</span>` : ''}</div></div>`; }).join('') : '';
+  // a demon's raid step: its tile big on the map, the token slides along the corridor
+  const cur = Q && Q.cur != null ? Q.steps[Q.cur] : null;
+  let map;
+  if (cur && cur.k === 'mv') {
+    const dm = G.dun.demons.find(x => x.id === cur.id), node = cur.m ? cur.m.from : dm ? dm.node : null;
+    map = node ? mapSvg(G, { focus: tileOf(node).split(',').map(Number), pad: .3, arrows: cur.done && cur.m ? [cur.m] : [] }) : mapSvg(G, { arrows: G.nightMoves });
+  } else map = mapSvg(G, { arrows: G.nightMoves });
   return `<div class="M MX" data-s="a">${topH(G, `<span class="tag" style="font-size:22px;padding:6px 18px">پایان شب ${fa(G.night)}</span>`)}<div class="body">
-<div class="steps">${steps.map(([k, t], i) => `<div class="${i === idx ? 'on' : ''}">${t}</div>`).join('')}</div>
-<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br && seen.breach === br.n && Date.now() - (timers.breachAt || 0) < 15000 ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – کمترین توکن شکار: <b>${br.hit.map(NM).join('، ')}</b></div>` : ''}<div class="dmap">${mapSvg(G, { arrows: G.nightMoves })}</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
+<div class="nlist zone"><h4>اقدامات پایان شب</h4>${list}</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px;min-width:0">${br ? `<div class="banner">رخنه! اهریمن ${LVN[br.lv]} به دروازهٔ شهر رسید – ${br.mode === 'all' ? 'همه ۱ زخم گرفتند؛ ۱ امتیاز کم شد: <b>' + (br.fameLost || []).map(NM).join('، ') + '</b>' : 'کمترین توکن شکار: <b>' + br.hit.map(NM).join('، ') + '</b>'}</div>` : ''}<div class="dmap">${map}</div></div></div>${pbarH(G)}${waitLine(G)}</div>`;
 }
 
 // ---------- wizard battle ----------
@@ -219,13 +226,13 @@ ${B.bf ? `<div class="ctr"><div class="bfx"><span>اثر میدان نبرد</sp
   let lastH = '';
   if (L) {
     lastH = `<div class="plat" style="flex:1">${G.order.map(id => { const cid = L.cards[id]; const win = L.winner === id; const parts = (L.parts && L.parts[id]) || [];
-      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${cid ? wcard(cid) : '<div class="deck" style="width:158px;height:240px;display:flex;align-items:center;justify-content:center">بدون کارت</div>'}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>`; }).join('')}</div>`;
+      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${cid ? wcard(cid) : '<div class="deck" style="width:158px;height:240px;display:flex;align-items:center;justify-content:center">بدون کارت</div>'}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tag" style="font-size:20px;background:rgba(127,192,255,.16);color:#bfe0ff;border-color:#7fc0ff">تاس مساوی: ${fa(L.tie.dice[id])}</span>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>`; }).join('')}</div>`;
   }
   const status = G.order.map(id => `<span class="bst ${B.picked[id] ? 'ok' : ''}" style="--pc:${H(id)}"><i></i>${NM(id)} ${B.picked[id] ? '✓' : '…'}</span>`).join('');
   return `<div class="M MX" data-s="a">${head}<div class="body" style="flex-direction:column;gap:18px">
-<div class="ctr" style="flex-direction:row;gap:30px"><h2>${L && B.phase === 'pick' ? 'راند ' + fa(L.round) + ' تمام شد – ' : ''}راند ${fa(B.round)} از ۶</h2>${track}</div>
+<div class="ctr" style="flex-direction:row;gap:30px"><h2>${B.phase === 'r6' && L ? 'راند ' + fa(L.round) + ' تمام شد' : (L && B.phase === 'pick' ? 'راند ' + fa(L.round) + ' تمام شد – ' : '') + 'راند ' + fa(B.round) + ' از ۶'}</h2>${track}</div>
 ${lastH || '<div class="ctr" style="flex:1"><div class="sub" style="font-size:30px">هر بازیکن در گوشی یک کارت از دست ۲ کارتی‌اش را پنهانی انتخاب می‌کند</div></div>'}
-<div class="bstat">${B.phase === 'pick' ? 'انتخاب پنهان: ' + status : 'در حال اجرای اثرها…'}</div></div>${waitLine(G)}</div>`;
+<div class="bstat">${B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند' : B.phase === 'pick' ? 'انتخاب پنهان: ' + status : 'در حال اجرای اثرها…'}</div></div>${waitLine(G)}</div>`;
 }
 
 // ---------- final ----------
@@ -252,6 +259,11 @@ function overlays() {
   if (live('duel') && G.duel) {
     const D2 = G.duel;
     o += `<div class="ovl"><div class="zone ctr" style="gap:20px;padding:34px 50px"><h2>دوئل چالش کریستال</h2><table class="tbl" style="width:1100px"><tr><th></th><th>پرتاب ۱</th><th>پرتاب ۲</th><th>پرتاب ۳</th><th>جمع</th></tr>${D2.res.map(r => `<tr class="${D2.winner === r.id ? 'win' : ''}"><td><span class="nmd"><i style="background:${H(r.id)}"></i>${NM(r.id)}</span></td>${r.rolls.map(x => `<td><span class="die6">${fa(x)}</span></td>`).join('')}<td style="font-size:34px">${fa(r.sum)}${D2.winner === r.id ? ' <span class="tag">برنده</span>' : ''}</td></tr>`).join('')}</table><div class="sub">${D2.winner == null ? 'مساوی؛ کسی جایزه نمی‌گیرد' : 'برنده جایزه‌اش را در گوشی انتخاب می‌کند'}</div></div></div>`;
+  }
+  // crystal duel in progress: every roll appears in the table as soon as the player throws it
+  if (G.duelPend && !live('duel')) {
+    const D2 = G.duelPend, nd = RU.duelDice || 3, cur = D2.res[D2.k];
+    o += `<div class="ovl"><div class="zone ctr" style="gap:20px;padding:34px 50px"><h2>دوئل چالش کریستال</h2><table class="tbl" style="width:1100px"><tr><th></th>${Array.from({ length: nd }, (_, k) => `<th>پرتاب ${fa(k + 1)}</th>`).join('')}<th>جمع</th></tr>${D2.res.map(r => `<tr class="${cur && cur.id === r.id ? 'win' : ''}"><td><span class="nmd"><i style="background:${H(r.id)}"></i>${NM(r.id)}</span></td>${Array.from({ length: nd }, (_, k) => `<td>${r.rolls[k] != null ? `<span class="die6">${fa(r.rolls[k])}</span>` : '<span class="sub">–</span>'}</td>`).join('')}<td style="font-size:34px">${r.rolls.length ? fa(r.sum) : ''}</td></tr>`).join('')}</table><div class="sub">${cur ? NM(cur.id) + ' در گوشی تاس را بیندازد' : ''}</div></div></div>`;
   }
   if (G.chalResult && G.chalResult.n > seen.chal) { seen.chal = G.chalResult.n; show('chal', 9000); }
   if (live('chal') && G.chalResult) {

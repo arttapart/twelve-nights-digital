@@ -50,6 +50,7 @@ function act(G, pid, a) {
     const h = B.hand[pid]; if (!(a.i >= 0 && a.i < h.length)) return 'کارت نادرست';
     h.splice(a.i, 1); B.wild[pid] = true; draw(B, pid, 1); return null;
   }
+  if (a.t === 'b_show') { if (B.phase !== 'r6') return 'الان نمی‌شود'; if (pid !== B.shower && !a.force) return 'فقط برندهٔ راند آخر'; scoreBattle(G); return null; }
   if (a.t === 'b_next') { if (B.phase !== 'done') return 'نبرد تمام نشده'; B.ack = B.ack || {}; B.ack[pid] = true; if (G.players.every(q => B.ack[q.id]) || a.force) finish(G); return null; }
   return 'کار ناشناخته';
 }
@@ -158,7 +159,8 @@ function afterRound(G) {
     }
     if (cid && W(cid).eff[0] === 'peek' && B.deck[p.id].length) _.ask(G, p.id, 'peek', { title: 'جادوگر B8', text: 'کارت روی دکت: ' + B.deck[p.id][0] + '. سر جایش بماند یا زیر دک برود؟', kind: 'wizs', opts: [{ v: 'top', wiz: B.deck[p.id][0], label: 'سر جایش' }, { v: 'bottom', label: 'زیر دک' }] });
   }
-  if (E.phase === 'done') { scoreBattle(G); return; }
+  // after the last round its result stays on the monitor; the round winner opens the final results
+  if (E.phase === 'done') { B.phase = 'r6'; B.shower = h.winner != null && h.winner !== 'lost' && G.players[h.winner] ? h.winner : G.order[0]; return; }
   B.round = E.round; B.picked = {};
   if (!G.prompts.some(q => q.k === 'peek')) nextRound(G); else B.phase = 'peek';
 }
@@ -192,7 +194,7 @@ function view(G, pid) {
     wins: E ? E.history.map(h => h.winner) : [], tokens: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].tokens])) : {},
     picked: Object.fromEntries(G.players.map(p => [p.id, B.picked[p.id] !== undefined])), deckN: Object.fromEntries(G.players.map(p => [p.id, (B.deck[p.id] || []).length])),
     handN: Object.fromEntries(G.players.map(p => [p.id, (B.hand[p.id] || []).length])), until: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].until.map(u => u.id)])) : {},
-    next: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].next ? E.P[p.id].next.id : null])) : {}, ack: B.ack || {} };
+    next: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].next ? E.P[p.id].next.id : null])) : {}, ack: B.ack || {}, shower: B.shower };
   if (pid != null) { v.hand = B.hand[pid] || []; v.myPick = B.picked[pid]; v.remove = B.remove[pid]; v.wild = !!B.wild[pid]; v.r1top = !!B.r1top; }
   return v;
 }

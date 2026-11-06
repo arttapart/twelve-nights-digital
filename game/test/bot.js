@@ -15,9 +15,11 @@ function botStep(G, r) {
     const B = G.battle;
     if (B.phase === 'prep') { for (const p of G.players) if (!B.ready[p.id]) { const rm = p.wiz.map((_, i) => i).filter(() => r() < .15 && p.wiz.length > 7); Game.act(G, p.id, { t: 'b_prep', remove: rm }); return; } }
     if (B.phase === 'pick') { for (const p of G.players) if (B.picked[p.id] === undefined) { const h = B.hand[p.id]; const e = Game.act(G, p.id, { t: 'b_pick', i: h.length ? Math.floor(r() * h.length) : null }); if (e) throw new Error('pick ' + e); return; } }
+    if (B.phase === 'r6') { Game.act(G, B.shower, { t: 'b_show' }); return; }
     if (B.phase === 'done') { for (const p of G.players) Game.act(G, p.id, { t: 'b_next' }); return; }
     throw new Error('battle stuck in ' + B.phase);
   }
+  if (G.phase === 'night' && G.nightQ) { Game.tick(G, 0, true); return; }   // run the next night step at once
   if (G.phase !== 'turn') throw new Error('stuck phase ' + G.phase);
   const p = Game.curP(G), T = G.turn, A = a => Game.act(G, p.id, a);
   if (T.die && T.die.acc < T.die.faces.length) { A({ t: 'dieok' }); return; }   // accept the current die before anything else

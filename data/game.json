@@ -6214,6 +6214,8 @@
   "handSize": 5,
   "acadRow": 6,
   "hallSize": 5,
+  "hallTokMax": 2,
+  "breachMode": "min",
   "storeBase": 2,
   "storeUp": 4,
   "tokenMax": 3,

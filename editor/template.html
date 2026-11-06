@@ -324,10 +324,11 @@ VIEWS.rules = m => {
   const R = W.rules, WR = W.wrules;
   m.innerHTML = `<h2>قانون‌ها و عددها</h2><p class="help">عددهای اصلی بازی. هر تغییر در نسخهٔ بعدی برنامه اعمال می‌شود. برای امتحانش، «پیش‌نمایش زنده» را باز کن.</p><div class="cards" id="rf"></div>`;
   const host = $('rf');
-  const box = (title, fields, extra) => { const d = document.createElement('div'); d.className = 'box'; d.innerHTML = `<h3>${title}</h3><div class="f">${fields.map((f, i) => `<label>${f.label}</label><input type="${f.ty === 'num' ? 'number' : 'text'}" data-i="${i}" value="${esc(f.get ? f.get() : f.o[f.k])}" ${f.ty !== 'num' ? 'style="width:160px"' : ''}>`).join('')}</div>${extra || ''}`;
+  const box = (title, fields, extra) => { const d = document.createElement('div'); d.className = 'box'; d.innerHTML = `<h3>${title}</h3><div class="f">${fields.map((f, i) => `<label>${f.label}</label>${f.ty === 'sel' ? `<select data-i="${i}" style="max-width:340px">${f.opts.map(([a, b]) => `<option value="${esc(a)}" ${String(a) === String(f.get ? f.get() : f.o[f.k]) ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>` : `<input type="${f.ty === 'num' ? 'number' : 'text'}" data-i="${i}" value="${esc(f.get ? f.get() : f.o[f.k])}" ${f.ty !== 'num' ? 'style="width:160px"' : ''}>`}`).join('')}</div>${extra || ''}`;
     d.addEventListener('change', e => { const f = fields[+e.target.dataset.i]; if (!f) return; try { const v = f.ty === 'num' ? +e.target.value : e.target.value; if (f.set) f.set(v); else f.o[f.k] = v; e.target.style.outline = ''; dirty(); } catch (er) { e.target.style.outline = '2px solid var(--bad)'; status(er.message, true); } });
     host.appendChild(d); return d; };
-  box('دست و ذخیره', [field(R, 'handSize', 'کارت در شروع نوبت'), field(R, 'acadRow', 'کارت‌های ردیف آکادمی'), field(R, 'hallSize', 'جادوگران تالار'), field(R, 'storeBase', 'جای ذخیرهٔ هر منبع'), field(R, 'storeUp', 'جای ذخیره پس از ارتقا'), field(R, 'tokenMax', 'حداکثر مشعل + کلنگ'), field(R, 'huntTokens', 'تعداد کل توکن‌های شکار اهریمن')]);
+  box('دست و ذخیره', [field(R, 'handSize', 'کارت در شروع نوبت'), field(R, 'acadRow', 'کارت‌های ردیف آکادمی'), field(R, 'hallSize', 'جادوگران تالار'), field(R, 'storeBase', 'جای ذخیرهٔ هر منبع'), field(R, 'storeUp', 'جای ذخیره پس از ارتقا'), field(R, 'tokenMax', 'حداکثر مشعل + کلنگ'), field(R, 'huntTokens', 'تعداد کل توکن‌های شکار اهریمن'), field(R, 'hallTokMax', 'حداکثر توکن «۱- دفاع» روی هر جادوگر تالار')]);
+  box('رخنه', [{ o: R, k: 'breachMode', label: 'وقتی اهریمن به دروازهٔ شهر می‌رسد', ty: 'sel', opts: [['min', 'بازیکن(های) با کمترین توکن شکار ۱ زخم می‌گیرند'], ['all', 'همهٔ بازیکنان ۱ زخم می‌گیرند و کمترین توکن شکار ۱ امتیاز از دست می‌دهد']] }]);
   box('شروع بازی', [field(R, 'startWand', 'سطح چوب‌دستی'), field(R, 'startTorch', 'مشعل'), field(R, 'startPick', 'کلنگ'), ...['coin', 'scroll', 'ess'].map(r => ({ label: ['سکه', 'طومار', 'جوهره'][['coin', 'scroll', 'ess'].indexOf(r)] + ' در ذخیره', ty: 'num', get: () => R.startStore[r] || 0, set: v => { R.startStore[r] = v; } }))]);
   const costF = (o, k, n) => ['coin', 'scroll', 'ess'].map((r, j) => ({ label: n + ' (' + ['سکه', 'طومار', 'جوهره'][j] + ')', ty: 'num', get: () => (o[k] || {})[r] || 0, set: v => { o[k] = o[k] || {}; if (v) o[k][r] = v; else delete o[k][r]; } }));
   box('تاس و آکادمی', [...costF(R, 'rerollCost', 'هزینهٔ بازانداختن'), field(R, 'rerollMax', 'بازانداختن پولی در نوبت'), ...costF(R, 'swapCost', 'هزینهٔ تعویض کارت آکادمی'), field(R, 'duelDice', 'تاس‌های دوئل کریستال')]);
@@ -569,16 +570,16 @@ function editBar() {
 // the preview keeps its game: after a reload (a new version) it comes back to the same night, turn and phone tabs
 const PVKEY = 'pv-save';
 function pvLoad() { try { return JSON.parse(localStorage.getItem(PVKEY) || 'null'); } catch (e) { return null; } }
-function pvStore() { if (!PV || !PV.R.G) return; try { const tabs = [...document.querySelectorAll('#pv-ph iframe')].map(f => { try { return JSON.parse(f.contentWindow.eval('JSON.stringify({tab, ix})')); } catch (e) { return null; } }); localStorage.setItem(PVKEY, JSON.stringify({ n: PV.n, bf: $('pv-bf').checked, hp: PVHP, G: PV.R.G, lobby: PV.R.lobby, tabs })); } catch (e) {} }
+function pvStore() { if (!PV || !PV.R.G) return; try { const tabs = [...document.querySelectorAll('#pv-ph iframe')].map(f => { try { return JSON.parse(f.contentWindow.eval('JSON.stringify({tab, ix})')); } catch (e) { return null; } }); localStorage.setItem(PVKEY, JSON.stringify({ n: PV.n, bf: $('pv-bf').checked, tm: $('pv-tm').checked, tms: +$('pv-tms').value, hp: PVHP, G: PV.R.G, lobby: PV.R.lobby, tabs })); } catch (e) {} }
 
 function fitMon() { const mon = $('pv-mon'); if (!mon || !mon.firstChild) return; const k = mon.clientWidth / 1920; mon.firstChild.style.transform = 'scale(' + k + ')'; mon.style.height = Math.round(1080 * k) + 'px'; }
 addEventListener('resize', fitMon);
 VIEWS.preview = m => {
   m.innerHTML = `<h2>پیش‌نمایش زنده</h2><p class="help">کل بازی با همهٔ تغییرهایت، همین‌جا و بدون شبکه اجرا می‌شود: مانیتور بالا و گوشی‌ها پایین. روی گوشی‌ها مثل بازی واقعی کلیک کن، یا «ربات» را بزن تا خودش بازی کند و به صفحه‌های بعدی برسی. هر بار که چیزی را عوض کردی، «شروع دوباره» را بزن.</p>
-  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
+  <div class="bar"><label>بازیکن: <select id="pv-n">${[2, 3, 4, 5].map(n => `<option ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select></label><label><input type="checkbox" id="pv-bf"> اثر میدان نبرد</label><label><input type="checkbox" id="pv-tm"> تایمر نوبت <input type="number" id="pv-tms" value="90" min="10" step="5" style="width:64px"> ثانیه</label><label>قدرت خاندان‌ها: <select id="pv-hp"><option value="">طبق ویرایشگر</option><option value="main" ${PVHP === 'main' ? 'selected' : ''}>همه با قدرت اصلی</option><option value="alt" ${PVHP === 'alt' ? 'selected' : ''}>همه با قدرت جایگزین</option></select></label><button class="btn" id="pv-go">شروع دوباره</button><button class="btn g" id="pv-step">۱ قدم ربات</button><button class="btn g" id="pv-10">۱۰ قدم</button><button class="btn g" id="pv-auto">ربات خودکار ▶</button><button class="btn g" id="pv-night">برو به شب بعد</button><span class="mut" id="pv-st"></span></div>
   <div id="pv-wrap"><div class="pvcap"><span class="pvl" id="pvlm">مانیتور</span></div><div id="pv-mon"></div><div id="pv-ph"></div></div><iframe id="pv-host" style="display:none"></iframe>`;
   const saved0 = pvLoad();
-  if (saved0) { $('pv-n').value = saved0.n; $('pv-bf').checked = !!saved0.bf; PVHP = saved0.hp || ''; $('pv-hp').value = PVHP; }
+  if (saved0) { $('pv-n').value = saved0.n; $('pv-bf').checked = !!saved0.bf; $('pv-tm').checked = !!saved0.tm; if (saved0.tms) $('pv-tms').value = saved0.tms; PVHP = saved0.hp || ''; $('pv-hp').value = PVHP; }
   const start = fresh => {
     stopPreview(); const n = +$('pv-n').value;
     const saved = fresh ? null : pvLoad(); if (fresh) try { localStorage.removeItem(PVKEY); } catch (e) {}
@@ -589,6 +590,7 @@ VIEWS.preview = m => {
       const H = W.rules.houses, fake = t => ({ token: t, role: 'phone', send() {} });
       for (let i = 0; i < n; i++) R.message(fake('pv' + i), { t: 'join', name: 'بازیکن ' + fa(i + 1), house: H[i % H.length].id });
       if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
+      if ($('pv-tm').checked) R.message(fake('pv0'), { t: 'opt', timer: Math.max(10, +$('pv-tms').value || 90) });
       R.message(fake('pv0'), { t: 'start', seed: 7 });
       if (saved && saved.n === n && saved.G) { try { R.G = saved.G; R.save(); } catch (e) {} }
       PV.saveT = setInterval(pvStore, 1500);
@@ -602,7 +604,7 @@ VIEWS.preview = m => {
   let rs = 11; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
   const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) PV.hw.botStep(PV.R.G, rnd); } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-hp').onchange = e => { PVHP = e.target.value; start(true); };
-  $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true);
+  $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true); $('pv-tm').onchange = () => start(true); $('pv-tms').onchange = () => { if ($('pv-tm').checked) start(true); };
   $('pv-go').onclick = () => start(true); $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
   $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) PV.hw.botStep(PV.R.G, rnd); PV.R.broadcast(); info(); };
   $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };

@@ -11,15 +11,16 @@ const api = connect('phone', (m, u) => {
   if (m.t !== 'state') return;
   const prevTurn = S && S.G && S.G.turn ? S.G.turn.pid + ':' + S.G.turn.startedAt : null;
   S = m;
-  const G = S.G;
+  const G = S.G; setTimer(G);
   const nowTurn = G && G.turn ? G.turn.pid + ':' + G.turn.startedAt : null;
-  if (nowTurn !== prevTurn) { view = null; if (G && G.turn && G.turn.pid === G.me) { tab = 'hand'; ix.hand = 0; } }
+  if (nowTurn !== prevTurn) { view = null; handGrid = true; if (G && G.turn && G.turn.pid === G.me) { tab = 'hand'; ix.hand = 0; } }
   if (S.err && S.err.n > errSeen) { errSeen = S.err.n; errMsg = S.err.t; setTimeout(() => { errMsg = null; render(); }, 3500); }
   if (!G || !G.battle) prepRm = null;
   render();
 });
 const act = a => api.send({ t: 'act', a });
-let dunAway = false;   // in dungeon mode the player opened a tab from the bottom menu
+let dunAway = false;
+let handGrid = true;   // hand tab opens on an overview of all hand cards; tapping one zooms it (Farshad 2026-11-05)   // in dungeon mode the player opened a tab from the bottom menu
 const me = () => S.G.players[S.G.me];
 const myTurn = () => { const G = S.G; return G && G.phase === 'turn' && G.turn && G.turn.pid === G.me; };
 const P = x => `<div class="P" data-s="a">${x}</div>`;
@@ -64,7 +65,7 @@ function lobby() {
   if (mine) {
     o += `<div class="pmsg gold">${fa(L.players.length)} بازیکن وصل شده‌اند${L.players.length < 2 ? ' – دست‌کم ۲ نفر لازم است' : ''}</div>`;
     if (S.host) {
-      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div></div><div style="flex:1"></div>
+      o += `<div class="pbox"><h5>تنظیمات (فقط میزبان)</h5><div class="tg" data-do="bf">اثرهای میدان نبرد<span class="sw2 ${L.bf ? '' : 'offs'}"></span></div><div class="tg" data-do="tmr">تایمر نوبت<span class="sw2 ${L.timer ? '' : 'offs'}"></span></div>${L.timer ? `<div class="tmrow"><span>زمان هر نوبت</span><input id="tmrs" class="inp" type="number" min="10" max="3600" step="5" value="${L.timer}"><span>ثانیه</span></div>` : ''}</div><div style="flex:1"></div>
 ${L.hasSave ? '<div class="btn ghost" data-do="resume">ادامهٔ بازی ذخیره‌شده</div>' : ''}<div class="btn ${L.players.length < 2 ? 'off' : ''}" data-do="start">شروع بازی تازه</div>`;
     } else o += `<div style="flex:1"></div><div class="pmsg">منتظر «شروع بازی» از گوشی میزبان…</div><div class="btn ghost" data-do="leave">خروج از لابی</div>`;
   }
@@ -75,7 +76,7 @@ ${L.hasSave ? '<div class="btn ghost" data-do="resume">ادامهٔ بازی ذ�
 function header() {
   const G = S.G, p = me(), T = G.turn, mt = myTurn();
   const fabs = mt ? `<div class="phfab"><div class="fab dice ${T.dieUsed ? 'used' : ''}" ${T.dieUsed ? '' : 'data-do="dice"'} title="تاس">${sv('die')}</div><div class="fab ${S.ui && S.ui.dun ? 'dunon' : ''}" data-do="dun" title="مد سیاه‌چال">${sv('dun')}</div></div>` : '';
-  return `<div class="ph"><div class="hs" style="background:${p.color}">${esc(p.name[0])}</div><b>${esc(p.name)}</b>${fabs}<div class="fs">${sv('fame')} ${fa(p.fame)}</div></div>`;
+  return `<div class="ph"><div class="hs" style="background:${p.color}">${esc(p.name[0])}</div><b>${esc(p.name)}</b>${mt ? tmrH() : ''}${fabs}<div class="fs">${sv('fame')} ${fa(p.fame)}</div></div>`;
 }
 function presH(p, perm) { return `<div class="pres${perm ? ' pres5' : ''}">${['coin', 'scroll', 'ess'].map(r => `<div>${sv(RI[r])} ${fa(p.store[r])}<small>/${fa(p.ups[{ coin: 'capCoin', scroll: 'capScroll', ess: 'capEss' }[r]] ? 4 : 2)}</small></div>`).join('')}${perm ? `<div>${sv('torch')} ${fa(p.torch)}</div>${p.pick ? `<div>${sv('pick')} ${fa(p.pick)}</div>` : ''}` : ''}</div>`; }
 // resources gained from cards this turn (temporary): only the ones above 0, slowly blinking; perm = also torch/pickaxe
@@ -131,13 +132,19 @@ function tabP() {
     const h = p.hand; const i = clamp('hand', h.length);
     o += mt ? poolH(false) : top + presH(p);
     if (mt && T.forced != null) o += `<div class="btn red" data-do="d_fight">اهریمن در خانهٔ توست – شروع نبرد</div>`;
-    if (h.length) {
+    if (h.length && handGrid) {
+      o += `<div class="hgrid">${h.map((x, j) => `<div class="hgc" data-hg="${j}">${acard(x.c)}</div>`).join('')}</div><div class="lbl" style="text-align:center">${fa(h.length)} کارت در دست – برای دیدن بزرگ روی کارت بزن</div><div style="flex:1"></div>`;
+    } else if (h.length) {
       const c = card(h[i].c);
       o += `<div class="zoom" data-car="hand">${acard(h[i].c)}${arrsF()}</div>${dotsH(h.length, i)}`;
       if (mt) {
         const btns = [];
-        if (c.ty !== 'wound') btns.push(`<div class="btn" data-play="main" data-u="${h[i].u}">بازی کارت</div>`);
-        if (c.strip && c.ty !== 'magic') btns.push(`<div class="btn grn" data-play="strip" data-u="${h[i].u}">نوار سیاه‌چال</div>`);
+        // after «both halves of the next card»: one button that plays the main part and the dungeon strip together
+        if (T.both && (c.ty === 'prod' || c.ty === 'skill')) btns.push(`<div class="btn gold2" data-play="main" data-u="${h[i].u}">بازی کارت + نوار سیاه‌چال</div>`);
+        else {
+          if (c.ty !== 'wound') btns.push(`<div class="btn" data-play="main" data-u="${h[i].u}">بازی کارت</div>`);
+          if (c.strip && c.ty !== 'magic') btns.push(`<div class="btn grn" data-play="strip" data-u="${h[i].u}">نوار سیاه‌چال</div>`);
+        }
         o += btns.length ? `<div class="brow">${btns.join('')}</div>` : '';
         o += hintH('برای بازی، کارت را به بالا بکش');
       } else o += hintH('الان نوبت شما نیست', true);
@@ -332,6 +339,10 @@ function battleP() {
     const w = p.wiz, i = clamp('prep', w.length), rm = prepRm.includes(i), keep = w.length - prepRm.length;
     return bfm + `<div class="pmsg gold" style="font-size:14px">${fa(prepRm.length)} حذف – ${fa(keep)} می‌ماند${keep < 6 ? ' – کمتر از ۶ کارت، در راندهای آخر کارت نداری' : ''}</div><div class="zoom ${rm ? 'del' : ''} xl2" data-car="prep">${rm ? '<span class="xb">✕ حذف شده</span>' : ''}${wcard(w[i])}${arrsF()}</div>${dotsH(w.length, i)}<div class="brow"><div class="btn ghost" data-do="b_tog">${rm ? '↩ برگرداندن این کارت' : '✕ حذف این کارت'}</div></div><div class="btn grn" data-do="b_prep">آماده‌ام</div>`;
   }
+  if (B.phase === 'r6') {
+    const L = B.last, win = L && L.winner === G.me;
+    return bfm + `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="font-size:30px">راند ${fa(L ? L.round : 6)} تمام شد</div><div style="font-size:17px;font-weight:800;text-align:center">${win ? 'این راند را بردی' : L && L.winner != null && G.players[L.winner] ? 'برندهٔ راند: ' + esc(G.players[L.winner].name) : 'این راند برنده نداشت'}</div></div>${B.shower === G.me ? '<div class="btn" data-do="b_show">نمایش نتایج</div>' : `<div class="pmsg">منتظر ${esc(G.players[B.shower].name)}…</div>`}`;
+  }
   if (B.phase === 'done') {
     const r = B.res && B.res.res[G.me];
     return `<div class="ctr" style="flex:1;gap:14px"><div class="bigr gold" style="display:flex;gap:10px;align-items:center">${r && r.total ? '+' + fa(r.total) : '۰'} ${sv('fame')}</div><div style="font-size:17px;font-weight:800;text-align:center;line-height:1.8">${r ? fa(r.tokens) + ' راند بردی' + (r.bonus ? '<br>جایزهٔ بیشترین توکن: ' + fa(r.bonus) + '+' : '') : ''}</div></div>${B.ack[G.me] ? '<div class="pmsg">منتظر بقیه…</div>' : '<div class="btn" data-do="b_next">باشه</div>'}<div style="height:30px"></div>`;
@@ -359,11 +370,13 @@ function swipe(k, d) {
 }
 function bind() {
   const R = root;
-  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; if (S.ui && S.ui.dun) dunAway = true; tab = e.dataset.tab; view = null; render(); sendUI({ tab, i: ix[tab] || 0 }); });
+  R.querySelectorAll('[data-tab]').forEach(e => e.onclick = () => { const o = NAV.findIndex(x => x[0] === tab), nn = NAV.findIndex(x => x[0] === e.dataset.tab); ANIM.dir = nn > o ? -1 : nn < o ? 1 : 0; if (S.ui && S.ui.dun) dunAway = true; tab = e.dataset.tab; view = null; if (tab === 'hand') handGrid = true; render(); sendUI({ tab, i: ix[tab] || 0 }); });
   R.querySelectorAll('[data-sub]').forEach(e => e.onclick = () => { sub = +e.dataset.sub; render(); });
   R.querySelectorAll('[data-sw]').forEach(e => e.onclick = ev => { ev.stopPropagation(); const car = e.closest('[data-car]'); if (car) swipe(car.dataset.car, +e.dataset.sw); });
   R.querySelectorAll('[data-house]').forEach(e => e.onclick = () => { if (e.classList.contains('tk')) return; pickHouse = e.dataset.house; typedName = R.querySelector('#nm').value; render(); });
   const nm = R.querySelector('#nm'); if (nm) nm.oninput = () => { typedName = nm.value; };
+  R.querySelectorAll('[data-hg]').forEach(e => e.onclick = () => { ix.hand = +e.dataset.hg; handGrid = false; render(); sendUI({ tab, i: ix.hand }); });
+  const ts = R.querySelector('#tmrs'); if (ts) ts.onchange = () => { const v = Math.max(10, Math.min(3600, +ts.value || 0)); api.send({ t: 'opt', timer: v }); };
   R.querySelectorAll('[data-play]').forEach(e => e.onclick = ev => { ev.stopPropagation(); flyUp(() => act({ t: 'play', u: +e.dataset.u, mode: e.dataset.play })); });
   R.querySelectorAll('[data-gob]').forEach(e => e.onclick = () => act({ t: 'goblin', what: e.dataset.gob }));
   R.querySelectorAll('[data-up]').forEach(e => e.onclick = () => act({ t: 'upgrade', k: e.dataset.up }));
@@ -406,6 +419,7 @@ function doIt(k, e) {
     case 'join': { const n = (R0('#nm').value || '').trim(); try { localStorage.setItem('12shab_name', n); } catch (er) {} const L = S.lobby, mine = L.players[S.you], used = L.players.filter((p, i) => i !== S.you).map(p => p.house); const hs = pickHouse || (mine && mine.house) || HOUSES.find(h => !used.includes(h.id)).id; api.send({ t: 'join', name: n, house: hs }); typedName = null; return; }
     case 'leave': api.send({ t: 'leave' }); return;
     case 'bf': api.send({ t: 'opt', bf: !S.lobby.bf }); return;
+    case 'tmr': api.send({ t: 'opt', timer: S.lobby.timer ? 0 : 120 }); return;
     case 'start': api.send({ t: 'start' }); return;
     case 'resume': api.send({ t: 'resume' }); return;
     case 'newgame': api.send({ t: 'newgame', sure: true }); return;
@@ -434,6 +448,7 @@ function doIt(k, e) {
     case 'b_unpick': act({ t: 'b_unpick' }); return;
     case 'b_wild': act({ t: 'b_wild', i: ix.bhand }); return;
     case 'b_next': act({ t: 'b_next' }); return;
+    case 'b_show': act({ t: 'b_show' }); return;
   }
 }
 const R0 = s => root.querySelector(s);
