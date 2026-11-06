@@ -22,8 +22,12 @@ function start(G) {
   _.toast(G, 'نبرد جادوگران! هر بازیکن جادوگرانی را که نمی‌خواهد حذف کند.', 'battle');
 }
 const bfe = B => B.bf ? B.bf.eff : ['none'];
+// a saved game (preview reload, host restart) brings the battle engine back as plain JSON: give it its methods again,
+// otherwise the next pick throws and the battle stays on «در حال اجرای اثرها…» (Farshad 2026-11-06)
+function revive(G) { const B = G && G.battle; if (B && B.eng && !(B.eng instanceof Engine)) Object.setPrototypeOf(B.eng, Engine.prototype); return B; }
 
 function act(G, pid, a) {
+  revive(G);
   const B = G.battle, p = _.P(G, pid);
   if (a.t === 'b_prep') {   // {remove:[index...]} final choice of cards to remove
     if (B.phase !== 'prep') return 'الان وقت حذف نیست';
@@ -74,7 +78,7 @@ function setup(G) {
   B.phase = 'deal';
   if (!G.prompts.some(q => q.k === 'seer')) deal(G);
 }
-_.H.seer = (G, pid, v) => { const B = G.battle, d = B.deck[pid]; if (v === 1) { const t = d[0]; d[0] = d[1]; d[1] = t; } if (!G.prompts.some(q => q.k === 'seer' && q.to !== pid)) deal(G); return true; };
+_.H.seer = (G, pid, v) => { const B = revive(G), d = B.deck[pid]; if (v === 1) { const t = d[0]; d[0] = d[1]; d[1] = t; } if (!G.prompts.some(q => q.k === 'seer' && q.to !== pid)) deal(G); return true; };
 function deal(G) {
   const B = G.battle, e = bfe(B);
   const n = e[0] === 'hand' ? e[1] : 2;
@@ -130,7 +134,7 @@ function forward(G, q) {
   else _.ask(G, q.to, 'bq', { title, text: q.text || 'جواب بده', opts: [{ v: true, label: 'بله' }, { v: false, label: 'نه' }], data: { key: q.key } });
 }
 _.H.bq = (G, pid, v, q) => {
-  const B = G.battle; if (!B || !B.eng) return true;
+  const B = revive(G); if (!B || !B.eng) return true;
   const key = q.data.key, k = key.split(':')[0];
   if (q.data.die) { const p = _.P(G, pid), d = roll(G, p); v = q.data.die === 'tiedie' ? { die: d, gem: Game.hasItem(p, 'gem'), ring: Game.hasItem(p, 'ring') } : { die: d, gem: Game.hasItem(p, 'gem') }; G.roll = { n: ++G.ev, pid, lv: p.wand, vals: [d + (v.gem ? 1 : 0)], label: q.data.die === 'tiedie' ? 'تاس مساوی نبرد' : 'تاس نبرد' }; _.log(G, p.name + ' تاس نبرد انداخت: ' + fa(d)); }
   if (k === 'sac') { if (v) { const i = +String(v).slice(1); const id = B.hand[pid][i]; if (!id) return false; B.hand[pid].splice(i, 1); v = id; } else v = null; }
@@ -165,7 +169,7 @@ function afterRound(G) {
   B.round = E.round; B.picked = {};
   if (!G.prompts.some(q => q.k === 'peek')) nextRound(G); else B.phase = 'peek';
 }
-_.H.peek = (G, pid, v) => { const B = G.battle; if (v === 'bottom') B.deck[pid].push(B.deck[pid].shift()); if (!G.prompts.some(q => q.k === 'peek' && q.to !== pid)) nextRound(G); return true; };
+_.H.peek = (G, pid, v) => { const B = revive(G); if (v === 'bottom') B.deck[pid].push(B.deck[pid].shift()); if (!G.prompts.some(q => q.k === 'peek' && q.to !== pid)) nextRound(G); return true; };
 function nextRound(G) {
   const B = G.battle, E = B.eng;
   for (const p of G.players) if (!E.P[p.id].noDraw) draw(B, p.id, 1);
@@ -190,17 +194,28 @@ function finish(G) {
 }
 // what one phone may see of the battle
 function view(G, pid) {
-  const B = G.battle; if (!B) return null;
+  const B = revive(G); if (!B) return null;
   const E = B.eng;
   const v = { phase: B.phase, round: B.round, bf: B.bf, ready: B.ready, last: B.last || null, res: B.res,
     wins: E ? E.history.map(h => h.winner) : [], tokens: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].tokens])) : {},
     picked: Object.fromEntries(G.players.map(p => [p.id, B.picked[p.id] !== undefined])), deckN: Object.fromEntries(G.players.map(p => [p.id, (B.deck[p.id] || []).length])),
     handN: Object.fromEntries(G.players.map(p => [p.id, (B.hand[p.id] || []).length])), until: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].until.map(u => u.id)])) : {},
-    next: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].next ? E.P[p.id].next.id : null])) : {}, ack: B.ack || {}, shower: B.shower };
+    next: E ? Object.fromEntries(G.players.map(p => [p.id, E.P[p.id].next ? E.P[p.id].next.id : null])) : {}, ack: B.ack || {}, shower: B.shower,
+    // once everyone has sent a card the picks are no longer secret: the monitor turns them over together
+    shown: B.phase === 'resolve' ? Object.fromEntries(G.players.map(p => [p.id, B.picked[p.id] == null ? null : B.picked[p.id]])) : null };
   if (pid != null) { v.hand = B.hand[pid] || []; v.myPick = B.picked[pid]; v.remove = B.remove[pid]; v.wild = !!B.wild[pid]; v.r1top = !!B.r1top; }
   return v;
 }
-const WB = { start, act, view };
+// called by Game.tick: revive the engine and finish a pick that was cut off (all players had picked, the engine had not)
+function heal(G) {
+  const B = revive(G); if (!B || !B.eng) return false;
+  if (B.phase === 'resolve' && B.eng.phase === 'pick' && G.players.every(p => B.picked[p.id] !== undefined) && !G.prompts.length) {
+    for (const p of G.players) if (B.eng.P[p.id] && B.eng.P[p.id].pick === undefined) B.eng.pick(p.id, B.picked[p.id]);
+    pump(G); return true;
+  }
+  return false;
+}
+const WB = { start, act, view, heal };
 root.WB = WB;
 if (typeof module !== 'undefined') module.exports = WB;
 })(typeof window !== 'undefined' ? window : global);

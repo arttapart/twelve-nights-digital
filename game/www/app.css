@@ -264,3 +264,18 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 .dguide h6{margin:0 0 2px;font-size:20px;font-weight:700;color:#a9a3cf}
 .dguide div{display:flex;justify-content:space-between;gap:14px}
 .dguide b{font-weight:700;color:#a9a3cf}
+/* wizard battle: card backs for players who sent their pick, then all turn over together */
+.wbk{width:158px;height:240px;border-radius:12px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px;box-sizing:border-box;font-size:18px;font-weight:800}
+.wbk.sent{background:repeating-linear-gradient(45deg,rgba(255,255,255,.05) 0 10px,transparent 10px 20px),radial-gradient(circle at 50% 42%,#4b2f9c,#1a1145 70%);border:3px solid var(--pc,#c79bff);box-shadow:0 0 22px color-mix(in srgb,var(--pc,#c79bff) 45%,transparent);color:#ffe7a6;animation:wbkIn .5s cubic-bezier(.2,1.3,.4,1)}
+.wbk.sent::before{content:"۱۲";position:absolute;font-family:Lalezar,Vazirmatn,sans-serif;font-size:64px;color:rgba(243,207,114,.55);margin-bottom:80px}
+.wbk.sent{position:relative}
+.wbk.wait{border:3px dashed rgba(169,163,207,.45);color:#8f8ab5;font-weight:600}
+.wnext{transform:scale(.42);transform-origin:center bottom;margin:-140px 0 -6px;height:240px}
+@keyframes wbkIn{from{transform:translateY(-40px) scale(.8);opacity:0}}
+.wflip{position:relative;perspective:900px}
+.wflip .wff{animation:wffIn .55s ease-out .45s both;transform-origin:center}
+.wflip .wfb{position:absolute;inset:0;border-radius:12px;background:radial-gradient(circle at 50% 42%,#4b2f9c,#1a1145 70%);border:3px solid var(--pc,#c79bff);animation:wfbOut .45s ease-in both;transform-origin:center;pointer-events:none;z-index:2}
+@keyframes wfbOut{0%{transform:rotateY(0)}100%{transform:rotateY(90deg);opacity:1}}
+@keyframes wffIn{0%{transform:rotateY(-90deg)}100%{transform:rotateY(0)}}
+.wflip .wfb{animation-fill-mode:forwards}
+.wflip .wfb{animation-name:wfbOut}

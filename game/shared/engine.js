@@ -629,6 +629,7 @@ function tick(G, now, force) {
       ch = true;
     }
   }
+  if (G.battle && Battle && Battle.heal && Battle.heal(G)) ch = true;   // battle engine after a reload
   if (turnTimer(G, now, force)) ch = true;
   if (ch) G.rev = (G.rev || 0) + 1;
   return ch;

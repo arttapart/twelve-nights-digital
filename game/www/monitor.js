@@ -287,15 +287,24 @@ ${B.bf ? `<div class="ctr"><div class="bfx"><span>اثر میدان نبرد</sp
   // rounds: show last revealed round + who has picked
   const L = B.last;
   let lastH = '';
-  if (L) {
+  // hidden pick (Farshad 2026-11-06): a card back appears for every player who has sent a card; when all have sent,
+  // the cards turn over together (the flip is keyed by round, so it plays once)
+  const sent = id => B.picked[id] ? `<div class="wbk sent" data-k="wbk-${B.round}-${id}"><span>ارسال شد</span></div>` : `<div class="wbk wait" data-k="wbw-${B.round}-${id}"><span>در حال انتخاب…</span></div>`;
+  const flip = (r, id, inner) => `<div class="wflip" data-k="fl-${r}-${id}"><div class="wfb"></div><div class="wff">${inner}</div></div>`;
+  const noCard = '<div class="deck" style="width:158px;height:240px;display:flex;align-items:center;justify-content:center">بدون کارت</div>';
+  if (B.phase === 'resolve' && B.shown) {
+    lastH = `<div class="plat" style="flex:1">${G.order.map(id => { const cid = B.shown[id]; return `<div class="pc" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${flip(B.round, id, cid ? wcard(cid) : noCard)}</div>`; }).join('')}</div>`;
+  } else if (B.phase === 'pick' && !L) {
+    lastH = `<div class="plat" style="flex:1">${G.order.map(id => `<div class="pc" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${sent(id)}</div>`).join('')}</div>`;
+  } else if (L) {
     lastH = `<div class="plat" style="flex:1">${G.order.map(id => { const cid = L.cards[id]; const win = L.winner === id; const parts = (L.parts && L.parts[id]) || [];
-      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${cid ? wcard(cid) : '<div class="deck" style="width:158px;height:240px;display:flex;align-items:center;justify-content:center">بدون کارت</div>'}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tag" style="font-size:20px;background:rgba(127,192,255,.16);color:#bfe0ff;border-color:#7fc0ff">تاس مساوی: ${fa(L.tie.dice[id])}</span>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>`; }).join('')}</div>`;
+      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${B.phase === 'pick' ? `<div class="wnext">${sent(id)}</div>` : ''}${flip(L.round, id, cid ? wcard(cid) : noCard)}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tag" style="font-size:20px;background:rgba(127,192,255,.16);color:#bfe0ff;border-color:#7fc0ff">تاس مساوی: ${fa(L.tie.dice[id])}</span>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>`; }).join('')}</div>`;
   }
   const status = G.order.map(id => `<span class="bst ${B.picked[id] ? 'ok' : ''}" style="--pc:${H(id)}"><i></i>${NM(id)} ${B.picked[id] ? '✓' : '…'}</span>`).join('');
   return `<div class="M MX" data-s="a">${head}<div class="body" style="flex-direction:column;gap:18px">
 <div class="ctr" style="flex-direction:row;gap:30px"><h2>${B.phase === 'r6' && L ? 'راند ' + fa(L.round) + ' تمام شد' : (L && B.phase === 'pick' ? 'راند ' + fa(L.round) + ' تمام شد – ' : '') + 'راند ' + fa(B.round) + ' از ۶'}</h2>${track}</div>
-${lastH || '<div class="ctr" style="flex:1"><div class="sub" style="font-size:30px">هر بازیکن در گوشی یک کارت از دست ۲ کارتی‌اش را پنهانی انتخاب می‌کند</div></div>'}
-<div class="bstat">${B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند' : B.phase === 'pick' ? 'انتخاب پنهان: ' + status : 'در حال اجرای اثرها…'}</div></div>${waitLine(G)}</div>`;
+${B.phase === 'pick' && !L ? '<div class="sub" style="font-size:26px;text-align:center">هر بازیکن در گوشی یک کارت از دست ۲ کارتی‌اش را پنهانی انتخاب می‌کند</div>' : ''}${lastH}
+<div class="bstat">${B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند' : B.phase === 'pick' ? 'انتخاب پنهان: ' + status : G.prompts.length ? 'کارت‌ها رو شد – منتظر جواب در گوشی' : 'در حال اجرای اثرها…'}</div></div>${waitLine(G)}</div>`;
 }
 
 // ---------- final ----------
