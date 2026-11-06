@@ -128,10 +128,9 @@ function curCard(G) {
   const L = G.log.filter(l => l.n > (T.ev0 || 0)), last = L[L.length - 1];
   const pl = L.length && last.a ? L.filter(l => l.a === last.a && l.k === 'play').pop() : null;
   if (last && !pl && !(last.k === 'play')) return `<div class="curmsg" data-k="lg-${last.n}">${esc(last.t)}</div>`;
+  // the last played card stays until the next action, even when the hand is empty (Farshad 2026-11-06)
   const x = T.played[T.played.length - 1];
-  // only the last played card, while the player still has cards in hand
-  const p2 = G.players[T.pid], hn = p2.handN != null ? p2.handN : (p2.hand || []).length;
-  return x && hn ? acard(x.c, { k: '-p' + T.played.length }) : '';
+  return x ? acard(x.c, { k: '-p' + T.played.length }) : '';
 }
 const acadList = G => G.acad.row.map((id, i) => ({ src: 'row', i, id })).concat(Object.keys(G.acad.fixed).map(id => ({ src: 'fixed', i: id, id })));
 
@@ -144,7 +143,7 @@ function mainScr() {
   const fixed = Object.keys(G.acad.fixed).map((id, k) => `<div class="stk"><span class="cl">${fa(G.acad.fixed[id])} کارت</span>${acard(id, { cls: G.acad.row.length + k === acadI ? 'view' : '' })}</div>`).join('');
   const hall = (HALLPREV || G.hall.row).map((w, i) => wcard(w.id, w.tok, { cls: i === hallI ? 'view' : '' })).join('');
   return `<div class="M" data-s="a">${topH(G)}
-<div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone"><div class="curh"><h4>کارت در حال اجرا</h4>${spendH(G)}</div><div class="curc">${curCard(G)}</div></div></div>
+<div class="side"><div class="mm zone"><h4>سیاه‌چال</h4><div class="mmap">${mapSvg(G, { minSize: 2 * TS })}</div></div><div class="cur zone"><div class="curh"><h4>اقدامات در حال اجرا</h4>${spendH(G)}</div><div class="curc">${curCard(G)}</div></div></div>
 <div class="zone zA"><div class="zt"><h3>آکادمی سحرستان</h3><span>دک: ${fa(G.acad.deckN)} کارت – سوخته: ${fa(G.acad.discard.length)}</span></div><div class="rowc">${fixed}<div class="sep"></div>${row}<div class="deck">دک آکادمی</div></div></div>
 <div class="zone zH"><div class="zt"><h3>تالار جادوگران</h3><span>دک جادوگران شهر: ${fa(G.hall.deckN)}</span></div><div class="rowc">${hall}<div class="deck">دک جادوگران</div></div></div>
 <div class="zone zG"><h3>گوبلین</h3><div class="gh"></div><p><span>۱ ${sv('pow')} بده</span><span>۱ ${sv('coin')} یا ۱ ${sv('scr')} بگیر</span>هر نوبت ۱ بار</p></div>
