@@ -89,6 +89,8 @@ function customCss(G, artUrl) {
   // per-box backgrounds on the monitor (Farshad 2026-11-06); a box without its own image keeps its see-through panel over the main background
   const X = A.boxbg || {};
   for (const [k, sel] of BOXBG) if (X[k]) o.push(`${sel}{background:url("${u(X[k])}") center/cover no-repeat!important}`);
+  // goblin character drawn over the goblin box background (Farshad 2026-11-06)
+  if (X.goblinFg) o.push(`body.monitor .zG .gh{background:url("${u(X.goblinFg)}") center/contain no-repeat!important;box-shadow:none!important;border:0!important}`);
   const B = A.backs || {};
   if (B.academy) o.push(`.zA .deck{background:url("${u(B.academy)}") center/cover no-repeat!important;color:transparent!important}`);
   if (B.wizard) o.push(`.zH .deck{background:url("${u(B.wizard)}") center/cover no-repeat!important;color:transparent!important}`);
