@@ -405,3 +405,7 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 /* the active player's latest non-card action, in the «کارت در حال اجرا» box: no frame, same font as the title, larger */
 .curc .curmsg{margin:auto;max-width:94%;text-align:center;font-size:28px;font-weight:800;line-height:1.6;animation:cmIn .4s ease-out}
 @keyframes cmIn{from{opacity:0;transform:translateY(8px)}}
+/* night/round track a little bigger so the battle and challenge marks read clearly (Farshad 2026-11-06) */
+body.monitor .M .nights{gap:9px}
+body.monitor .M .nt{width:62px;height:76px;font-size:24px}
+body.monitor .M .nt small{font-size:23px;margin-top:3px}
