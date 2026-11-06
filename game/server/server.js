@@ -17,11 +17,17 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; cha
 function lanIPs() {
   const res = [];
   for (const [name, list] of Object.entries(os.networkInterfaces())) for (const a of list || []) {
-    if (a.family !== 'IPv4' && a.family !== 4) continue; if (a.internal) continue; if (/virtualbox|vmware|vethernet|hyper-v|wsl|docker|vbox/i.test(name)) continue;
+    if (a.family !== 'IPv4' && a.family !== 4) continue; if (a.internal) continue; if (/virtualbox|vmware|vethernet|hyper-v|wsl|docker|vbox|bluetooth|tailscale|zerotier|vpn/i.test(name)) continue;
     if (!/^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a.address)) continue;
-    res.push({ name, ip: a.address, hot: a.address === '192.168.137.1' || /hotspot|local area connection\*/i.test(name) });
+    // casting to a TV (Miracast) adds a Wi-Fi Direct adapter, usually named «Local Area Connection* N». Phones on the
+    // router cannot reach it, so it must never be the address in the QR code or the beacon (Farshad 2026-11-06: phones
+    // on the same Wi-Fi could not find the laptop while it was casting). The Windows mobile hotspot is 192.168.137.1.
+    const hot = a.address === '192.168.137.1';
+    if (!hot && /local area connection\*|wi-?fi direct|miracast|p2p/i.test(name)) continue;
+    const wifi = /wi-?fi|wlan|wireless|ethernet|eth|en\d|wl/i.test(name);
+    res.push({ name, ip: a.address, hot, wifi });
   }
-  res.sort((a, b) => (b.hot - a.hot) || (a.ip.startsWith('192.168.') ? -1 : 1));
+  res.sort((a, b) => (b.wifi - a.wifi) || (b.hot - a.hot) || (a.ip.startsWith('192.168.') ? -1 : 1));
   return res;
 }
 
@@ -40,6 +46,8 @@ let qrCache = {};
 async function makeQR() { qrCache = {}; for (const x of lanIPs()) { const url = 'http://' + x.ip + ':' + PORT + '/p'; qrCache[x.ip] = { url, svg: await QR.toString(url, { type: 'svg', margin: 1, color: { dark: '#14112e', light: '#ffffff' } }) }; } }
 function serve(req, res) {
   let u = decodeURIComponent(req.url.split('?')[0]);
+  // the Android app probes the local network with this when the UDP beacon does not arrive (routers that drop broadcasts)
+  if (u === '/hello') { res.writeHead(200, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' }); return res.end('12SHAB ' + VERSION); }
   if (u === '/' || u === '/m') u = '/www/monitor.html'; else if (u === '/p') u = '/www/phone.html';
   else if (!u.startsWith('/shared/') && !u.startsWith('/www/')) u = '/www' + u;
   const f = path.normalize(path.join(ROOT, u));

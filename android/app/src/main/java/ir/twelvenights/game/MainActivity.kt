@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
             val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             mlock = wm.createMulticastLock("12shab").also { it.setReferenceCounted(false); it.acquire() }
         } catch (_: Exception) {}
+        startProbe()
         Thread {
             try {
                 val s = DatagramSocket(null)
@@ -120,13 +121,42 @@ class MainActivity : ComponentActivity() {
                         val t = String(p.data, 0, p.length, Charsets.UTF_8)
                         if (t.startsWith("12SHAB ")) {
                             val url = t.substring(7).trim()
-                            if (seen.add(url)) js("onFound", JSONObject().put("url", url).toString())
+                            if (found.add(url)) js("onFound", JSONObject().put("url", url).toString())
                         }
                     } catch (_: java.net.SocketTimeoutException) {}
                 }
                 s.close()
             } catch (e: Exception) {
                 js("onFindError", JSONObject().put("err", e.toString()).toString())
+            }
+        }.start()
+    }
+
+    // Fallback when the UDP beacon never arrives (routers that drop broadcasts, Wi-Fi isolation of broadcast only):
+    // ask every address of the phone's own /24 network for http://x:47130/hello, a few times while the finder is open.
+    private val found = java.util.Collections.synchronizedSet(HashSet<String>())
+    private fun startProbe() {
+        Thread {
+            var round = 0
+            while (listening && round++ < 20) {
+                val nets = myIps().split(",").filter { it.matches(Regex("^(10|172|192)\\..*")) }.map { it.substringBeforeLast('.') }.distinct()
+                val pool = java.util.concurrent.Executors.newFixedThreadPool(48)
+                for (net in nets) for (i in 1..254) {
+                    val host = "$net.$i"
+                    pool.execute {
+                        if (!listening) return@execute
+                        try {
+                            val c = java.net.URL("http://$host:47130/hello").openConnection() as java.net.HttpURLConnection
+                            c.connectTimeout = 600; c.readTimeout = 800
+                            val t = c.inputStream.bufferedReader().readText(); c.disconnect()
+                            if (t.startsWith("12SHAB")) { val url = "http://$host:47130/p"; if (found.add(url)) js("onFound", JSONObject().put("url", url).toString()) }
+                        } catch (_: Exception) {}
+                    }
+                }
+                pool.shutdown()
+                try { pool.awaitTermination(15, java.util.concurrent.TimeUnit.SECONDS) } catch (_: Exception) {}
+                if (found.isNotEmpty()) break
+                try { Thread.sleep(3000) } catch (_: Exception) {}
             }
         }.start()
     }
