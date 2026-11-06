@@ -419,3 +419,6 @@ body.monitor .M .top .chal{font-size:22px}
 body.monitor .M .top .chal .svi{width:24px;height:24px}
 .side .cur .spend{font-size:24px;gap:14px;padding:6px 16px;border-radius:14px}
 .side .cur .spend .svi{width:30px;height:30px}.side .cur .spend .sl{font-size:17px}
+/* active night: same box as the others (the generic .cur panel rule had stretched it), with a slow soft glow (Farshad 2026-11-06) */
+.nights .nt.cur{flex:none;padding:0;transform:scale(1.06);animation:ntGlow 3.6s ease-in-out infinite}
+@keyframes ntGlow{0%,100%{box-shadow:0 0 8px rgba(243,207,114,.25);background:rgba(243,207,114,.12)}50%{box-shadow:0 0 22px rgba(243,207,114,.6);background:rgba(243,207,114,.24)}}
