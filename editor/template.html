@@ -75,9 +75,9 @@ table.t td.code input{direction:ltr;font-family:monospace;font-size:12px}
 body.emode #pe-tg{background:#ff3b6b;color:#fff}
 .pe-it{display:grid;grid-template-columns:auto 1fr auto;gap:2px 6px;padding:6px 0;border-top:1px solid #333}.pe-it small{grid-column:2;opacity:.6}.pe-it button{grid-row:1/3;grid-column:3;background:none;border:0;color:#ff7b95;font-size:18px;cursor:pointer}
 #pe-st{margin-top:6px;color:#f3cf72;line-height:1.6}#pe-st:empty{display:none}#pe-list:empty{display:none}
-.phf{width:215px;height:465px;border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;background:#000;flex:none}
+.phf{width:215px;height:482px;border:1px solid var(--line);border-radius:16px;overflow:hidden;position:relative;background:#000;flex:none}
 .phf iframe{width:390px;height:844px;border:0;transform:scale(.55);transform-origin:top right;position:absolute;top:0;right:0}
-.phf .nm{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;background:rgba(0,0,0,.6);color:#fff;padding:2px;z-index:2}
+.phf .nm{position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:11px;background:#111;color:#fff;padding:2px;z-index:2}
 #tile-frame{width:100%;height:calc(100vh - 190px);border:1px solid var(--line);border-radius:10px;background:#fff}
 .errs{background:rgba(226,87,75,.12);border:1px solid var(--bad);border-radius:10px;padding:8px 14px;margin:8px 0}
 .errs li{margin:3px 0}
@@ -483,7 +483,7 @@ function hostHtml() {
 const SAVE={v:null};window.ROOM=Room({D:DATA,Game,Dun,WB},{save(o){SAVE.v=JSON.parse(JSON.stringify(o))},load(){return SAVE.v},discard(){SAVE.v=null},ips:()=>['192.168.137.1'],qr:()=>({'192.168.137.1':{url:'http://192.168.137.1:47130/p',svg:'<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#fff"/><text x="5" y="6" font-size="2" text-anchor="middle">پیش‌نمایش</text></svg>'}}),version:${JSON.stringify(W.meta.version)},port:47130});
 var D = DATA;
 ${bot.replace(/<\/script/g, '<\\/script')}
-window.botStep=botStep;<\/script>`;
+window.botStep=botStep;window.NO_BOT_DICE=true;<\/script>`;
 }
 function stopPreview() { if (PV && PV.timer) clearInterval(PV.timer); if (PV && PV.saveT) clearInterval(PV.saveT); PV = null; window.__ROOM__ = null; }
 // monitor iframe (1920x1080) scaled to the width of its box
@@ -597,7 +597,7 @@ VIEWS.preview = m => {
       if ($('pv-bf').checked) R.message(fake('pv0'), { t: 'opt', bf: true });
       if ($('pv-sh').checked) R.message(fake('pv0'), { t: 'opt', short: true });
       if ($('pv-tm').checked) R.message(fake('pv0'), { t: 'opt', timer: Math.max(10, +$('pv-tms').value || 90) });
-      R.message(fake('pv0'), { t: 'start', seed: 7 });
+      R.message(fake('pv0'), { t: 'start' });   // a new random game each time (a fixed seed gave the same dice every restart)
       if (saved && saved.n === n && saved.G) { try { R.G = saved.G; R.save(); } catch (e) {} }
       PV.saveT = setInterval(pvStore, 1500);
       const mon = $('pv-mon'); mon.innerHTML = '<iframe></iframe>'; mon.firstChild.onload = () => hookFrame(mon.firstChild, 'm'); mon.firstChild.srcdoc = pageHtml('monitor'); fitMon();
@@ -608,12 +608,12 @@ VIEWS.preview = m => {
   };
   const info = () => { if (!PV) return; const G = PV.R.G; $('pv-st').textContent = G ? 'شب ' + fa(G.night) + ' – ' + ({ start: 'جای شروع', turn: 'نوبت ' + (G.turn ? G.players[G.turn.pid].name : ''), night: 'پایان شب', battle: 'نبرد جادوگران', end: 'پایان بازی' }[G.phase] || G.phase) : ''; };
   let rs = 11; const rnd = () => { rs = (rs * 1103515245 + 12345) & 0x7fffffff; return rs / 0x7fffffff; };
-  const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) PV.hw.botStep(PV.R.G, rnd); } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
+  const step = k => { if (!PV || !PV.R.G) return; try { for (let i = 0; i < k && PV.R.G.phase !== 'end'; i++) if (PV.hw.botStep(PV.R.G, rnd) === 'wait') { status('منتظر تاس: بازیکن باید خودش در گوشی تاس بیندازد'); break; } } catch (e) { status('ربات: ' + e.message, true); } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-hp').onchange = e => { PVHP = e.target.value; start(true); };
   $('pv-n').onchange = () => start(true); $('pv-bf').onchange = () => start(true); $('pv-sh').onchange = () => start(true); $('pv-tm').onchange = () => start(true); $('pv-tms').onchange = () => { if ($('pv-tm').checked) start(true); };
   $('pv-go').onclick = () => start(true); $('pv-step').onclick = () => step(1); $('pv-10').onclick = () => step(10);
-  $('pv-nev').onclick = () => { if (!PV) return; const G0 = () => PV.R.G, n0 = G0().night; let g = 0; while (!G0().nightQ && G0().night === n0 && G0().phase !== 'end' && g++ < 3000) PV.hw.botStep(G0(), rnd); PV.R.save(); PV.R.broadcast(); info(); };
-  $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) PV.hw.botStep(PV.R.G, rnd); PV.R.broadcast(); info(); };
+  $('pv-nev').onclick = () => { if (!PV) return; const G0 = () => PV.R.G, n0 = G0().night; let g = 0; while (!G0().nightQ && G0().night === n0 && G0().phase !== 'end' && g++ < 3000) if (PV.hw.botStep(G0(), rnd) === 'wait') { status('منتظر تاس: بازیکن باید خودش در گوشی تاس بیندازد'); break; } PV.R.save(); PV.R.broadcast(); info(); };
+  $('pv-night').onclick = () => { if (!PV) return; const n0 = PV.R.G.night; let g = 0; while (PV.R.G.night === n0 && PV.R.G.phase !== 'end' && g++ < 3000) if (PV.hw.botStep(PV.R.G, rnd) === 'wait') { status('منتظر تاس: بازیکن باید خودش در گوشی تاس بیندازد'); break; } PV.R.save(); PV.R.broadcast(); info(); };
   $('pv-auto').onclick = e => { if (!PV) return; if (PV.timer) { clearInterval(PV.timer); PV.timer = null; e.target.textContent = 'ربات خودکار ▶'; } else { PV.timer = setInterval(() => step(1), 350); e.target.textContent = 'توقف ربات ■'; } };
   start();
 };

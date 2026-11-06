@@ -45,8 +45,8 @@ function render() {
   else h = game();
   const mine = G && G.me != null ? G.prompts.find(q => q.to === G.me && q.opts) : null;
   const sk = !G ? 'lobby' : [G.phase, G.battle ? 'b' + (G.battle.phase || '') : '', G.fight && G.fight.pid === G.me ? 'f' : '', mine ? 'q' + mine.id : '', view || '', myTurn() && S.ui && S.ui.dun ? 'd' : '', tab].join('|');
-  rollShow();
   morph(root, P(h + (errMsg ? `<div class="perr">${esc(errMsg)}</div>` : '')), sk);
+  rollShow();   // after the patch, so the die on screen is the one that lands
   fitHandGrid();
   bind();
 }
@@ -102,10 +102,13 @@ function presH(p, perm) { return `<div class="pres${perm ? ' pres5' : ''}">${['c
 // resources gained from cards this turn (temporary): only the ones above 0, slowly blinking; perm = also torch/pickaxe
 function poolH(perm = true) { const T = S.G.turn, p = me(), q = T.pool; const it = [];
   if (q.coin) it.push(`<span class="tmp">${sv('coin')} ${fa(q.coin)}</span>`); if (q.scroll) it.push(`<span class="tmp">${sv('scr')} ${fa(q.scroll)}</span>`); if (q.ess) it.push(`<span class="tmp">${sv('ess')} ${fa(q.ess)}</span>`);
-  if (q.power) it.push(`<span class="tmp">${sv('pow')} ${fa(q.power)}</span>`); if (T.run > 0 || q.step) it.push(`<span class="tmp">${sv('step')} ${T.run > 0 ? 'دویدن' : fa(q.step)}</span>`);
+  // while the die still rolls its value is not shown yet anywhere
+  const pw = q.power - (DIEBUSY && T.die ? T.die.vals[T.die.vals.length - 1] || 0 : 0);
+  if (pw > 0) it.push(`<span class="tmp">${sv('pow')} ${fa(pw)}</span>`); if (T.run > 0 || q.step) it.push(`<span class="tmp">${sv('step')} ${T.run > 0 ? 'دویدن' : fa(q.step)}</span>`);
   if (perm) { it.push(`<span>${sv('torch')} ${fa(p.torch)}</span>`); if (p.pick) it.push(`<span>${sv('pick')} ${fa(p.pick)}</span>`); }
   // the stored row is always shown, fixed, above the temporary row
-  return presH(p) + (it.length ? `<div class="pool">${it.join('')}</div>` : ''); }
+  // the temporary row keeps its place even when empty, so nothing below it jumps when a resource appears or is spent
+  return presH(p) + (it.length ? `<div class="pool">${it.join('')}</div>` : `<div class="pool pempty"><span class="tmp">${sv('pow')} ۰</span></div>`); }
 const NAV = [['hand', 'دست'], ['mywiz', 'جادوگران'], ['acad', 'آکادمی'], ['hall', 'تالار'], ['board', 'برد شخصی']];
 const navH = () => `<div class="nav">${NAV.map(([k, t]) => `<div class="tb ${tab === k && !view ? 'on' : ''}" data-tab="${k}">${sv(k)}${t}</div>`).join('')}</div>`;
 const dotsH = (n, i) => n > 1 ? `<div class="dots">${Array.from({ length: Math.min(n, 14) }, (_, k) => `<i class="${k === Math.min(i, 13) ? 'on' : ''}"></i>`).join('')}</div>` : '<div class="dots"></div>';
@@ -131,8 +134,9 @@ function game() {
   else body = tabP();
   return header() + body;
 }
-// a die rolled by this player: rolling faces slow down for ~1.8 s, then the result stays a moment
+// a die rolled by this player: the die on the dice screen lands on the result; otherwise the same die as an overlay
 let rollSeen = null;
+const dieHtml = d => d.vals.map((v, i) => `<span class="${i < d.acc ? 'okd' : ''}">${dieN(v)}</span>`).join(' + ');
 function rollShow() {
   if (!S.G) return; const r = S.G.roll;
   if (rollSeen === null) { rollSeen = r ? r.n : 0; return; }   // do not replay an old roll after a reload
@@ -140,21 +144,16 @@ function rollShow() {
   if (r.n <= rollSeen) return; rollSeen = r.n;
   if (S.G.phase === 'night' && !S.G.battle) return;   // last turn's roll is not replayed when the night starts
   if (r.pid !== S.G.me) return;
-  const cube = document.querySelector('.die3 .cube');
-  if (cube) die3Fx(cube, r); else dieFx(document.body, r, 'ph');
+  const el = document.querySelector('.dieb .die3'), T = S.G.turn;
+  if (el && T && T.die && T.die.n === r.n) { DIEBUSY = true; die3Land(el, dieHtml(T.die), r.lv, () => { DIEBUSY = false; render(); }); }
+  else dieFx(document.body, r, 'ph');
 }
-// the on-screen die keeps spinning while its front face flicks through numbers and slows down, then lands on the result
-function die3Fx(cube, r) {
-  const num = cube.querySelector('.dnum'), fin = num.innerHTML, faces = DIEF[Math.min(4, r.lv || 1)] || [1, 2, 3, 4, 5, 6];
-  if (!ANIM.on) return;
-  cube.classList.remove('land'); cube.classList.add('spin');
-  const steps = [60, 65, 70, 80, 90, 105, 120, 140, 170, 210, 260, 330]; let i = 0;
-  const tick = () => {
-    if (!cube.isConnected) return;
-    if (i < steps.length) { num.textContent = r.vals.map(() => fa(faces[Math.floor(Math.random() * faces.length)])).join(' + '); setTimeout(tick, steps[i++]); }
-    else { num.innerHTML = fin; cube.classList.remove('spin'); cube.classList.add('land'); }
-  };
-  tick();
+// tap on the die (or the roll / reroll button): the die starts spinning at once; if no result comes back, it settles again
+function spinMine(lv) {
+  const el = document.querySelector('.dieb .die3'); if (!el) return;
+  DIEBUSY = true;
+  die3Spin(el, lv);
+  setTimeout(() => { const st = el._d3; if (st && st.on && !st.land) die3Land(el, el.querySelector('.dnum').innerHTML, lv, () => { DIEBUSY = false; render(); }); }, 3000);
 }
 function waitFor() { const q = S.G.prompts[0]; return q && q.to !== S.G.me ? `<div class="pmsg">منتظر ${esc(S.G.players[q.to].name)}: ${esc(q.title || '')}</div>` : ''; }
 
@@ -248,23 +247,23 @@ function boardP() {
 }
 
 // ---- dice ----
-// a white 3D die (Farshad 2026-11-06): the face toward the player shows «؟» (or the result) instead of pips; tapping it rolls
-const PIPS = { 2: [0, 8], 3: [0, 4, 8], 5: [0, 2, 4, 6, 8] };
-const pipF = n => `<div class="pips">${[...Array(9)].map((_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
-const die3 = (txt, tap) => `<div class="die3 ${tap ? 'tap' : ''}" ${tap ? 'data-do="roll"' : ''}><div class="cube"><div class="cf fr"><b class="dnum">${txt}</b></div><div class="cf bk">${pipF(5)}</div><div class="cf rt">${pipF(3)}</div><div class="cf lf">${pipF(2)}</div><div class="cf tp">${pipF(2)}</div><div class="cf bt">${pipF(3)}</div></div></div>`;
 function diceP() {
   const T = S.G.turn, p = me(), d = T.die, lv = Math.min(4, d ? d.lv : p.wand + (T.flags.dieup ? 1 : 0)), need = Math.max(d ? d.need : 1, T.flags.twice ? 2 : 1);
   let o = poolH(false) + `<div class="dieb"><div class="lbl" style="font-size:15px">تاس ${DIEN[lv]} – سطح ${fa(lv)}${need > 1 ? ' – دو تاس' : ''}${T.flags.x2 ? ' – دو برابر' : ''}</div>`;
   const pend = d && d.acc < d.faces.length;       // rolled, not yet accepted
-  if (!d) o += `<div class="dfaces">${DIEF[lv].map(v => `<b>${fa(v)}</b>`).join('')}</div>${die3('؟', true)}<div class="lbl">برای انداختن، روی تاس بزن</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
+  // the die keeps exactly the same place before, during and after the roll: same rows above and below it
+  const facesRow = `<div class="dfaces">${DIEF[lv].map(v => `<b>${dieN(v)}</b>`).join('')}</div>`;
+  if (!d) o += `${facesRow}${die3H('؟', { tap: true })}<div class="lbl dhint">برای انداختن، روی تاس بزن</div></div><div class="btn" data-do="roll">انداختن تاس${need > 1 ? ' اول' : ''}</div>`;
   else {
-    o += die3(d.vals.map((v, i) => `<span class="${i < d.acc ? 'okd' : ''}">${fa(v)}</span>`).join(' + '), !pend && !T.dieUsed) + `${need > 1 ? `<div class="lbl">${d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + fa(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ')}</div>` : ''}</div>`;
+    o += facesRow + die3H(dieHtml(d), { tap: !pend && !T.dieUsed }) + `<div class="lbl dhint">${need > 1 ? d.vals.map((v, i) => 'تاس ' + fa(i + 1) + ': ' + dieN(v) + (i < d.acc ? ' (ثبت شد)' : '')).join(' – ') : '&nbsp;'}</div></div>`;
     if (pend) {
+      o += `<div class="dbtns ${DIEBUSY ? 'hold' : ''}">`;
       const free = Game_hasItem(p, 'fate') && !T.freeReroll, hpFree = p.hp === 'hp_luck' && !T.flags.hpLuck;
       if (free) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (طومار تقدیر)</div>`;
       else if (hpFree) o += `<div class="btn" data-do="reroll">بازانداختن – رایگان (قدرت خاندان)</div>`;
       else if (T.reroll < 1) o += `<div class="btn ${canPayC({ scroll: 1 }) ? '' : 'off'}" data-do="reroll">بازانداختن – ۱ ${sv('scr')}</div>`;
-      o += `<div class="btn grn" data-do="dieok">قبول عدد ${fa(d.vals[d.vals.length - 1])}</div>`;
+      o += `<div class="btn grn" data-do="dieok">قبول عدد ${dieN(d.vals[d.vals.length - 1])}</div>`;
+      o += `</div>`;
     } else if (!T.dieUsed) o += `<div class="btn" data-do="roll">انداختن تاس دوم</div>`;
   }
   return o + (pend ? '' : `<div class="btn ghost" data-do="back">برگشت</div>`) + navH();
@@ -431,6 +430,7 @@ function bind() {
   R.querySelectorAll('[data-pg]').forEach(e => e.onclick = () => act({ t: 'd_pgo', n: e.dataset.pg }));
   R.querySelectorAll('[data-pn]').forEach(e => e.onclick = () => act({ t: 'd_pnext', dir: +e.dataset.pn }));
   R.querySelectorAll('[data-off]').forEach(e => e.onclick = () => { const [a, b] = e.dataset.off.split(',').map(Number); const o = (S.ui && S.ui.off) || [0, 0]; sendUI({ off: a === 0 && b === 0 ? [0, 0] : [o[0] + a, o[1] + b] }); });
+  R.querySelectorAll('.die3[data-tap]').forEach(e => e.onclick = () => { if (!(e._d3 && e._d3.on)) doIt('roll', e); });
   R.querySelectorAll('[data-do]').forEach(e => e.onclick = () => { if (e.classList.contains('off') && !['start'].includes(e.dataset.do)) return; doIt(e.dataset.do, e); });
   // swipes on carousels: left/right to browse, up to play
   R.querySelectorAll('[data-car]').forEach(el => {
@@ -472,8 +472,8 @@ function doIt(k, e) {
     case 'endv': view = 'end'; render(); return;
     case 'end': view = null; act({ t: 'end' }); return;
     case 'dun': if (S.ui && S.ui.dun && dunAway) { dunAway = false; view = null; render(); return; } dunAway = false; sendUI({ dun: !(S.ui && S.ui.dun) }); view = null; return;
-    case 'roll': { const c = document.querySelector('.die3 .cube'); if (c) { c.classList.remove('land'); c.classList.add('spin'); } if (typeof SFX !== 'undefined') SFX.play('dice'); act({ t: 'roll' }); return; }
-    case 'reroll': act({ t: 'reroll' }); return;
+    case 'roll': { const T = S.G.turn, lv = T.die ? T.die.lv : me().wand + (T.flags.dieup ? 1 : 0); spinMine(lv); if (typeof SFX !== 'undefined') SFX.play('dice'); act({ t: 'roll' }); return; }
+    case 'reroll': { const T = S.G.turn; if (T.die) spinMine(T.die.lv); if (typeof SFX !== 'undefined') SFX.play('dice'); act({ t: 'reroll' }); return; }
     case 'dieok': { const d = S.G.turn.die, last = d && d.acc + 1 >= Math.max(d.need, S.G.turn.flags.twice ? 2 : 1); act({ t: 'dieok' }); if (last) view = null; return; }
     case 'hpalch': act({ t: 'hpalch' }); return;
     case 'buy': { const it = acadItems()[ix.acad]; if (it) act({ t: 'buy', src: it.src, i: it.i }); return; }

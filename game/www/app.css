@@ -279,3 +279,36 @@ body.phone #stage>.P:has(.hlist){overflow-y:auto;-webkit-overflow-scrolling:touc
 @keyframes wffIn{0%{transform:rotateY(-90deg)}100%{transform:rotateY(0)}}
 .wflip .wfb{animation-fill-mode:forwards}
 .wflip .wfb{animation-name:wfbOut}
+/* 3D die driven by script (no CSS spin/land: those jumped between poses) */
+.die3.anim .cube{animation:none!important}
+.die3 .cube.spin,.die3 .cube.land{animation:none}
+.die3 .dnum{font-size:calc(var(--s) * .5)}
+.die3 .dnum.long{font-size:calc(var(--s) * .27)}
+.die3 .cf{will-change:transform}
+.dfx .dfx-b{gap:18px}
+.dfx .die3{margin:6px auto}
+.dfx.ph .die3{--s:120px}
+.dfx.mon .die3{--s:230px}
+.dfx.mon .dfx-lab{font-size:32px}
+/* result buttons stay in place but hidden until the die has landed (no layout jump) */
+.dbtns{display:flex;flex-direction:column;gap:12px;transition:opacity .25s}
+.dbtns.hold{opacity:0;pointer-events:none}
+/* dice screen: fixed die area, buttons anchored at the bottom, so nothing moves when the result arrives */
+.P .dieb{flex:none;height:min(50vh,400px);justify-content:center}
+.P .dieb .dhint{min-height:1.6em;text-align:center}
+.P .dieb + .btn,.P .dieb + .dbtns{margin-top:auto}
+.pool.pempty{visibility:hidden}
+/* die: perspective grows with the die size (a fixed 600px made the big monitor die look like loose slabs), smaller corner radius so the faces read as one cube */
+.die3{perspective:calc(var(--s) * 7)}
+.die3 .cf{border-radius:11%}
+.dfx .die3{margin:calc(var(--s) * .08) auto calc(var(--s) * .2)}
+/* battle columns: one row, centred, as many columns as players (an empty 4th column pushed 3 players to the side) */
+.plat{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,440px);justify-content:center}
+.plat .pc{position:relative}
+/* the next-round card back sits in the column corner instead of above the card, so the column fits the screen */
+.plat .pc .wnext{position:absolute;top:10px;left:12px;margin:0;transform:scale(.36);transform-origin:top left;height:auto}
+.ptags{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+/* in the wizard battle the toast goes to the top band so it never covers the cards */
+.MX .mtoast.btop{bottom:auto;top:24px;max-width:900px}
+/* full-width screens (night, fight, battle result): the "waiting for" line sits just above the player bars, never over a title or banner */
+.MX .waitq{top:auto;bottom:132px}

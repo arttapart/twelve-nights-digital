@@ -34,7 +34,7 @@ const card = id => id === 'W' ? Object.assign({ id: 'W', ty: 'wound', cost: {}, 
 
 // ---------- setup ----------
 function newGame(opts) {
-  const G = { v: 1, seed: (opts.seed != null ? opts.seed : Date.now()) | 0, phase: 'setup', uid: 0, log: [], toasts: [], prompts: [], pid: 0,
+  const G = { v: 1, seed: (opts.seed != null ? opts.seed : entropy()) | 0, phase: 'setup', uid: 0, log: [], toasts: [], prompts: [], pid: 0,
     cfg: { bf: !!opts.bf, timer: Math.max(0, opts.timer | 0), short: false }, night: 1, players: [], order: [], first: 0, cur: 0, turn: null, fight: null, battle: null, dun: null, ev: 0 };
   const nP = opts.players.length;
   // short 10-night game for 3 and 4 players, chosen in the lobby (Farshad 2026-11-06)
@@ -124,23 +124,23 @@ function fillAcademy(G, setup) {
 function removeFromRow(G, i) { const id = G.acad.row.splice(i, 1)[0]; const s = {}; for (const k in G.acad.seal) { const j = +k; if (j < i) s[j] = G.acad.seal[k]; else if (j > i) s[j - 1] = G.acad.seal[k]; } G.acad.seal = s; return id; }
 
 // ---------- crystal duel ----------
+// all players roll at the same time (Farshad 2026-11-06): each phone gets its own «انداختن تاس» button, one die per press;
+// the monitor shows every roll as it lands; when everyone has rolled all dice the duel is scored. No die is ever rolled for a player.
 function duel(G) {
-  // each player rolls the duel dice themselves, one die per press, in turn order
   G.duelPend = { res: G.order.map(id => ({ id, rolls: [], sum: 0 })), k: 0 };
-  askDuel(G);
+  for (const r of G.duelPend.res) askDuel(G, r);
 }
-function askDuel(G) {
-  const D2 = G.duelPend, r = D2.res[D2.k];
-  ask(G, r.id, 'duelRoll', { title: 'دوئل چالش کریستال', text: 'پرتاب ' + fa(r.rolls.length + 1) + ' از ' + fa(R.duelDice) + ' – تاس را بینداز', opts: [{ v: 1, label: 'انداختن تاس' }] });
+function askDuel(G, r) {
+  ask(G, r.id, 'duelRoll', { title: 'دوئل چالش کریستال', text: 'همه با هم تاس می‌اندازند – پرتاب ' + fa(r.rolls.length + 1) + ' از ' + fa(R.duelDice), opts: [{ v: 1, label: 'انداختن تاس' }] });
 }
 H.duelRoll = (G, pid) => {
-  const D2 = G.duelPend; if (!D2) return true; const r = D2.res[D2.k]; if (!r || r.id !== pid) return false;
+  const D2 = G.duelPend; if (!D2) return true; const r = D2.res.find(x => x.id === pid); if (!r || r.rolls.length >= R.duelDice) return false;
   const p = P(G, pid), v = rollFace(G, p.wand) + (hasItem(p, 'gem') ? 1 : 0);
   r.rolls.push(v); r.sum += v; G.roll = { n: ++G.ev, pid, lv: p.wand, vals: [v], label: 'دوئل کریستال – پرتاب ' + fa(r.rolls.length) };
   log(G, p.name + ' در دوئل تاس انداخت: ' + fa(v));
-  if (r.rolls.length >= R.duelDice) D2.k++;
-  if (D2.k < D2.res.length) { askDuel(G); return true; }
-  finishDuel(G); return true;
+  if (r.rolls.length < R.duelDice) { askDuel(G, r); return true; }
+  if (D2.res.every(x => x.rolls.length >= R.duelDice)) finishDuel(G);
+  return true;
 };
 function finishDuel(G) {
   const res = G.duelPend.res; G.duelPend = null;
@@ -154,6 +154,7 @@ function finishDuel(G) {
   if (winner != null) ask(G, winner, 'duelPrize', { title: 'برندهٔ دوئل کریستال', text: 'جایزه‌ات را انتخاب کن', opts: R.duelPrizes.map((x, i) => ({ v: i, label: x.label })) });
   fillAcademy(G);
 }
+H.chalOk = () => true;
 H.duelPrize = (G, pid, v) => { const p = P(G, pid); const g = R.duelPrizes[v]; if (!g) return false; gain(G, p, g.gain); return true; };
 // resources gained outside the owner's own turn go to the store (up to its capacity)
 function gain(G, p, g) {
@@ -331,7 +332,13 @@ function placePick3(p, x, what) { if (what === 'hand') p.hand.push(x); else if (
 H.pick3 = (G, pid, v, q) => { const p = P(G, pid), T = G.turn; const i = T.pick3.findIndex(x => x.u === v); if (i < 0) return false; placePick3(p, T.pick3.splice(i, 1)[0], q.data.what); (T.pick3Done = T.pick3Done || []).push(q.data.what); askPick3(G, p); return true; };
 
 // ---------- wand die ----------
-function rollFace(G, lv) { const f = DIE[Math.min(4, lv)]; return f[Math.floor(rnd(G) * 6)]; }
+// fresh entropy for every die roll (crypto when available): a reloaded or resumed game never repeats the same rolls
+// (the preview reloads its saved game, which used to give the same result again and again). Farshad 2026-11-06
+function entropy() {
+  try { const c = (typeof globalThis !== 'undefined' && globalThis.crypto) || (typeof require === 'function' ? require('crypto').webcrypto : null); if (c && c.getRandomValues) return c.getRandomValues(new Uint32Array(1))[0] | 0; } catch (e) {}
+  return (Math.random() * 4294967296) | 0;
+}
+function rollFace(G, lv) { const f = DIE[Math.min(4, lv)]; G.seed = (G.seed ^ entropy()) | 0; return f[Math.floor(rnd(G) * 6)]; }
 function dieValue(G, p, face) { let v = face + (hasItem(p, 'gem') ? 1 : 0); if (G.turn && G.turn.flags.x2) v *= 2; return v; }
 function rollPower(G, p) {
   const T = G.turn; if (T.dieUsed) return 'تاس این نوبت را انداخته‌ای';
@@ -558,7 +565,11 @@ function nightStep(G, s) {
   } else if (s.k === 'raid') {
     const mv = G.nightQ.steps.filter(x => x.k === 'mv' && x.m), br = mv.filter(x => x.m.breach).length;
     s.d = fa(mv.length) + ' اهریمن حرکت کرد' + (br ? ' – ' + fa(br) + ' رخنه' : ' – بدون رخنه');
-  } else if (s.k === 'chal') { scoreChallenge(G, G.chal[G.night]); const C = G.chalResult; s.d = C && C.winners && C.winners.length ? 'برنده: ' + C.winners.map(i => P(G, i).name).join('، ') : ''; }
+  } else if (s.k === 'chal') {
+    scoreChallenge(G, G.chal[G.night]); const C = G.chalResult; s.d = C && C.winners && C.winners.length ? 'برنده: ' + C.winners.map(i => P(G, i).name).join('، ') : '';
+    // the night waits until every winner confirms the result on their phone (Farshad 2026-11-06)
+    if (C) for (const id of C.winners) ask(G, id, 'chalOk', { title: 'نتیجهٔ توکن چالش', text: 'چالش «' + CHALLENGES[C.k].name + '»: تو برنده شدی و ' + fa(C.pts) + ' امتیاز گرفتی.' + (C.winners.length > 1 ? ' (مساوی با ' + C.winners.filter(x => x !== id).map(x => P(G, x).name).join('، ') + ')' : ''), opts: [{ v: 1, label: 'تأیید' }] });
+  }
   else if (s.k === 'battle') Battle.start(G);
   else if (s.k === 'final') finalScore(G);
   else if (s.k === 'acad') {

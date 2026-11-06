@@ -200,7 +200,10 @@ const ANIM = { on: !(window.matchMedia && matchMedia('(prefers-reduced-motion: r
 const AKEYS = ['data-k', 'data-fig', 'data-car', 'data-tab', 'data-do', 'data-s', 'id', 'data-i', 'data-src', 'data-sw', 'data-gob', 'data-up', 'data-house'];
 function akey(n) {
   if (n.nodeType !== 1) return '#' + n.nodeType;
-  let k = n.tagName; for (const a of AKEYS) { const v = n.getAttribute(a); if (v != null) k += '|' + a + '=' + v; } return k;
+  // the first class name is part of the identity, so a box is never patched into a different kind of box
+  // (that re-created elements and restarted their animations when something new appeared above them)
+  let k = n.tagName; const c0 = (n.getAttribute('class') || '').trim().split(/\s+/)[0]; if (c0) k += '.' + c0;
+  for (const a of AKEYS) { const v = n.getAttribute(a); if (v != null) k += '|' + a + '=' + v; } return k;
 }
 const hasCssAnim = el => { try { const s = getComputedStyle(el); return s.animationName && s.animationName !== 'none'; } catch (e) { return false; } };
 function aEnter(el, ctx) {
@@ -246,7 +249,7 @@ function patchKids(oP, nP, ctx) {
     if (j < 0) for (let i = 0; i <= last && i < olds.length; i++) if (!used[i] && keys[i] === k) { j = i; break; }
     if (j >= 0) {
       used[j] = true; last = Math.max(last, j); const oc = olds[j];
-      if (oc.nodeType === 1) { syncAttrs(oc, nc); patchKids(oc, nc, ctx); }
+      if (oc.nodeType === 1) { if (!oc._keep) { syncAttrs(oc, nc); patchKids(oc, nc, ctx); } }
       else if (oc.nodeValue !== nc.nodeValue) { oc.nodeValue = nc.nodeValue; if (oc.nodeType === 3) aPop(oP, ctx); }
       out.push([oc, false]);
     } else out.push([nc, true]);
@@ -291,21 +294,67 @@ function morph0(root, html, screenKey) {
   ANIM.swipe = 0; ANIM.dir = 0;
 }
 
-// die roll effect: an overlay where the faces spin and slow down, then land on the result (max ~2 s)
+// ---------- the 3D die (phone dice screen, phone and monitor overlays) — Farshad 2026-11-06 ----------
+// One persistent element, driven by requestAnimationFrame: it spins at a steady speed from the tap until the result
+// arrives, then slows down smoothly (same speed at the hand-over, no jump) and stops exactly at its resting pose.
+// The front face only changes number while it is turned away, and the last change writes the real result,
+// so what the die shows is always what the game counted. While it moves, morph() leaves it alone (el._keep).
+const PIPS = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+const pipF = n => `<div class="pips">${[...Array(9)].map((_, i) => `<i class="${PIPS[n].includes(i) ? 'on' : ''}"></i>`).join('')}</div>`;
+function die3H(txt, o = {}) {
+  return `<div class="die3 ${o.tap ? 'tap' : ''} ${o.cls || ''}" data-k="die3${o.k || ''}"${o.tap ? ' data-tap="1"' : ''}><div class="cube"><div class="cf fr"><b class="dnum ${/\+|صفر/.test(txt) ? 'long' : ''}">${txt}</b></div><div class="cf bk">${pipF(6)}</div><div class="cf rt">${pipF(3)}</div><div class="cf lf">${pipF(4)}</div><div class="cf tp">${pipF(2)}</div><div class="cf bt">${pipF(5)}</div></div></div>`;
+}
+// the Persian zero (۰) is a small dot and on a die it reads like one pip, so a zero is written as a word
+const dieN = v => v === 0 ? 'صفر' : fa(v);
+let DIEBUSY = false;   // true while a die of this screen is still rolling: the result buttons wait for it
+const D3 = { w: 1150, rest: 'rotateX(-16deg) rotateY(20deg)', ax: '1,.85,.35' };
+function die3Spin(el, lv) {
+  if (!el) return null;
+  const st0 = el._d3; if (st0 && st0.on) return st0;
+  const cube = el.querySelector('.cube'), num = el.querySelector('.dnum');
+  const faces = DIEF[Math.min(4, lv || 1)] || [1, 2, 3, 4, 5, 6];
+  const st = el._d3 = { on: true, a: 0, k: 0, last: performance.now(), land: null };
+  el._keep = true; el.classList.add('anim');
+  if (!ANIM.on) return st;
+  const frame = now => {
+    if (!st.on) return;
+    if (!el.isConnected) { st.on = false; el._keep = false; return; }
+    const dt = Math.min(.05, (now - st.last) / 1000); st.last = now;
+    let a, end = false;
+    if (!st.land) a = st.a += D3.w * dt;
+    else { const L = st.land, u = Math.min(1, (now - L.t0) / L.T); a = L.a0 + L.D * (1 - Math.pow(1 - u, 3)); st.a = a; end = u >= 1; }
+    // a new number only while the front face points away (each pass of 180° + n·360°)
+    const k = Math.floor((a + 180) / 360);
+    if (k !== st.k) { st.k = k; if (st.land && a >= st.land.fin - 360) num.innerHTML = st.land.html; else { const v = faces[Math.floor(Math.random() * faces.length)]; num.textContent = dieN(v); num.classList.toggle('long', v === 0); } }
+    cube.style.transform = `${D3.rest} rotate3d(${D3.ax},${end ? 0 : a % 360}deg)`;
+    if (end) { st.on = false; num.innerHTML = st.land.html; cube.style.transform = ''; el.classList.remove('anim'); el._keep = false;
+      if (el.animate) el.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.07)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'ease-out' });
+      if (st.land.done) st.land.done(); return; }
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  return st;
+}
+// slow down and land on html (the result as the game counted it)
+function die3Land(el, html, lv, done) {
+  if (!el) { if (done) done(); return; }
+  let st = el._d3; if (!st || !st.on) st = die3Spin(el, lv);
+  if (!ANIM.on) { st.on = false; el._keep = false; el.classList.remove('anim'); el.querySelector('.dnum').innerHTML = html; if (done) done(); return; }
+  el.querySelector('.dnum').classList.toggle('long', /\+|صفر/.test(html));
+  const a0 = st.a, fin = Math.ceil((a0 + 540) / 360) * 360, D = fin - a0;
+  st.land = { t0: performance.now(), a0, D, T: 3 * D / D3.w * 1000, fin, html, done };
+}
+// overlay (monitor, or the phone when its dice screen is not open): the same die spins, lands, stays a moment, fades
 function dieFx(host, r, cls) {
   const old = host.querySelector('.dfx'); if (old) old.remove();
-  const faces = (DIEF[Math.min(4, r.lv || 1)] || [1, 2, 3, 4, 5, 6]), fin = (r.vals || []).map(fa).join(' + ');
+  const fin = (r.vals || []).map(dieN).join(' + ');
   const el = document.createElement('div'); el.className = 'dfx ' + (cls || '');
-  el.innerHTML = `<div class="dfx-b"><svg class="dfx-sv"><use href="#i-die"/></svg><div class="dfx-num">؟</div><div class="dfx-lab">${esc(r.label || '')}</div></div>`;
+  el.innerHTML = `<div class="dfx-b">${die3H('؟', { k: 'fx' })}<div class="dfx-lab">${esc(r.label || '')}</div></div>`;
   host.appendChild(el);
-  const num = el.querySelector('.dfx-num'), box = el.querySelector('.dfx-b');
-  const steps = [50, 55, 60, 70, 80, 95, 110, 130, 160, 200, 250, 320]; let i = 0;
-  const tick = () => {
-    if (i < steps.length) { num.textContent = r.vals.map(() => fa(faces[Math.floor(Math.random() * faces.length)])).join(' + '); setTimeout(tick, steps[i++]); }
-    else { num.textContent = fin; box.classList.add('land'); setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 1300); }
-  };
-  if (!ANIM.on) { num.textContent = fin; setTimeout(() => el.remove(), 1500); return; }
-  tick();
+  const d = el.querySelector('.die3');
+  const out = () => setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 450); }, 1400);
+  if (!ANIM.on) { d.querySelector('.dnum').textContent = fin; out(); return; }
+  die3Spin(d, r.lv); setTimeout(() => die3Land(d, fin, r.lv, out), 350);
 }
 
 // ---------- turn timer countdown (host sends the ms left; each screen counts down on its own clock) ----------

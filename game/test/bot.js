@@ -2,8 +2,12 @@
 const { D, Game, Dun, WB } = require('../shared/index.js');
 function pick(a, r) { return a[Math.floor(r() * a.length)]; }
 function botStep(G, r) {
+  // in the editor preview the bot never rolls a die: dice prompts wait for the player on the phone (Farshad 2026-11-06)
+  const noDice = typeof window !== 'undefined' && window.NO_BOT_DICE;
+  const isDie = q => q.k === 'duelRoll' || q.k === 'resGo' || (q.k === 'bq' && q.data && q.data.die);
   if (G.prompts.length) {
-    const q = G.prompts[0];
+    const q = noDice ? G.prompts.find(x => !isDie(x)) : G.prompts[0];
+    if (!q) return 'wait';
     let v;
     if (q.many) { const n = Math.min(q.many, q.opts.length); const os = q.opts.slice().sort(() => r() - .5).slice(0, q.min === 0 ? Math.floor(r() * (n + 1)) : n); v = os.map(o => o.v); }
     else v = pick(q.opts, r).v;
@@ -27,14 +31,14 @@ function botStep(G, r) {
   if (G.dun.portal) { const po = G.dun.portal; if (r() < .3) { A({ t: 'd_pcancel' }); return; } if (r() < .3) { A({ t: 'd_pnext' }); return; } const e = A({ t: 'd_pgo', n: po.list[po.i].cells[0] }); if (e) A({ t: 'd_pcancel' }); return; }
   if (G.fight) {
     const F = G.fight, cur = F.pending != null ? F.cards[F.pending] : null;
-    if (cur) { if (T.pool.power >= cur.def) A({ t: 'f_pay' }); else { const m = p.hand.find(x => Game.card(x.c).ty === 'magic'); if (m && r() < .7) A({ t: 'play', u: m.u }); else if (!T.dieUsed) A({ t: 'roll' }); else A({ t: 'f_lose' }); } }
+    if (cur) { if (T.pool.power >= cur.def) A({ t: 'f_pay' }); else { const m = p.hand.find(x => Game.card(x.c).ty === 'magic'); if (m && r() < .7) A({ t: 'play', u: m.u }); else if (!T.dieUsed && !noDice) A({ t: 'roll' }); else A({ t: 'f_lose' }); } }
     else if (T.pool.power >= 4 && r() < .4) A({ t: 'f_next' }); else A({ t: 'f_stop' });
     return;
   }
   if (T.forced != null) { A({ t: 'd_fight' }); return; }
   const choices = [];
   for (const x of p.hand) { const c = Game.card(x.c); if (c.ty === 'wound') continue; choices.push(() => A({ t: 'play', u: x.u, mode: c.strip && r() < .75 ? 'strip' : 'main' })); }
-  if (!T.dieUsed) choices.push(() => A({ t: 'roll' }));
+  if (!T.dieUsed && !noDice) choices.push(() => A({ t: 'roll' }));
   G.acad.row.forEach((id, i) => { if (Game.canPay(G, p, D.cards[id].cost)) choices.push(() => A({ t: 'buy', src: 'row', i })); });
   for (const f of ['f_m3', 'f_m3s']) if (G.acad.fixed[f] && Game.canPay(G, p, D.cards[f].cost)) choices.push(() => A({ t: 'buy', src: 'fixed', i: f }));
   G.hall.row.forEach((w, i) => { if (T.pool.power >= Game.hireCost(G, p, w)) choices.push(() => A({ t: 'hire', i })); });

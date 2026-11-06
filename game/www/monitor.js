@@ -101,9 +101,15 @@ function pbarH(G) {
     return `<div class="pt ${on ? 'on' : ''}" style="--pc:${p.color}">${played}<div class="nm"><i style="background:${p.color}"></i>${esc(p.name)}${on ? '<span style="font-size:16px;font-weight:600;opacity:.8">· در حال بازی</span>' : ''}</div><div class="stats"><span>${sv('fame')}${fa(p.fame)}</span><span>${sv('coin')}${fa(p.store.coin)}</span><span>${sv('scr')}${fa(p.store.scroll)}</span><span>${sv('ess')}${fa(p.store.ess)}</span><span>${sv('hunt')}${fa(p.hunt)}</span>${p.wounds ? `<span class="wd">زخم ${fa(p.wounds)}</span>` : ''}</div></div>`;
   }).join('')}</div>`;
 }
-function waitLine(G) {
+function waitTxt(G) {
   const q = G.prompts[0]; if (!q) return '';
-  return `<div class="waitq">منتظر ${NM(q.to)}: ${esc(q.title || '')}</div>`;
+  // several players answering at the same time (duel, challenge results): name all of them
+  const same = G.prompts.filter(x => x.k === q.k), who = [...new Set(same.map(x => x.to))];
+  return `منتظر ${who.map(NM).join('، ')}: ${esc(q.title || '')}`;
+}
+function waitLine(G) {
+  if (!G.prompts.length) return '';
+  return `<div class="waitq">${waitTxt(G)}</div>`;
 }
 // the played/viewed card keeps its proportions and is zoomed down to fit its box
 function fitCur() {
@@ -216,7 +222,9 @@ function chalH(C) {
 }
 function nightScr() {
   const G = S.G, Q = G.nightQ;
-  const br = G.lastBreach && seen.breach === G.lastBreach.n && Date.now() - (timers.breachAt || 0) < 15000 ? G.lastBreach : null;
+  // the breach banner only for a breach of this night's raid (a breach from the day before is not repeated here)
+  const brNight = Q && Q.steps.some(x => x.k === 'mv' && x.done && x.m && x.m.breach);
+  const br = brNight && G.lastBreach && seen.breach === G.lastBreach.n && Date.now() - (timers.breachAt || 0) < 15000 ? G.lastBreach : null;
   // the night as a checklist: done steps are ticked with what happened, the current one glows
   const one = (st, sub) => { const cls = st.done ? 'ok' : st.on ? 'on' : ''; return `<div class="nstep ${cls} ${sub ? 'sub' : ''}"><i>${st.done ? '✓' : st.on ? '◆' : ''}</i><div><b>${esc(st.t)}</b>${st.done && st.d ? `<span>${esc(st.d)}</span>` : ''}</div></div>`; };
   let list = '';
@@ -298,13 +306,13 @@ ${B.bf ? `<div class="ctr"><div class="bfx"><span>اثر میدان نبرد</sp
     lastH = `<div class="plat" style="flex:1">${G.order.map(id => `<div class="pc" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${sent(id)}</div>`).join('')}</div>`;
   } else if (L) {
     lastH = `<div class="plat" style="flex:1">${G.order.map(id => { const cid = L.cards[id]; const win = L.winner === id; const parts = (L.parts && L.parts[id]) || [];
-      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${B.phase === 'pick' ? `<div class="wnext">${sent(id)}</div>` : ''}${flip(L.round, id, cid ? wcard(cid) : noCard)}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tag" style="font-size:20px;background:rgba(127,192,255,.16);color:#bfe0ff;border-color:#7fc0ff">تاس مساوی: ${fa(L.tie.dice[id])}</span>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>`; }).join('')}</div>`;
+      return `<div class="pc ${win ? 'win' : ''}" style="--pc:${H(id)};justify-content:center"><div class="nmx"><i></i>${NM(id)}</div>${B.phase === 'pick' ? `<div class="wnext">${sent(id)}</div>` : ''}${flip(L.round, id, cid ? wcard(cid) : noCard)}${cid ? `<div class="ptrail">${parts.map(([v, why]) => `<div class="pold"><span class="ptag"><b>${v > 0 ? '+' : ''}${fa(v)}</b>${esc(why)}</span></div>`).join('')}<span class="dm">${fa(L.score[id] != null ? L.score[id] : 0)}</span></div>` : ''}${(L.tie && L.tie.dice && L.tie.dice[id] != null) || win ? `<div class="ptags">${L.tie && L.tie.dice && L.tie.dice[id] != null ? `<span class="tag" style="font-size:20px;background:rgba(127,192,255,.16);color:#bfe0ff;border-color:#7fc0ff">تاس مساوی: ${dieN(L.tie.dice[id])}</span>` : ''}${win ? '<span class="tag" style="font-size:20px">برندهٔ راند</span>' : ''}</div>` : ''}</div>`; }).join('')}</div>`;
   }
   const status = G.order.map(id => `<span class="bst ${B.picked[id] ? 'ok' : ''}" style="--pc:${H(id)}"><i></i>${NM(id)} ${B.picked[id] ? '✓' : '…'}</span>`).join('');
   return `<div class="M MX" data-s="a">${head}<div class="body" style="flex-direction:column;gap:18px">
 <div class="ctr" style="flex-direction:row;gap:30px"><h2>${B.phase === 'r6' && L ? 'راند ' + fa(L.round) + ' تمام شد' : (L && B.phase === 'pick' ? 'راند ' + fa(L.round) + ' تمام شد – ' : '') + 'راند ' + fa(B.round) + ' از ۶'}</h2>${track}</div>
 ${B.phase === 'pick' && !L ? '<div class="sub" style="font-size:26px;text-align:center">هر بازیکن در گوشی یک کارت از دست ۲ کارتی‌اش را پنهانی انتخاب می‌کند</div>' : ''}${lastH}
-<div class="bstat">${B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند' : B.phase === 'pick' ? 'انتخاب پنهان: ' + status : G.prompts.length ? 'کارت‌ها رو شد – منتظر جواب در گوشی' : 'در حال اجرای اثرها…'}</div></div>${waitLine(G)}</div>`;
+<div class="bstat">${B.phase === 'r6' ? NM(B.shower) + ' «نمایش نتایج» را در گوشی بزند' : B.phase === 'pick' ? 'انتخاب پنهان: ' + status : G.prompts.length ? 'کارت‌ها رو شد – ' + waitTxt(G) : 'در حال اجرای اثرها…'}</div></div></div>`;
 }
 
 // ---------- final ----------
@@ -323,11 +331,16 @@ function overlays() {
   const G = S.G; let o = '';
   const last = G.toasts[G.toasts.length - 1];
   if (last && last.n > seen.toast) { seen.toast = last.n; timers.toastT = last; show('toast', 4500); }
-  if (live('toast') && timers.toastT && CURK !== 'main') o += `<div class="mtoast k-${timers.toastT.kind}">${esc(timers.toastT.t)}</div>`;
+  // the toast is drawn last and only when no big overlay is open (it used to slide under the duel table)
+  const tst = live('toast') && timers.toastT && CURK !== 'main' && CURK !== 'night' ? `<div class="mtoast k-${timers.toastT.kind}${CURK === 'battle' ? ' btop' : ''}">${esc(timers.toastT.t)}</div>` : '';
   // every die a player rolls: spinning faces on the big screen, then the result
   const rr = G.roll;
   // a roll from the last turn is not replayed when the night starts (Farshad 2026-11-06)
   if (rr && rr.n > seen.die && G.phase === 'night' && !G.battle) seen.die = rr.n;
+  // a roll that belongs to another moment (a battle die after the battle, a die of an earlier turn) is never replayed
+  if (rr && rr.n > seen.die) { const bRoll = /نبرد/.test(rr.label || ''); if (bRoll !== !!G.battle || (!G.battle && G.phase === 'turn' && G.turn && G.turn.pid !== rr.pid && !G.duelPend && !/^دوئل/.test(rr.label || ''))) seen.die = rr.n; }
+  // duel rolls land straight in the duel table (all players roll at once, big overlays would cover each other)
+  if (rr && rr.n > seen.die && (G.duelPend || /^دوئل/.test(rr.label || ''))) { seen.die = rr.n; SFX.play('dice'); }
   if (rr && rr.n > seen.die) { seen.die = rr.n; SFX.play('dice'); setTimeout(() => dieFx(document.body, Object.assign({}, rr, { label: G.players[rr.pid].name + ' – ' + (rr.label || '') }), 'mon'), 0); }
   if (G.duel && G.duel.n > seen.duel) { seen.duel = G.duel.n; show('duel', 9000); }
   if (live('duel') && G.duel) {
@@ -337,10 +350,10 @@ function overlays() {
   // crystal duel in progress: every roll appears in the table as soon as the player throws it
   if (G.duelPend && !live('duel')) {
     const D2 = G.duelPend, nd = RU.duelDice || 3, cur = D2.res[D2.k];
-    o += `<div class="ovl"><div class="zone ctr" style="gap:20px;padding:34px 50px"><h2>دوئل چالش کریستال</h2><table class="tbl" style="width:1100px"><tr><th></th>${Array.from({ length: nd }, (_, k) => `<th>پرتاب ${fa(k + 1)}</th>`).join('')}<th>جمع</th></tr>${D2.res.map(r => `<tr class="${cur && cur.id === r.id ? 'win' : ''}"><td><span class="nmd"><i style="background:${H(r.id)}"></i>${NM(r.id)}</span></td>${Array.from({ length: nd }, (_, k) => `<td>${r.rolls[k] != null ? `<span class="die6">${fa(r.rolls[k])}</span>` : '<span class="sub">–</span>'}</td>`).join('')}<td style="font-size:34px">${r.rolls.length ? fa(r.sum) : ''}</td></tr>`).join('')}</table><div class="sub">${cur ? NM(cur.id) + ' در گوشی تاس را بیندازد' : ''}</div></div></div>`;
+    o += `<div class="ovl"><div class="zone ctr" style="gap:20px;padding:34px 50px"><h2>دوئل چالش کریستال</h2><table class="tbl" style="width:1100px"><tr><th></th>${Array.from({ length: nd }, (_, k) => `<th>پرتاب ${fa(k + 1)}</th>`).join('')}<th>جمع</th></tr>${D2.res.map(r => `<tr class="${r.rolls.length >= nd ? 'win' : ''}"><td><span class="nmd"><i style="background:${H(r.id)}"></i>${NM(r.id)}</span></td>${Array.from({ length: nd }, (_, k) => `<td>${r.rolls[k] != null ? `<span class="die6">${fa(r.rolls[k])}</span>` : '<span class="sub">–</span>'}</td>`).join('')}<td style="font-size:34px">${r.rolls.length ? fa(r.sum) : ''}</td></tr>`).join('')}</table><div class="sub">همه با هم در گوشی تاس می‌اندازند – ${D2.res.filter(r => r.rolls.length < nd).map(r => NM(r.id)).join('، ')}</div></div></div>`;
   }
   if (G.chalResult && G.chalResult.n > seen.chal) { seen.chal = G.chalResult.n; show('chal', 9000); }
   if (live('chal') && G.chalResult && G.phase !== 'night') o += `<div class="ovl"><div class="zone ctr" style="gap:26px;padding:34px 50px;width:1300px">${chalH(G.chalResult)}</div></div>`;
   if (G.lastBreach && G.lastBreach.n > seen.breach) { seen.breach = G.lastBreach.n; timers.breachAt = Date.now(); }
-  return o;
+  return o.includes('class="ovl"') ? o : o + tst;
 }
