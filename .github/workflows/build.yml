@@ -90,6 +90,8 @@ jobs:
           tag_name: v${{ needs.check.outputs.version }}-b${{ github.run_number }}
           name: نسخهٔ ${{ needs.check.outputs.version }} (ساخت ${{ github.run_number }})
           body: |
+            ✏️ ویرایشگر: https://claude.ai/artifact/JNYcfTz9rFCmTiGA56PaDH
+
             ساخته‌شده از داده‌های ویرایشگر. ویندوز: zip را باز کن و 12Nights.exe را اجرا کن. اندروید: APK را روی گوشی‌ها نصب کن.
             ${{ needs.android.result != 'success' && 'APK این بار ساخته نشد (کلید امضا یا خطای ساخت؛ صفحهٔ Actions را ببین).' || '' }}
           files: out/*
