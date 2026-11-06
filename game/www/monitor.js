@@ -264,7 +264,7 @@ function nightDet(G, st, i) {
   }
   if (st.k === 'hall') {
     const ws = st.done ? st.ws || [] : G.hall.row.map(w => ({ id: w.id, tok: w.tok || 0 }));
-    return box('تالار جادوگران', `<div class="ndcards">${ws.map(w => `<div class="ndc ${st.done && w.add ? 'tokpop' : ''}">${wcard(w.id, w.tok)}</div>`).join('')}</div>`);
+    return box('تالار جادوگران', `<div class="ndcards">${ws.map(w => `<div class="ndc ${st.done && w.add ? 'tokpop' : ''}" style="${st.done && st.gone === w.id ? 'opacity:.3;filter:grayscale(1);transition:opacity 1s 1.2s' : ''}">${wcard(w.id, w.tok)}</div>`).join('')}</div>`);
   }
   if (st.k === 'hat') {
     const id = st.done ? st.first : G.order[0];

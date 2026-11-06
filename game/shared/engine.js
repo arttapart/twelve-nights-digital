@@ -530,8 +530,6 @@ function finishTurn(G, p) {
   // seals placed earlier expire at the end of the owner's next turn
   for (const k in G.acad.seal) { const s = G.acad.seal[k]; if (s.pid === p.id) { s.cnt++; if (s.cnt >= 2) delete G.acad.seal[k]; } }
   log(G, p.name + ' نوبتش را تمام کرد.' + (lost.length ? ' از بین رفت: ' + lost.join('، ') : ''));
-  // 2-player game: the rightmost hall wizard leaves, the row shifts and a new wizard is revealed
-  if (G.players.length === 2 && G.hall.row.length) { G.hallShift = (G.hallShift || 0) + 1; const w = G.hall.row.shift(); G.hall.gone.push(w.id); refillHall(G); log(G, 'بازی دونفره: جادوگر ' + w.id + ' از تالار حذف شد و جادوگر تازه رو شد.'); }
   G.turn = null;
   G.cur++;
   if (G.cur >= G.order.length) endNight(G); else startTurn(G);
@@ -553,7 +551,7 @@ function endNight(G) {
   if (G.night >= G.cfg.nights) steps.push({ k: 'final', t: 'امتیازشماری پایانی' });
   else {
     steps.push({ k: 'acad', t: 'آکادمی: ' + (G.players.length === 2 ? '۲ کارت' : 'کارت') + ' سمت راست می‌سوزد' });
-    steps.push({ k: 'hall', t: 'تالار: توکن «۱- دفاع» روی هر جادوگر' });
+    steps.push({ k: 'hall', t: 'تالار: توکن «۱- دفاع» روی هر جادوگر' + (G.players.length === 2 ? '، سپس جادوگر سمت راست حذف می‌شود' : '') });
     steps.push({ k: 'hat', t: G.players.length === 2 ? 'شب بعد: نوبت‌ها یکی در میان ادامه دارد' : 'کلاه جادوگری به نفر بعد می‌رسد' });
   }
   G.nightQ = { n: G.night, steps, i: 0, at: null };
@@ -584,6 +582,8 @@ function nightStep(G, s) {
     // hall: -1 defense token on every unhired wizard (at most R.hallTokMax, Farshad 2026-11-05: 2)
     let n = 0; s.ws = []; for (const w of G.hall.row) { const t = Math.min(R.hallTokMax || 2, (w.tok || 0) + 1); s.ws.push({ id: w.id, tok: t, add: t > (w.tok || 0) }); if (t > (w.tok || 0)) n++; w.tok = t; }
     s.d = fa(n) + ' جادوگر توکن گرفت'; log(G, 'تالار: ' + s.d + '.');
+    // 2-player game: at the end of each night, after the tokens, the rightmost hall wizard leaves and a new one is revealed (CHANGELOG 97, Farshad 2026-11-06)
+    if (G.players.length === 2 && G.hall.row.length) { G.hallShift = (G.hallShift || 0) + 1; const w = G.hall.row.shift(); G.hall.gone.push(w.id); s.gone = w.id; refillHall(G); s.d += '، جادوگر سمت راست حذف شد'; log(G, 'بازی دونفره: جادوگر ' + w.id + ' از تالار حذف شد و جادوگر تازه رو شد.'); }
   } else if (s.k === 'hat') {
     for (const p of G.players) p.shield = false;
     // the wizard hat goes to the next player; in a 2-player game turns simply alternate (Farshad 2026-11-05)
