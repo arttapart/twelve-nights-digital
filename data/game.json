@@ -6726,12 +6726,19 @@
    }
   }
  },
- "art": {},
+ "art": {
+  "mode": {},
+  "bg": {},
+  "wizards": {
+   "B3": "wizards/B3.jpg"
+  }
+ },
  "texts": {},
  "colors": {},
  "css": "",
  "meta": {
   "version": "1.2.3",
   "note": "ویرایش‌شده با ویرایشگر ۱۲ شب"
- }
+ },
+ "tileNotes": []
 }
